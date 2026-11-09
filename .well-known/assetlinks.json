@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.beatreel.twa",
+        "sha256_cert_fingerprints": ["B1:31:AD:A0:E0:B5:32:DD:6E:F3:23:BC:8E:01:62:28:30:7B:0F:00:32:0B:B8:C8:EC:5F:B8:A9:AB:60:EC:38"]
+      }
+    }]

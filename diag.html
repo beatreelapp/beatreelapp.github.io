@@ -1,0 +1,12 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>BeatReel check</title>
+<body style="background:#111;color:#eee;font:15px/1.5 monospace;padding:14px"><h2>BeatReel phone check</h2><pre id=o>Checking...</pre>
+<script>
+(async()=>{const L=[];const p=s=>{L.push(s);document.getElementById('o').textContent=L.join('\n')};
+p('UA: '+navigator.userAgent);p('secure: '+isSecureContext);
+p('VideoEncoder: '+!!window.VideoEncoder+'  AudioEncoder: '+!!window.AudioEncoder+'  VideoFrame: '+!!window.VideoFrame);
+const codecs=['avc1.42001f','avc1.4d0028','avc1.640028','vp09.00.10.08','vp8'];
+if(window.VideoEncoder){for(const c of codecs){let r=[];for(const [w,h] of [[540,960],[720,1280]]){for(const hw of ['prefer-hardware','prefer-software']){try{const x=await VideoEncoder.isConfigSupported({codec:c,width:w,height:h,bitrate:4e6,framerate:30,hardwareAcceleration:hw});r.push(w+(hw[7]=='h'?'hw':'sw')+':'+(x.supported?'YES':'no'))}catch(e){r.push(w+':err')}}}p('V '+c+' '+r.join(' '))}}
+if(window.AudioEncoder){for(const c of ['mp4a.40.2','opus']){try{const r=await AudioEncoder.isConfigSupported({codec:c,sampleRate:48000,numberOfChannels:2,bitrate:128000});p('A '+c+': '+(r.supported?'YES':'no'))}catch(e){p('A '+c+': err')}}}
+if(window.MediaRecorder){for(const t of ['video/mp4;codecs=avc1,mp4a.40.2','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=h264','video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus'])p('MR '+t+': '+(MediaRecorder.isTypeSupported(t)?'YES':'no'))}
+p('DONE - send a screenshot of this page')})();
+</script>
