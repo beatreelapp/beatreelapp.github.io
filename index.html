@@ -897,14 +897,15 @@ function frameBody(){
  const bv=$('bgv');
  if(!OFFX&&vSync()&&bv.src&&!bv.error){const K=keepParts();
   if(K&&!au.paused){const t=au.currentTime,i=partOf(K,t);let to=null;if(t<K[0][0]-.03)to=K[0][0];else if(t>K[i][1]&&i+1<K.length)to=K[i+1][0];else if(t<K[i][0]-.03)to=K[i][0];else if(t>K[K.length-1][1]+.02){au.pause();to=K[0][0]}
-   if(to!=null){CUTJ=true;au.currentTime=to;try{bv.currentTime=to}catch(_){}}}
+   if(to!=null){CUTJ=true;vHold(bv);au.currentTime=to;try{bv.currentTime=to}catch(_){}}}
   if(au.paused){if(!bv.paused)bv.pause();if(Math.abs(bv.currentTime-au.currentTime)>.1&&!bv.seeking){try{bv.currentTime=au.currentTime}catch(_){}}}
-  else{if(bv.paused&&performance.now()-VT>400){VT=performance.now();bv.play().catch(()=>{})}if(Math.abs(bv.currentTime-au.currentTime)>.25&&!bv.seeking){try{bv.currentTime=au.currentTime+.05}catch(_){}}}}
+  else{if(bv.paused&&performance.now()-VT>400){VT=performance.now();bv.play().catch(()=>{})}if(Math.abs(bv.currentTime-au.currentTime)>.25&&!bv.seeking){vHold(bv);try{bv.currentTime=au.currentTime+.05}catch(_){}}}}
  else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
- if(bv.src&&bv.readyState>=2&&bv.videoWidth){const R=vidRect();
-  if(SJ==4){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,VR.r);
-   c.save();c.lineWidth=4;c.strokeStyle='rgba(255,255,255,.22)';c.beginPath();const a=VR.x,b=VR.y,w=VR.w,h=VR.h,r=VR.r;c.moveTo(a+r,b);c.arcTo(a+w,b,a+w,b+h,r);c.arcTo(a+w,b+h,a,b+h,r);c.arcTo(a,b+h,a,b,r);c.arcTo(a,b,a+w,b,r);c.closePath();c.stroke();c.restore()}
+ const vHeld=SJ==4&&!!VHOLD&&VHT>0&&performance.now()-VHT<3000;
+ if(bv.src&&bv.readyState>=2&&bv.videoWidth&&!(vHeld&&bv.seeking)){const R=vidRect();
+  if(SJ==4){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,VR.r);vBorder()}
   else vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,.28)}
+ else if(vHeld&&bv.src&&!bv.error){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);c.drawImage(VHOLD,VR.x,VR.y);vBorder()}
  if(!curVid&&SJ<5)drawRhythm();
  if(SJ==4&&ttl.value.trim())hookDraw(ttl.value.trim());else{let fs=64,t=ttl.value.toUpperCase()||' ';c.textAlign='center';
  do{c.font='bold '+fs+'px system-ui,sans-serif';fs-=4}while(c.measureText(t).width>W-60&&fs>24);
@@ -1209,11 +1210,16 @@ function drawCaps(){
 }
 
 var VZ=1,VPX=0,VPY=0,AUTOCAP=false,vaOn=false,vaWas=false;
+/* Hold the last video picture while the video jumps (cut silences, sync): during a seek the phone has no picture, so we draw this copy instead of nothing. Copied only at a jump, not every frame. */
+var VHOLD=null,VHT=0;
+function vHold(bv){try{if(SJ!=4||!(bv.readyState>=2&&bv.videoWidth)||bv.seeking)return;const R=vidRect();if(!VHOLD)VHOLD=document.createElement('canvas');if(VHOLD.width!==R.rw||VHOLD.height!==R.rh){VHOLD.width=R.rw;VHOLD.height=R.rh}
+ const h=VHOLD.getContext('2d');h.clearRect(0,0,R.rw,R.rh);vidDraw(h,bv,0,0,R.rw,R.rh,0,VR.r,au.currentTime);VHT=performance.now()}catch(_){}}
+function vBorder(){c.save();c.lineWidth=4;c.strokeStyle='rgba(255,255,255,.22)';c.beginPath();const a=VR.x,b=VR.y,w=VR.w,h=VR.h,r=VR.r;c.moveTo(a+r,b);c.arcTo(a+w,b,a+w,b+h,r);c.arcTo(a+w,b+h,a,b+h,r);c.arcTo(a,b+h,a,b,r);c.arcTo(a,b,a+w,b,r);c.closePath();c.stroke();c.restore()}
 function vidRect(){return SJ==4?{rx:VR.x,ry:VR.y,rw:VR.w,rh:VR.h}:{rx:20,ry:650,rw:W-40,rh:610}}
 function vidGeom(bv,rw,rh){const vw=bv.videoWidth,vh=bv.videoHeight,cov=Math.max(rw/vw,rh/vh),fit=Math.min(rw/vw,rh/vh),minZ=fit/cov,z=Math.max(minZ,Math.min(4,VZ)),sc=cov*z,dw=vw*sc,dh=vh*sc;return{minZ:minZ,z:z,dw:dw,dh:dh,mx:Math.max(0,(dw-rw)/2),my:Math.max(0,(dh-rh)/2)}}
-function vidDraw(ctx,bv,rx,ry,rw,rh,dark,rad){const RD=rad||18;const g=vidGeom(bv,rw,rh);VPX=Math.max(-1,Math.min(1,VPX));VPY=Math.max(-1,Math.min(1,VPY));
+function vidDraw(ctx,bv,rx,ry,rw,rh,dark,rad,zt){const RD=rad||18;const g=vidGeom(bv,rw,rh);VPX=Math.max(-1,Math.min(1,VPX));VPY=Math.max(-1,Math.min(1,VPY));
  let ox=rx+(rw-g.dw)/2+VPX*g.mx,oy=ry+(rh-g.dh)/2+VPY*g.my;
- if(ctx===c){const z=autoZoom(au.currentTime);if(z>1.001){const fx=rx+rw/2,fy=ry+rh*.38;ox=fx-(fx-ox)*z;oy=fy-(fy-oy)*z;g.dw*=z;g.dh*=z}}
+ if(ctx===c||zt!=null){const z=autoZoom(zt!=null?zt:au.currentTime);if(z>1.001){const fx=rx+rw/2,fy=ry+rh*.38;ox=fx-(fx-ox)*z;oy=fy-(fy-oy)*z;g.dw*=z;g.dh*=z}}
  ctx.save();ctx.beginPath();ctx.moveTo(rx+RD,ry);ctx.arcTo(rx+rw,ry,rx+rw,ry+rh,RD);ctx.arcTo(rx+rw,ry+rh,rx,ry+rh,RD);ctx.arcTo(rx,ry+rh,rx,ry,RD);ctx.arcTo(rx,ry,rx+rw,ry,RD);ctx.closePath();ctx.clip();
  ctx.drawImage(bv,ox,oy,g.dw,g.dh);if(dark){ctx.fillStyle='rgba(0,0,0,'+dark+')';ctx.fillRect(rx,ry,rw,rh)}ctx.restore()}
 function vaFit(){const R=vidRect(),cv2=$('vac'),maxH=Math.max(200,innerHeight-300),cw=Math.min(innerWidth*.92,maxH*R.rw/R.rh);cv2.width=R.rw;cv2.height=R.rh;cv2.style.width=Math.round(cw)+'px';cv2.style.height=Math.round(cw*R.rh/R.rw)+'px'}
@@ -1382,7 +1388,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v18';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v19';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
