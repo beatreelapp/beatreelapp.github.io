@@ -80,7 +80,7 @@ export default {
       const gate = await bank(env).gate(route, typeof body.job === "string" ? body.job : "", await ipKey(req));
       if (!gate.ok) return Response.json({ error: gate.error }, { status: 402, headers: cors });
       ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : "ai_style", ""));
-      if (route === "/clips") return Response.json(await clips(env, body), { headers: cors });
+      if (route === "/clips") return CLIPS_ON ? Response.json(await clips(env, body), { headers: cors }) : Response.json({ error: "soon" }, { status: 503, headers: cors });
       if (route === "/transcribe") {
         const out = await transcribe(env, body);
         if (body.job) ctx.waitUntil(Promise.resolve().then(() => bank(env).worked(body.job)).catch(() => {}));
@@ -341,9 +341,10 @@ async function stripe(env, method, path, form) {
     body: form ? new URLSearchParams(form).toString() : undefined,
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error("stripe: " + ((j.error && j.error.message) || r.status)), { status: 502 });
+  if (!r.ok) throw Object.assign(new Error("stripe: " + ((j.error && j.error.message) || r.status)), { status: 502, code: (j.error && j.error.code) || "", http: r.status });
   return j;
 }
+const YT_ON = false, CLIPS_ON = false; // YouTube links and Clipping are shown as "Soon" in the app
 const ACTIVE = ["active", "trialing", "past_due"];
 
 async function subStatus(env, b, row, force) {
@@ -353,8 +354,13 @@ async function subStatus(env, b, row, force) {
     const sub = await stripe(env, "GET", "subscriptions/" + row.sub);
     await b.setStatus(row.code, sub.status, sub.customer || row.cust);
     return sub.status;
-  } catch (_) { return row.status; }
+  } catch (e) {
+    // a subscription made with the test key does not exist for the live key: treat it as ended
+    if (e && (e.code === "resource_missing" || e.http === 404)) { await b.setStatus(row.code, "canceled", row.cust); return "canceled"; }
+    return row.status;
+  }
 }
+const stripeMode = (env) => (String(env.STRIPE_SECRET_KEY || "").startsWith("sk_live_") ? "live" : "test");
 
 // ---------- YouTube link -> video file (RapidAPI "YouTube Media Downloader", DataFanatic) ----------
 function ytId(u) {
@@ -398,6 +404,7 @@ function pickYt(j) {
   } };
 }
 async function yt(env, b, did, pro, body, req) {
+  if (!YT_ON) return { status: 503, body: { error: "soon" } };
   if (!env.RAPIDAPI_KEY) return { status: 503, body: { error: "not_ready" } };
   const id = ytId(body.url);
   if (!id) return { status: 400, body: { error: "bad_link" } };
@@ -461,7 +468,8 @@ async function account(env, route, body, req) {
     return { body: { job: r.job, coins: pro ? FREE_COINS : r.coins, pro: !!pro, reset: resetIn() } };
   }
   if (route === "/checkout") {
-    let price = await b.getKV("price");
+    const pk = "price_" + stripeMode(env);
+    let price = await b.getKV(pk);
     if (!price) {
       const prod = await stripe(env, "POST", "products", {
         name: "BeatReel Pro",
@@ -472,7 +480,7 @@ async function account(env, route, body, req) {
         "default_price_data[recurring][interval]": "month",
       });
       price = prod.default_price;
-      await b.setKV("price", price);
+      await b.setKV(pk, price);
     }
     const ses = await stripe(env, "POST", "checkout/sessions", {
       mode: "subscription",

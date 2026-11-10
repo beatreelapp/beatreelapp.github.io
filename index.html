@@ -196,7 +196,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <section style="padding-top:10px"><h3>Free or Pro.</h3><p>Start free. Upgrade when you want a clean, sharper video.</p>
 <div class="grid" style="max-width:640px;grid-template-columns:1fr 1fr;margin-left:auto;margin-right:auto">
 <div class="card" style="padding:20px"><h4 style="margin:0 0 10px">Free</h4><p style="margin:0;opacity:.8;line-height:1.7">All scenes<br>Auto-synced lyrics<br>Text styles<br>540p and 720p<br>Clips up to 30 seconds<br>BeatReel watermark</p></div>
-<div class="card" style="padding:20px;border-color:#ff4fa3"><h4 style="margin:0 0 10px;color:#ff7ac8">Pro<span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:8px;vertical-align:middle">Soon</span></h4><p style="margin:0;opacity:.9;line-height:1.7">Everything in Free<br>No watermark<br>Full HD 1080p<br>Clips longer than 30 seconds<br>Support the project<br>AI features <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#a64dff;color:#fff;border-radius:8px;padding:2px 7px;margin-left:4px;vertical-align:middle">Soon</span></p></div></div></section>
+<div class="card" style="padding:20px;border-color:#ff4fa3"><h4 style="margin:0 0 10px;color:#ff7ac8">Pro <span style="font-size:13px;font-weight:700;color:#fff;opacity:.85">€4.99/month</span></h4><p style="margin:0;opacity:.9;line-height:1.7">Everything in Free<br>No watermark<br>Full HD 1080p<br>Clips longer than 30 seconds<br>Unlimited AI captions and lyrics<br>Cancel anytime</p></div></div></section>
 <section class="final"><h3>Ready to make yours?</h3><p>Free to try. No account needed.</p><button data-go>Start creating</button></section>
 <footer><div style="margin-bottom:12px"><a href="#" id="lg1" style="color:#ff7ac8">Privacy</a> &nbsp;&middot;&nbsp; <a href="#" id="lg2" style="color:#ff7ac8">Terms</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#ff7ac8" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your songs and videos are processed on your device and are never uploaded.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
 </div>
@@ -239,7 +239,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
 <div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
 <div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
-<div class="row m-video"><button id="clb" type="button" style="background:linear-gradient(135deg,#2a1450,#120a24);border:1px solid #d9a93c;color:#ffe6a0">✂️ Clipping <span style="font-size:11px;font-weight:800;background:linear-gradient(135deg,#ffe08a,#e0a526);color:#3a2600;border-radius:8px;padding:2px 7px;margin-left:4px;vertical-align:middle">✨ PRO</span></button></div>
+<div class="row m-video"><button id="clb" type="button" aria-disabled="true" style="opacity:.6;border:1px solid #5a5a66">✂️ Clipping <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button></div>
 <div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="cutx" checked> ✂️ Cut silences</label><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
 <div class="row"><button id="nlb" type="button">+ New line</button><button class="m m-music" id="aut">Auto sync</button></div>
@@ -1302,10 +1302,8 @@ setInterval(()=>{wfDraw();const t=au.currentTime;
  o.addEventListener('pointerdown',e=>{e.preventDefault();o.setPointerCapture(e.pointerId);o._d=1;ov(e)});o.addEventListener('pointermove',e=>{if(o._d)ov(e)});o.addEventListener('pointerup',()=>{o._d=0});o.addEventListener('pointercancel',()=>{o._d=0});
  $('cp').onclick=()=>{if(!au.src)return;setup();ac.resume();if(au.paused){if(au.currentTime<CS||au.currentTime>=CE-.05)au.currentTime=CS;au.play().catch(()=>{})}else au.pause()};
  $('cr').onclick=()=>{if(DUR){CS=0;CE=Math.min(DUR,maxLen());VS=0;clipUI();au.currentTime=0}}})();
-/* Lemon Squeezy: paste your checkout link in BUY_URL and your numeric store id in LS_STORE (Settings > Stores).
-   While LS_STORE is 0 only the CODES below work. */
-var LS_STORE=0,BUY_URL='',CODES=['BEATREEL-TEST','OTHMANE-PRO-HQH3','BR-SGGK-R4V5','BR-4X3N-BY22','BR-N4JW-XAKR','BR-5HDG-H29A','BR-2LJG-LZEP','BR-4JUP-CN7D','BR-LXL3-MLUM','BR-AGK7-VTPW','BR-D2TH-2ZK5','BR-CVMJ-NW4S'],PRO=false;
-try{PRO=localStorage.getItem('br_pro')==='1'}catch(_){}
+var PRO=false;
+try{PRO=localStorage.getItem('br_pro')==='1'&&localStorage.getItem('br_pro_src')==='stripe'}catch(_){}
 function wm(){if(PRO)return;c.save();c.globalAlpha=.6;c.textAlign='right';c.textBaseline='alphabetic';c.font='800 34px system-ui,sans-serif';c.shadowColor='rgba(0,0,0,.55)';c.shadowBlur=6;c.fillStyle='#fff';
  const x=W-28,y=122;c.fillText('BeatReel',x,y);const w=c.measureText('BeatReel').width;c.shadowBlur=0;
  for(let i=0;i<4;i++){const h=[10,22,14,26][i];c.fillRect(x-w-14-(3-i)*9,y-h,6,h)}c.restore()}
@@ -1383,8 +1381,8 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
  hit('visit');if(g('br_day')!==d){p('br_day',d);hit('dev')}if(!g('br_seen')){p('br_seen','1');hit('new')}if(inApp&&g('br_aday')!==d){p('br_aday',d);hit('app')}})();
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
-const PAY_LIVE=false,PRICE_TXT='€4.99/month';
-const APPV='v17';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const PAY_LIVE=true,PRICE_TXT='€4.99/month';
+const APPV='v18';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1534,9 +1532,10 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
 /* ===== Add video chooser + Clipping (Pro): the AI picks the best moments of a video and writes a hook title for each ===== */
 (()=>{const st=document.createElement('style');st.textContent='#pmc{max-height:88vh;overflow:auto}#pmc .clp{text-align:left;margin:12px 0 0;padding:10px;border:1px solid #4a2a7a;border-radius:14px;background:#120a24}#pmc .clp input{text-align:left;font:700 15px system-ui,sans-serif;letter-spacing:0}#pmc .clp .sm{margin:0;opacity:.7}';document.head.appendChild(st)})();
 const clEsc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-async function pickVideo(){const a=await modal('<h3>Add your video</h3><p>Where is your video?</p><button class="pri" data-a="phone">📱 From your phone</button><button data-a="yt">🔗 YouTube link</button><button data-a="close">Cancel</button>');if(a==='phone')$('vf').click();else if(a==='yt')ytLink()}
+async function pickVideo(){const a=await modal('<h3>Add your video</h3><p>Where is your video?</p><button class="pri" data-a="phone">📱 From your phone</button><button data-a="yt" aria-disabled="true" style="opacity:.6">🔗 YouTube link <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button><button data-a="close">Cancel</button>');if(a==='phone')$('vf').click();else if(a==='yt')soonMsg('🔗 YouTube link')}
+function soonMsg(t){modal('<h3>'+t+' <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></h3><p>This feature is coming soon.</p><button data-a="ok">OK</button>')}
 /* YouTube link: the server asks the download service for the file links, the phone downloads them (sound first, then the picture) */
-async function ytLink(pre){
+async function ytLink(pre){soonMsg('🔗 YouTube link');return;
  const a=await modal('<h3>🔗 YouTube link</h3><p>Paste the link of a YouTube video or Short.</p><input id="yti" placeholder="https://youtu.be/..." autocomplete="off" autocapitalize="off" spellcheck="false" style="text-align:left;font:600 14px system-ui,sans-serif;letter-spacing:0" value="'+clEsc(pre||'')+'"><button class="pri" data-a="_go">Get video</button><button data-a="close">Cancel</button><p class="sm" style="font-size:10px;opacity:.45;margin-top:12px">Use only videos you own or have the rights to use. Free: 1 try (up to 2 min). Pro: 5 links a day (up to 10 min).</p><div class="err" id="pme"></div>');
  if(a!=='_go')return;const url=($('yti').value||'').trim(),er=$('pme'),go=document.querySelector('#pmc [data-a="_go"]');
  if(!url){er.textContent='Paste a link first.';return ytAgain()}
@@ -1617,7 +1616,7 @@ function useClip(i){const k=CLIPS&&CLIPS.list[i];if(!k)return;
  msg.textContent='Clip '+(i+1)+' ready: "'+k.title+'". Tap Download video. For another clip, tap Clipping again.'}
 try{$('cbg').value=String(CBG);$('cbg').onchange=e=>{CBG=+e.target.value||0;try{localStorage.setItem('br_cbg2',String(CBG))}catch(_){}}}catch(_){}
 let clBusy=false;
-$('clb').onclick=async()=>{
+$('clb').onclick=async()=>{soonMsg('✂️ Clipping');return;
  if(!(CPRO||PRO)){openPro();return}
  if(acBusy||clBusy)return;
  if(!curVid||!$('bgv').src){msg.textContent='Add your video first, then tap Clipping.';pickVideo();return}
@@ -2350,23 +2349,10 @@ document.querySelectorAll('#home .final [data-go]').forEach(b=>b.onclick=()=>doc
 (()=>{const cd=document.getElementById('code'),ac_=document.getElementById('act'),row=document.getElementById('prow'),m=document.getElementById('msg');
 function ui(){if(PRO){row.innerHTML='<p style="margin:0;color:#7dffb0">Watermark removed. Thank you!</p>'}}
 ui();
-try{const mm=/[#?&]pro=([A-Za-z0-9-]+)/.exec(location.hash+location.search);if(mm&&CODES.indexOf(mm[1].toUpperCase())>-1){PRO=true;try{localStorage.setItem('br_pro','1')}catch(_){}ui()}}catch(_){}
-const proOn=()=>{PRO=true;try{localStorage.setItem('br_pro','1')}catch(_){}ui();if(DUR)clipUI();m.textContent='Watermark removed. Thank you!'};
 ac_.onclick=async()=>{const raw=(cd.value||'').trim(),v=raw.toUpperCase();
  if(!v){openPro();return}
  if(/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)){acct('/restore',{code:v}).then(j=>{if(j.pro){setPro(true,j.code);m.textContent='Pro restored. Thank you!'}else m.textContent='That code is not valid or not active.'}).catch(()=>{m.textContent='No internet connection.'});return}
- if(CODES.indexOf(v)>-1){proOn();return}
- if(!LS_STORE){m.textContent='That code is not valid.';return}
- m.textContent='Checking your key...';ac_.disabled=true;
- try{let iid='';try{iid=localStorage.getItem('br_iid')||''}catch(_){}
-  const body=new URLSearchParams({license_key:raw,instance_name:'BeatReel-'+Math.random().toString(36).slice(2,8)});
-  const r=await fetch('https://api.lemonsqueezy.com/v1/licenses/activate',{method:'POST',headers:{'Accept':'application/json'},body});
-  const j=await r.json().catch(()=>({}));
-  const ok=j&&j.activated&&j.meta&&Number(j.meta.store_id)===Number(LS_STORE);
-  if(ok){try{localStorage.setItem('br_iid',(j.instance&&j.instance.id)||'')}catch(_){}proOn()}
-  else m.textContent=(j&&j.error&&/limit/i.test(j.error))?'This key has reached its device limit.':'That key is not valid.'}
- catch(e){m.textContent='Could not check the key. Check your internet and try again.'}
- ac_.disabled=false}})();
+ m.textContent='That code is not valid. Pro codes look like BR-XXXX-XXXX-XXXX.'}})();
 
 (()=>{const b=document.getElementById('seelive');if(b)b.onclick=()=>document.getElementById('ph').scrollIntoView({behavior:'smooth',block:'center'})})();
 
