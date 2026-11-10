@@ -12,15 +12,19 @@
 //   POST /claim   {did, session}      -> {pro, code}  after paying; code restores Pro on other devices (max 3)
 //   POST /restore {did, code}         -> {pro}
 //   POST /portal  {did}               -> {url}  Stripe customer portal (cancel, change card)
+//   POST /yt      {did, url}          -> {title, len, video:{url}, audio:{url}|null}  YouTube link (RapidAPI, key in secret RAPIDAPI_KEY)
+//                                       free: 1 try per device ever, max 2 min; Pro: 5 a day, max 10 min; whole app: ~32 links a month (free plan = 100 units, 3 per link)
+//   GET  /ytget?u=URL                 -> streams a googlevideo.com file with CORS (only if the phone cannot fetch it directly)
 //   GET  /stats?k=KEY                                          -> private usage page (only the SHA-256 of the key is stored here)
 import { DurableObject } from "cloudflare:workers";
 const STATS_KEY_SHA256 = "3cfa6b59a11a89f3a83c08f056b077129a9cf05e77458de92e556dfc8b23c3a7";
+const YT_HOST = "youtube-media-downloader.p.rapidapi.com", YT_MONTH_CAP = 32, YT_FREE_MONTH_CAP = 15, YT_PRO_DAY = 5, YT_FREE_LEN = 120, YT_PRO_LEN = 600;
 const JOB_TR_MAX = 22; // about 10 minutes of audio (30 s parts) per Auto captions run
 const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 1000, JOB_CALLS = 120, MAX_DEVICES = 3;
 const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
 const SITE = "https://beatreelapp.github.io";
-const ACCT_ROUTES = ["/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
-const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip"];
+const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
+const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 const STYLE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const STYLE_KEYS = ["font", "col", "size", "anim", "fx", "frame"];
@@ -36,6 +40,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(req.url);
     const route = url.pathname;
+    if (route === "/ytget" && req.method === "GET") return ytProxy(req, url, cors, origin);
     if (route === "/stats" && req.method === "GET") return statsPage(env, url.searchParams.get("k") || "");
     if (route === "/hit" && req.method === "POST") {
       if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
@@ -326,6 +331,70 @@ async function subStatus(env, b, row, force) {
   } catch (_) { return row.status; }
 }
 
+// ---------- YouTube link -> video file (RapidAPI "YouTube Media Downloader", DataFanatic) ----------
+function ytId(u) {
+  u = String(u || "").trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(u)) return u;
+  const m = /(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/|\/v\/)([A-Za-z0-9_-]{11})/.exec(u);
+  return m && /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)/.test(u) ? m[1] : "";
+}
+const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+function fmtList(x) { return Array.isArray(x) ? x : x && Array.isArray(x.items) ? x.items : []; }
+function pickYt(j) {
+  const vs = fmtList(j.videos).filter((v) => v && typeof v.url === "string" && /^https:/.test(v.url));
+  const as = fmtList(j.audios).filter((v) => v && typeof v.url === "string" && /^https:/.test(v.url));
+  const h = (v) => num(v.height) || num(String(v.quality || v.qualityLabel || "").replace(/[^0-9]/g, ""));
+  const mp4 = (v) => /mp4/i.test(String(v.mimeType || v.extension || v.ext || "")) && !/vp9|av01|av1/i.test(String(v.mimeType || v.codec || ""));
+  const muxed = vs.filter((v) => mp4(v) && v.hasAudio === true && h(v) <= 1080).sort((a, b) => h(b) - h(a));
+  const only = vs.filter((v) => mp4(v) && v.hasAudio !== true && h(v) <= 720).sort((a, b) => h(b) - h(a));
+  const aud = as.filter((v) => /mp4|m4a|aac/i.test(String(v.mimeType || v.extension || v.ext || ""))).sort((a, b) => num(b.bitrate) - num(a.bitrate));
+  // a separate 720p video + m4a audio is sharper than the 360p file with sound
+  if (only.length && aud.length && (!muxed.length || h(only[0]) > h(muxed[0]))) return { video: { url: only[0].url, h: h(only[0]) }, audio: { url: aud[0].url } };
+  if (muxed.length) return { video: { url: muxed[0].url, h: h(muxed[0]) }, audio: null };
+  return null;
+}
+async function yt(env, b, did, pro, body, req) {
+  if (!env.RAPIDAPI_KEY) return { status: 503, body: { error: "not_ready" } };
+  const id = ytId(body.url);
+  if (!id) return { status: 400, body: { error: "bad_link" } };
+  const ip = await ipKey(req);
+  const can = await b.ytCan(did, pro, ip);
+  if (!can.ok) return { status: 402, body: { error: can.error, pro, reset: resetIn() } };
+  await b.ytUse(did, pro, ip);
+  let r, j;
+  try {
+    r = await fetch("https://" + YT_HOST + "/v2/video/details?videoId=" + id + "&urlAccess=normal&videos=true&audios=true&subtitles=false&related=false",
+      { headers: { "x-rapidapi-key": env.RAPIDAPI_KEY, "x-rapidapi-host": YT_HOST } });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { await b.ytUndo(did, pro, ip, true); return { status: 502, body: { error: "service_down" } }; }
+  if (!r.ok || (j.errorId && j.errorId !== "Success")) {
+    await b.ytUndo(did, pro, ip, r.status === 429 || r.status === 401 || r.status === 403);
+    return { status: 502, body: { error: r.status === 429 ? "month_full" : "service", detail: String(j.message || j.errorId || r.status).slice(0, 120) } };
+  }
+  const len = num(j.lengthSeconds) || num(j.duration) || 0, max = pro ? YT_PRO_LEN : YT_FREE_LEN;
+  if (len > max + 1) { await b.ytUndo(did, pro, ip, false); return { status: 400, body: { error: "too_long", len, max, pro } }; }
+  const f = pickYt(j);
+  if (!f) {
+    await b.ytUndo(did, pro, ip, false);
+    return { status: 502, body: { error: "no_format", detail: "keys:" + Object.keys(j).slice(0, 15).join(",") + " v:" + fmtList(j.videos).length + " a:" + fmtList(j.audios).length } };
+  }
+  return { body: { title: String(j.title || "").slice(0, 100), len, video: f.video, audio: f.audio, pro } };
+}
+async function ytProxy(req, url, cors, origin) {
+  if (!ALLOWED.includes(origin)) return new Response("Forbidden", { status: 403, headers: cors });
+  let u;
+  try { u = new URL(url.searchParams.get("u") || ""); } catch { return new Response("bad", { status: 400, headers: cors }); }
+  if (u.protocol !== "https:" || !/(^|\.)googlevideo\.com$/.test(u.hostname)) return new Response("bad", { status: 400, headers: cors });
+  const h = {};
+  const range = req.headers.get("Range");
+  if (range) h.Range = range;
+  const r = await fetch(u.toString(), { headers: h });
+  const out = new Headers(cors);
+  ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"].forEach((k) => { const v = r.headers.get(k); if (v) out.set(k, v); });
+  out.set("Access-Control-Expose-Headers", "Content-Length, Content-Range");
+  return new Response(r.body, { status: r.status, headers: out });
+}
+
 async function account(env, route, body, req) {
   const b = bank(env);
   if (route === "/refund") { await b.refund(String(body.job || "")); return { body: { ok: true } }; }
@@ -336,6 +405,7 @@ async function account(env, route, body, req) {
     const st = await subStatus(env, b, row, force);
     return ACTIVE.includes(st) ? row : null;
   };
+  if (route === "/yt") return yt(env, b, did, !!(await proRow(false)), body, req);
   if (route === "/me") {
     const pro = await proRow(false);
     return { body: { pro: !!pro, code: pro ? pro.code : "", coins: pro ? FREE_COINS : await b.coins(did, FREE_COINS), max: FREE_COINS, reset: resetIn() } };
@@ -421,6 +491,32 @@ export class Bank extends DurableObject {
     q.exec("CREATE TABLE IF NOT EXISTS pro (code TEXT PRIMARY KEY, sub TEXT UNIQUE, cust TEXT, status TEXT, checked INTEGER)");
     q.exec("CREATE TABLE IF NOT EXISTS link (did TEXT PRIMARY KEY, code TEXT)");
     q.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)");
+    q.exec("CREATE TABLE IF NOT EXISTS yt (did TEXT, day TEXT, n INTEGER, PRIMARY KEY (did, day))");
+    q.exec("CREATE TABLE IF NOT EXISTS ytfree (k TEXT PRIMARY KEY)");
+    q.exec("CREATE TABLE IF NOT EXISTS ytm (month TEXT PRIMARY KEY, n INTEGER, f INTEGER DEFAULT 0)");
+  }
+  ytCan(did, pro, ip) {
+    const mo = today().slice(0, 7), m = this.one("SELECT n, f FROM ytm WHERE month = ?", mo) || { n: 0, f: 0 };
+    if (m.n >= YT_MONTH_CAP) return { ok: false, error: "month_full" };
+    if (pro) {
+      const r = this.one("SELECT n FROM yt WHERE did = ? AND day = ?", did, today());
+      return r && r.n >= YT_PRO_DAY ? { ok: false, error: "day_limit" } : { ok: true };
+    }
+    if (this.one("SELECT k FROM ytfree WHERE k = ?", "d:" + did) || this.one("SELECT k FROM ytfree WHERE k = ?", "i:" + ip)) return { ok: false, error: "free_used" };
+    if (m.f >= YT_FREE_MONTH_CAP) return { ok: false, error: "free_full" };
+    return { ok: true };
+  }
+  ytUse(did, pro, ip) {
+    const mo = today().slice(0, 7);
+    this.sql.exec("INSERT INTO ytm (month, n, f) VALUES (?, 1, ?) ON CONFLICT (month) DO UPDATE SET n = n + 1, f = f + excluded.f", mo, pro ? 0 : 1);
+    if (pro) this.sql.exec("INSERT INTO yt (did, day, n) VALUES (?, ?, 1) ON CONFLICT (did, day) DO UPDATE SET n = n + 1", did, today());
+    else { this.sql.exec("INSERT OR IGNORE INTO ytfree (k) VALUES (?)", "d:" + did); this.sql.exec("INSERT OR IGNORE INTO ytfree (k) VALUES (?)", "i:" + ip); }
+  }
+  // give the user's try back; give the month back too when RapidAPI did not count the call
+  ytUndo(did, pro, ip, month) {
+    if (month) this.sql.exec("UPDATE ytm SET n = MAX(0, n - 1), f = MAX(0, f - ?) WHERE month = ?", pro ? 0 : 1, today().slice(0, 7));
+    if (pro) this.sql.exec("UPDATE yt SET n = MAX(0, n - 1) WHERE did = ? AND day = ?", did, today());
+    else { this.sql.exec("DELETE FROM ytfree WHERE k = ?", "d:" + did); this.sql.exec("DELETE FROM ytfree WHERE k = ?", "i:" + ip); }
   }
   one(q, ...a) { const r = this.sql.exec(q, ...a).toArray(); return r[0] || null; }
   clean() {

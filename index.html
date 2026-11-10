@@ -1499,7 +1499,40 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
 /* ===== Add video chooser + Clipping (Pro): the AI picks the best moments of a video and writes a hook title for each ===== */
 (()=>{const st=document.createElement('style');st.textContent='#pmc{max-height:88vh;overflow:auto}#pmc .clp{text-align:left;margin:12px 0 0;padding:10px;border:1px solid #4a2a7a;border-radius:14px;background:#120a24}#pmc .clp input{text-align:left;font:700 15px system-ui,sans-serif;letter-spacing:0}#pmc .clp .sm{margin:0;opacity:.7}';document.head.appendChild(st)})();
 const clEsc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-async function pickVideo(){const a=await modal('<h3>Add your video</h3><p>Where is your video?</p><button class="pri" data-a="phone">📱 From your phone</button><button disabled>🔗 YouTube link · Soon</button><button data-a="close">Cancel</button>');if(a==='phone')$('vf').click()}
+async function pickVideo(){const a=await modal('<h3>Add your video</h3><p>Where is your video?</p><button class="pri" data-a="phone">📱 From your phone</button><button data-a="yt">🔗 YouTube link</button><button data-a="close">Cancel</button>');if(a==='phone')$('vf').click();else if(a==='yt')ytLink()}
+/* YouTube link: the server asks the download service for the file links, the phone downloads them (sound first, then the picture) */
+async function ytLink(pre){
+ const a=await modal('<h3>🔗 YouTube link</h3><p>Paste the link of a YouTube video or Short.</p><input id="yti" placeholder="https://youtu.be/..." autocomplete="off" autocapitalize="off" spellcheck="false" style="text-align:left;font:600 14px system-ui,sans-serif;letter-spacing:0" value="'+clEsc(pre||'')+'"><button class="pri" data-a="_go">Get video</button><button data-a="close">Cancel</button><p class="sm" style="font-size:10px;opacity:.45;margin-top:12px">Use only videos you own or have the rights to use. Free: 1 try (up to 2 min). Pro: 5 links a day (up to 10 min).</p><div class="err" id="pme"></div>');
+ if(a!=='_go')return;const url=($('yti').value||'').trim(),er=$('pme'),go=document.querySelector('#pmc [data-a="_go"]');
+ if(!url){er.textContent='Paste a link first.';return ytAgain()}
+ go.disabled=true;er.style.color='#cfc3ea';er.textContent='Asking for the video...';
+ let j;try{j=await acct('/yt',{url},40000)}catch(_){j={_s:0,error:'net'}}
+ if(j._s!==200||!j.video){go.disabled=false;er.style.color='';const e=j.error;
+  if(e==='free_used'||e==='free_full'){const b=await modal('<h3>🔗 YouTube links are Pro</h3><p>'+(e==='free_used'?'You already used your free YouTube try.':'The free YouTube tries are used up this month.')+' Pro gives you 5 links a day, up to 10 minutes each.</p>'+(PAYON?'<button class="pri" data-a="pro">Get Pro · '+PRICE_TXT+'</button>':'')+'<button data-a="phone">📱 Upload from my phone</button><button data-a="close">Close</button>');if(b==='pro')openPro();else if(b==='phone')$('vf').click();return}
+  er.textContent=e==='bad_link'?'This is not a YouTube video link.':e==='too_long'?'This video is too long. Max '+Math.round((j.max||120)/60)+' minutes'+(j.pro?'':' (Pro: 10 minutes)')+'.':e==='day_limit'?'You used your 5 YouTube links today. New links tomorrow.':e==='month_full'?'YouTube links are full this month. Please upload from your phone.':e==='net'?'No internet connection. Please try again.':'The link does not work right now. Please upload the video from your phone.'+(j.detail?' ('+String(j.detail).slice(0,80)+')':'');
+  if(e!=='bad_link'&&e!=='too_long')er.innerHTML+='<button data-a="phone" style="margin-top:10px">📱 Upload from my phone</button>';
+  const q=document.querySelector('#pmc [data-a="phone"]');if(q)q.onclick=()=>{PMR&&PMR('close');$('vf').click()};
+  return ytAgain()}
+ hit('yt');
+ const nm=(j.title||'youtube').replace(/[^\p{L}\p{N} _-]+/gu,'').slice(0,40)||'youtube';
+ try{
+  let aud=null;
+  if(j.audio){er.textContent='Getting the sound...';aud=await ytFetch(j.audio.url,p=>{er.textContent='Getting the sound... '+p})}
+  er.textContent='Getting the video...';
+  const vid=await ytFetch(j.video.url,p=>{er.textContent='Getting the video... '+p});
+  PMR&&PMR('close');hit('yt_ok');
+  const vf=new File([vid],nm+'.mp4',{type:'video/mp4'});
+  $('vf').onchange({target:{files:[vf]}});
+  if(aud){const af=new File([aud],nm+'.m4a',{type:'audio/mp4'});loadAudio(af,"Using the video's sound. Making captions...");curVid=true}
+ }catch(e){go.disabled=false;er.style.color='';er.textContent='Could not download the video ('+String(e&&e.message||e).slice(0,60)+'). Please try again, or upload it from your phone.';return ytAgain()}}
+function ytAgain(){const go=document.querySelector('#pmc [data-a="_go"]');if(!go)return;go.onclick=()=>{const v=($('yti')||{}).value||'';ytLink(v)}}
+async function ytFetch(url,onP){const C=4<<20,sep=url.indexOf('?')>-1?'&':'?';
+ // googlevideo sends big files fast only in parts, so ask 4 MB at a time
+ const run=async wrap=>{const parts=[];let a=0;
+  for(;;){const r=await fetch(wrap(url+sep+'range='+a+'-'+(a+C-1)));if(!r.ok)throw new Error('http '+r.status);const b=await r.arrayBuffer();if(!b.byteLength)break;
+   parts.push(b);a+=b.byteLength;onP((a/1048576).toFixed(1)+' MB');if(b.byteLength!==C||a>600*1048576)break}
+  if(a<1000)throw new Error('empty');return new Blob(parts)};
+ try{return await run(u=>u)}catch(e){return await run(u=>API_URL+'/ytget?u='+encodeURIComponent(u))}}
 $('vb').addEventListener('click',e=>{e.preventDefault();pickVideo()});
 function capLines(){return L.map((t,i)=>({t:String(t).slice(0,90),s:RNG[i].s,e:RNG[i].e}))}
 function localClips(ls){const out=[];let a=0;
