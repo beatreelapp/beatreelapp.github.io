@@ -235,6 +235,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
 <div class="row m-video"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
 <div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
+<div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="cutx" checked> ✂️ Cut silences</label><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
 <div class="row"><button id="nlb" type="button">+ New line</button><button class="m m-music" id="aut">Auto sync</button></div>
 <div class="row m-music"><button id="ear">Earlier 0.3s</button><button id="lat">Later 0.3s</button></div>
@@ -433,6 +434,25 @@ const LOOKS=[
  {n:'Color box',d:'bold and simple: words inside a solid color box. Good for short promos and announcements',fr:3,font:0,size:1,fx:0}];
 const ACC=[['Yellow',1],['Green',4],['Pink',2],['Cyan',3],['Purple',9],['Orange',5],['Red',6]];
 const EML=[['1f195','new'],['1f30a','sea, wave'],['1f30d','world'],['1f319','night, moon'],['1f327','rain'],['1f338','flower, spring'],['1f355','pizza'],['1f37d','food, meal'],['1f381','gift, free'],['1f389','party, celebrate'],['1f393','graduate, study'],['1f3a4','sing, microphone'],['1f3ac','video, film'],['1f3ae','games'],['1f3af','goal, target'],['1f3b5','music, song'],['1f3c6','win, trophy'],['1f3e0','home, house'],['1f431','cat'],['1f436','dog'],['1f451','king, best'],['1f468_200d_1f469_200d_1f467','family'],['1f476','baby'],['1f483','dance'],['1f48e','diamond, value'],['1f4a1','idea, tip'],['1f4aa','strong, gym'],['1f4b0','money'],['1f4bc','work, business'],['1f4da','learn, books'],['1f4f1','phone, app'],['1f525','fire, hot, amazing'],['1f602','funny, laugh'],['1f604','happy'],['1f60e','cool, confident'],['1f618','kiss, love'],['1f621','angry'],['1f622','sad, cry'],['1f697','car, drive'],['1f91d','deal, together'],['1f929','wow, excited'],['1f92b','secret'],['1f932','prayer, God'],['1f941','beat, drum'],['23f0','time, alarm'],['23f1','fast, quick'],['2600','sun, morning'],['2615','coffee'],['26a0','warning, danger'],['26a1','energy, power'],['26bd','football'],['2705','yes, done, correct'],['2708','travel, plane'],['270c','peace, victory'],['2728','magic, beautiful, new'],['2753','question, why, how'],['2764','love, heart'],['2b50','star, success']].map(x=>[x[0].split('_').map(h=>String.fromCodePoint(parseInt(h,16))).join(''),x[1]]);
+/* ===== Smart edit: cut silences + auto zoom (video captions) ===== */
+var CUTON=true,ZOOMON=true,KPK='',KP=[],ZK='',ZEV=[],CUTJ=false;
+function vSync(){return SJ==4&&curVid}
+function keepParts(){if(!CUTON||SJ!=4)return null;const ws=[];RW.forEach(r=>(r||[]).forEach(w=>{if(w&&isFinite(w[0])&&isFinite(w[1]))ws.push(w)}));
+ if(ws.length<2)return null;const a=CS||0,b=Math.min(CE,DUR||1e9),key=ws.length+':'+ws[0][0]+':'+ws[ws.length-1][1]+':'+a+':'+b;if(key===KPK)return KP.length?KP:null;KPK=key;
+ ws.sort((x,y)=>x[0]-y[0]);const PI_=.1,PO=.18,GAP=.4,out=[];let s0=Math.max(a,ws[0][0]-PI_),e0=ws[0][1];
+ for(let i=1;i<ws.length;i++){const w=ws[i];if(w[0]-e0>GAP&&(w[0]-PI_)-(e0+PO)>.2){out.push([s0,Math.min(b,e0+PO)]);s0=Math.max(a,w[0]-PI_)}e0=Math.max(e0,w[1])}
+ out.push([s0,Math.min(b,e0+.3)]);KP=out.filter(x=>x[1]-x[0]>.12&&x[0]<b);
+ const tot=KP.reduce((q,x)=>q+x[1]-x[0],0);if(!KP.length||tot>(b-a)-.3)KP=[];return KP.length?KP:null}
+function keepTotal(K){return K.reduce((q,x)=>q+x[1]-x[0],0)}
+function srcAt(K,tau){for(const x of K){const d=x[1]-x[0];if(tau<d)return x[0]+tau;tau-=d}const z=K[K.length-1];return z[1]}
+function partOf(K,t){for(let i=0;i<K.length;i++)if(t<K[i][1]+.01)return i;return K.length-1}
+function zoomEvs(){const key=L.join('|')+'#'+(RNG?RNG.length:0)+'#'+KEY.join(',')+'#'+RW.length;if(key===ZK)return ZEV;ZK=key;ZEV=[];let last=-9;
+ for(let i=0;i<L.length;i++){let se;try{se=lineSE(i)}catch(_){continue}const ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)continue;
+  let k=KEY.length===L.length?KEY[i]:-1;if(k<0&&KEY.length!==L.length&&i%3==1){let m=0;ws.forEach((w,j)=>{if(w.length>ws[m].length)m=j});k=ws[m].length>3?m:-1}
+  if(k<0)continue;const wt=wordTimes(i,ws),t0=wt[k][0];if(t0-last<2.6)continue;last=t0;ZEV.push([t0,Math.max(t0+.6,se.e)])}
+ return ZEV}
+function autoZoom(t){if(!ZOOMON||SJ!=4||!L.length)return 1;let z=1;const K=keepParts();if(K&&partOf(K,t)%2)z=1.1;
+ for(const e of zoomEvs()){if(t>=e[0]&&t<e[1]){const u=Math.min(1,(t-e[0])/.2);z*=1+.13*(1-Math.pow(1-u,3));break}if(e[0]>t)break}return Math.min(1.3,z)}
 function lineEmo(i){return EMJ.length===L.length&&EMJ[i]!=null?EMJ[i]:emojiFor(L[i])}
 function wordTimes(i,ws){const r=RW[i];if(RW.length===L.length&&r&&r.length===ws.length)return r;const se=lineSE(i),d=Math.max(.3,se.e-se.s),n=Math.max(1,ws.length);return ws.map((_,k)=>[se.s+d*k/n,se.s+d*(k+1)/n])}
 function accCol(){const v=COLS[TS.col][1];return(/^#/.test(v)&&v!=='#ffffff')?v:(v==='theme'?T.e1:'#ffe14d')}
@@ -702,7 +722,13 @@ function frameBody(){
  drawCar(cx,cy,k);
  c.fillStyle='rgba(255,50,60,'+(.35+.5*bass)+')';c.beginPath();c.arc(cx+8,cy+ch*.45,6+14*bass,0,7);c.fill();
  c.restore()}
- const bv=$('bgv');if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
+ const bv=$('bgv');
+ if(!OFFX&&vSync()&&bv.src&&!bv.error){const K=keepParts();
+  if(K&&!au.paused){const t=au.currentTime,i=partOf(K,t);let to=null;if(t<K[0][0]-.03)to=K[0][0];else if(t>K[i][1]&&i+1<K.length)to=K[i+1][0];else if(t<K[i][0]-.03)to=K[i][0];else if(t>K[K.length-1][1]+.02){au.pause();to=K[0][0]}
+   if(to!=null){CUTJ=true;au.currentTime=to;try{bv.currentTime=to}catch(_){}}}
+  if(au.paused){if(!bv.paused)bv.pause();if(Math.abs(bv.currentTime-au.currentTime)>.1&&!bv.seeking){try{bv.currentTime=au.currentTime}catch(_){}}}
+  else{if(bv.paused&&performance.now()-VT>400){VT=performance.now();bv.play().catch(()=>{})}if(Math.abs(bv.currentTime-au.currentTime)>.25&&!bv.seeking){try{bv.currentTime=au.currentTime+.05}catch(_){}}}}
+ else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
  if(bv.src&&bv.readyState>=2&&bv.videoWidth){const R=vidRect();vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,SJ==4?0:.28)}
  if(!curVid)drawRhythm();
  let fs=64,t=ttl.value.toUpperCase()||' ';c.textAlign='center';
@@ -920,7 +946,8 @@ var VZ=1,VPX=0,VPY=0,AUTOCAP=false,vaOn=false,vaWas=false;
 function vidRect(){return SJ==4?{rx:0,ry:600,rw:W,rh:H-600}:{rx:20,ry:650,rw:W-40,rh:610}}
 function vidGeom(bv,rw,rh){const vw=bv.videoWidth,vh=bv.videoHeight,cov=Math.max(rw/vw,rh/vh),fit=Math.min(rw/vw,rh/vh),minZ=fit/cov,z=Math.max(minZ,Math.min(4,VZ)),sc=cov*z,dw=vw*sc,dh=vh*sc;return{minZ:minZ,z:z,dw:dw,dh:dh,mx:Math.max(0,(dw-rw)/2),my:Math.max(0,(dh-rh)/2)}}
 function vidDraw(ctx,bv,rx,ry,rw,rh,dark){const g=vidGeom(bv,rw,rh);VPX=Math.max(-1,Math.min(1,VPX));VPY=Math.max(-1,Math.min(1,VPY));
- const ox=rx+(rw-g.dw)/2+VPX*g.mx,oy=ry+(rh-g.dh)/2+VPY*g.my;
+ let ox=rx+(rw-g.dw)/2+VPX*g.mx,oy=ry+(rh-g.dh)/2+VPY*g.my;
+ if(ctx===c){const z=autoZoom(au.currentTime);if(z>1.001){const fx=rx+rw/2,fy=ry+rh*.38;ox=fx-(fx-ox)*z;oy=fy-(fy-oy)*z;g.dw*=z;g.dh*=z}}
  ctx.save();ctx.beginPath();ctx.moveTo(rx+18,ry);ctx.arcTo(rx+rw,ry,rx+rw,ry+rh,18);ctx.arcTo(rx+rw,ry+rh,rx,ry+rh,18);ctx.arcTo(rx,ry+rh,rx,ry,18);ctx.arcTo(rx,ry,rx+rw,ry,18);ctx.closePath();ctx.clip();
  ctx.drawImage(bv,ox,oy,g.dw,g.dh);if(dark){ctx.fillStyle='rgba(0,0,0,'+dark+')';ctx.fillRect(rx,ry,rw,rh)}ctx.restore()}
 function vaFit(){const R=vidRect(),cv2=$('vac'),maxH=Math.max(200,innerHeight-300),cw=Math.min(innerWidth*.92,maxH*R.rw/R.rh);cv2.width=R.rw;cv2.height=R.rh;cv2.style.width=Math.round(cw)+'px';cv2.style.height=Math.round(cw*R.rh/R.rw)+'px'}
@@ -1105,6 +1132,7 @@ async function aiStyle(text){const lines=L.slice(0,80).map(x=>x.slice(0,80));
   const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.slice(0,1500),lines:lines,looks:LOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
   const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error||!Number.isInteger(j.look))throw 0;
   applyLook(j.look,j.color,j.e,j.k,j.mood||null)}catch(_){applyLook(0,0,null,null,'')}}
+$('cutx').onchange=e=>{CUTON=e.target.checked;KPK=''};$('zmx').onchange=e=>{ZOOMON=e.target.checked};
 $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textContent='Add a video (or a song) first.';return}
  acBusy=true;const btn=$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
  const wasPlaying=!au.paused;au.pause();{const v=$('bgv');if(v.src)v.pause()}
@@ -1130,7 +1158,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textConte
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');$('lyp').hidden=false;
   setup();ac.resume();au.currentTime=from;au.play().catch(()=>{});{const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
-  msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';
+  msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';{KPK='';const K=keepParts();if(K){const cut=(Math.min(CE,DUR||1e9)-CS)-keepTotal(K);if(cut>.3)msg.textContent+=' Cut '+(K.length-1)+' pauses ('+cut.toFixed(1)+'s).'}}
   if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
  }catch(e){const m=e&&e.message;msg.textContent=m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
   if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
@@ -1208,7 +1236,7 @@ $('mf').onchange=e=>{const f=e.target.files[0];if(!f)return;const a2=$('au2');a2
 $('mx').onclick=()=>{const a2=$('au2');a2.pause();a2.removeAttribute('src');a2.load();$('mx').hidden=true;$('mvr').hidden=true;$('mb').textContent='Add music';msg.textContent='Music removed.'};
 au.addEventListener('play',()=>{const a2=$('au2');if(a2.src){try{a2.currentTime=au.currentTime%(a2.duration||1e9)}catch(_){}a2.play().catch(()=>{})}});
 au.addEventListener('pause',()=>{$('au2').pause()});
-au.addEventListener('seeked',()=>{const a2=$('au2');if(a2.src){try{a2.currentTime=au.currentTime%(a2.duration||1e9)}catch(_){}}});
+au.addEventListener('seeked',()=>{if(CUTJ){CUTJ=false;return}const a2=$('au2');if(a2.src){try{a2.currentTime=au.currentTime%(a2.duration||1e9)}catch(_){}}});
 const shiftR=d=>{if(RNG)RNG.forEach(r=>{r.s+=d;r.e+=d})};
 $('ear').onclick=()=>shiftR(-.3);$('lat').onclick=()=>shiftR(.3);
 $('syn').onclick=()=>{RNG=null;parse();if(!L.length||!au.src){msg.textContent='Paste the lyrics and choose a song first.';return}
@@ -1697,7 +1725,7 @@ async function offlineExport(){
  const ui_=(pc,txt)=>{$('xp').textContent=pc+'%';$('xr').style.strokeDashoffset=276.46*(1-pc/100);msg.textContent=txt};
  try{
   parse();
-  const dur0=Math.max(.5,CE-CS),N=Math.max(1,Math.floor(dur0*FPS)),dur=N/FPS,nS=Math.floor(dur*SR);
+  const KC=keepParts(),dur0=Math.max(.5,KC?keepTotal(KC):CE-CS),N=Math.max(1,Math.floor(dur0*FPS)),dur=N/FPS,nS=Math.floor(dur*SR);
   recording=isRec=true;OFFRUN=true;OFFCAN=false;CAN=false;$('save').hidden=true;$('xo').classList.add('on');$('rec').textContent='Cancel';
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wl=w).catch(()=>{})}catch(_){}
   au.pause();{const v=$('au2');if(v&&v.src)v.pause()}if(hasV)bv.pause();
@@ -1705,7 +1733,10 @@ async function offlineExport(){
   // ---- audio mix (main + optional music) for the chosen part
   const L=new Float32Array(nS),R=new Float32Array(nS);
   const addBuf=(buf,startSec,gain,loop)=>{const c0=buf.getChannelData(0),c1=buf.numberOfChannels>1?buf.getChannelData(1):c0,len=buf.length;let pos=Math.round(startSec*SR);if(loop)pos=((pos%len)+len)%len;for(let i=0;i<nS;i++){let k=pos+i;if(loop)k%=len;else if(k>=len)break;L[i]+=c0[k]*gain;R[i]+=c1[k]*gain}};
-  try{const b=await decodeAny(au.src,SR);addBuf(b,CS,($('vv')?$('vv').value:100)/100,false)}catch(e){/* no audio track: silence */}
+  try{const b=await decodeAny(au.src,SR),gn=($('vv')?$('vv').value:100)/100;
+   if(KC){const c0=b.getChannelData(0),c1=b.numberOfChannels>1?b.getChannelData(1):c0,FD_=Math.round(SR*.008);let o=0;
+    for(const x of KC){const a=Math.round(x[0]*SR),n=Math.round((x[1]-x[0])*SR);for(let i=0;i<n&&o+i<nS;i++){const k=a+i;if(k>=b.length)break;const f=Math.min(1,i/FD_,(n-i)/FD_);L[o+i]+=c0[k]*gn*f;R[o+i]+=c1[k]*gn*f}o+=n;if(o>=nS)break}}
+   else addBuf(b,CS,gn,false)}catch(e){/* no audio track: silence */}
   const a2=$('au2');if(a2&&a2.src){try{const b2=await decodeAny(a2.src,SR);addBuf(b2,CS,($('mv')?$('mv').value:100)/100,true)}catch(e){}}
   for(let i=0;i<nS;i++){if(L[i]>1)L[i]=1;else if(L[i]<-1)L[i]=-1;if(R[i]>1)R[i]=1;else if(R[i]<-1)R[i]=-1}
   if(OFFCAN)throw {cancel:1};
@@ -1754,8 +1785,8 @@ async function offlineExport(){
   for(let f=0;f<N;f++){
    if(OFFCAN)throw {cancel:1};
    if(verr)throw verr;if(aerr)throw aerr;
-   XT=CS+f/FPS;XN=XBASE+f*1000/FPS;OFF={d:spec[f],sr:SR};
-   if(vdur){await seekTo(bv,((f/FPS)%vdur)+.002)}
+   XT=KC?srcAt(KC,f/FPS):CS+f/FPS;XN=XBASE+f*1000/FPS;OFF={d:spec[f],sr:SR};
+   if(vdur){await seekTo(bv,vSync()?Math.min(vdur-.01,XT)+.002:((f/FPS)%vdur)+.002)}
    frameBody();
    if(softE){const id=c.getImageData(0,0,Wq,Hq);
     if(OFFWK){const g=(f/15)|0;
