@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      STRIPE_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Cloudflare Workers
@@ -18,3 +19,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: api
           wranglerVersion: "4.45.0"
+      - name: Send the Stripe key to the Worker (kept secret, never in the code)
+        if: ${{ env.CF_TOKEN != '' && env.STRIPE_KEY != '' }}
+        working-directory: api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: printf '%s' "$STRIPE_KEY" | npx --yes wrangler@4.45.0 secret put STRIPE_SECRET_KEY

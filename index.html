@@ -562,7 +562,7 @@ function lAnim(an,u,j,tin,tex,r,lcx){const o={a:1,sc:1,sx:1,sy:1,dx:0,dy:0,rot:0
  return o}
 function musicAI(){if(MLT)clearTimeout(MLT);MLT=setTimeout(async()=>{MLT=null;const lines=L.slice(0,80).map(x=>x.slice(0,80));if(lines.length<2)return;
  try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),30000);
-  const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:lines.join('\n').slice(0,1500),lines:lines,looks:MLOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
+  const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job:AIJOB,text:lines.join('\n').slice(0,1500),lines:lines,looks:MLOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
   const j=await r.json().catch(()=>null);if(r.ok&&j&&Number.isInteger(j.look)&&j.look>=0&&j.look<LSTY.length){MLOOK=j.look;try{const o=$('tsy').options[0];if(o)o.textContent='Style: Auto (AI picked '+LSTY[MLOOK].n+')'}catch(_){}}}catch(_){}},2500)}
 function musicLyr(i){
  if(MS.sty<0){const k_=L.join('\n');if(k_!==MLK){MLK=k_;MLOOK=0;try{$('tsy').options[0].textContent='Style: Auto (AI picks)'}catch(_){}musicAI()}}
@@ -1341,6 +1341,80 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 (()=>{if(!LIVE)return;const d=new Date().toISOString().slice(0,10),g=k=>{try{return localStorage.getItem(k)||''}catch(_){return''}},p=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
  const inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(location.search)||window.navigator.standalone===true;
  hit('visit');if(g('br_day')!==d){p('br_day',d);hit('dev')}if(!g('br_seen')){p('br_seen','1');hit('new')}if(inApp&&g('br_aday')!==d){p('br_aday',d);hit('app')}})();
+/* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
+   PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
+const PAY_LIVE=false,PRICE_TXT='€4.99/month';
+let AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
+const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
+async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
+ try{const r=await fetch(API_URL+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({did:DID},body||{})),signal:ctl.signal});const j=await r.json().catch(()=>({}));j._s=r.status;return j}finally{clearTimeout(to)}}
+const hm=s=>{s=Math.max(0,s|0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+' h '+m+' min':m+' min'};
+(()=>{const st=document.createElement('style');st.textContent=
+'#cbar{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:40;display:flex;gap:8px;align-items:center}#cbar[hidden]{display:none}'+
+'#cbar button{flex:none;width:auto;margin:0;cursor:pointer;font:800 13px system-ui,sans-serif;border-radius:18px;display:inline-flex;align-items:center;gap:7px}'+
+'#cbc{padding:4px 12px 4px 4px;background:rgba(20,6,42,.85);color:#ffe6a0;border:1px solid #d9a93c;box-shadow:0 2px 8px rgba(0,0,0,.35)}'+
+'.coin{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font:900 12px Georgia,serif;color:#7a5200;background:radial-gradient(circle at 35% 30%,#fff6c9 0,#ffd968 30%,#e0a526 65%,#9c6a0c 100%);box-shadow:inset 0 0 0 2px rgba(255,236,170,.75),inset 0 -2px 3px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.4)}'+
+'.coin.big{width:64px;height:64px;font-size:30px;margin:0 auto 10px;display:grid}'+
+'#cbp{padding:7px 13px;color:#fff;border:0;background:linear-gradient(135deg,#ff4fa3,#a64dff);letter-spacing:.06em;box-shadow:0 2px 10px rgba(166,77,255,.45)}'+
+'#cbp.on{background:linear-gradient(135deg,#ffe08a,#e0a526);color:#3a2600}'+
+'#pmo{position:fixed;inset:0;z-index:100;background:rgba(5,2,12,.72);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}#pmo[hidden]{display:none}'+
+'#pmc{width:100%;max-width:360px;background:#1a1030;border:1px solid #4a2a7a;border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.6);color:#f3eefc}'+
+'#pmc h3{margin:0 0 8px;font-size:20px}#pmc p{margin:0 0 14px;opacity:.85;line-height:1.5;font-size:14px}#pmc ul{text-align:left;margin:0 0 16px;padding-left:20px;line-height:1.8;font-size:14px}'+
+'#pmc button{display:block;width:100%;margin:8px 0 0;padding:13px;border-radius:14px;font:700 15px system-ui,sans-serif;cursor:pointer;border:1px solid #4a2a7a;background:#120a24;color:#f3eefc}'+
+'#pmc button.pri{border:0;background:linear-gradient(90deg,#ff4fa3,#a64dff);color:#fff}#pmc button:disabled{opacity:.5}'+
+'#pmc input{width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border-radius:12px;border:1px solid #4a2a7a;background:#0b0714;color:#fff;font:600 15px ui-monospace,monospace;text-align:center;letter-spacing:.05em}'+
+'#pmc .code{font:800 18px ui-monospace,monospace;letter-spacing:.08em;background:#0b0714;border:1px dashed #d9a93c;color:#ffe6a0;border-radius:12px;padding:12px;margin:4px 0 6px;user-select:all}'+
+'#pmc .sm{font-size:12px;opacity:.65;margin-top:10px}#pmc .err{color:#ff8fa8;font-size:13px;min-height:18px;margin:6px 0 0}';
+document.head.appendChild(st);
+const bar=document.createElement('div');bar.id='cbar';bar.hidden=true;bar.innerHTML='<button id="cbc" title="AI coins"><span class="coin">B</span><span id="cbn">3</span></button><button id="cbp">PRO</button>';document.body.appendChild(bar);
+const o=document.createElement('div');o.id='pmo';o.hidden=true;o.innerHTML='<div id="pmc" role="dialog" aria-modal="true"></div>';document.body.appendChild(o);
+const hb=document.getElementById('hb');const sync=()=>{bar.hidden=hb?hb.hidden:false};if(hb){new MutationObserver(sync).observe(hb,{attributes:true,attributeFilter:['hidden']});sync()}
+document.getElementById('cbc').onclick=()=>coinInfo();document.getElementById('cbp').onclick=()=>openPro()})();
+let PMR=null;
+function modal(html){const o=document.getElementById('pmo'),c=document.getElementById('pmc');if(PMR)PMR('close');c.innerHTML=html;o.hidden=false;
+ return new Promise(res=>{PMR=v=>{PMR=null;o.hidden=true;res(v)};c.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const a=b.getAttribute('data-a');if(a.charAt(0)!=='_')PMR(a);else res(a)});o.onclick=e=>{if(e.target===o&&PMR)PMR('close')}})}
+function coinUI(){const n=document.getElementById('cbn'),p=document.getElementById('cbp');if(!n)return;n.textContent=CPRO?'∞':(COINS==null?COINMAX:COINS);p.textContent=CPRO?'PRO ✓':'PRO';p.classList.toggle('on',CPRO)}
+function setPro(on,code){CPRO=!!on;if(code)CCODE=code;
+ try{if(on){PRO=true;localStorage.setItem('br_pro','1');localStorage.setItem('br_pro_src','stripe');if(code)localStorage.setItem('br_pcode',code)}
+  else if(localStorage.getItem('br_pro_src')==='stripe'){PRO=false;['br_pro','br_pro_src'].forEach(k=>localStorage.removeItem(k))}}catch(_){}
+ try{const row=document.getElementById('prow');if(on&&row)row.innerHTML='<p style="margin:0;color:#7dffb0">Pro is active: no watermark. Thank you!</p>';if(typeof DUR!=='undefined'&&DUR)clipUI()}catch(_){}
+ coinUI()}
+async function coinRefresh(){try{const j=await acct('/me');if(j._s!==200)return;COINS=j.coins;COINMAX=j.max||3;CRESET=Date.now()+1000*(j.reset||0);setPro(j.pro,j.code)}catch(_){}}
+async function coinJob(){try{const j=await acct('/job');if(j._s===402){COINS=0;CRESET=Date.now()+1000*(j.reset||0);coinUI();return{no:true}}
+  if(j._s!==200||!j.job)return null;COINS=j.coins;CRESET=Date.now()+1000*(j.reset||0);if(j.pro)setPro(true);coinUI();return{job:j.job}}catch(_){return null}}
+function coinRefund(job){if(!job)return;acct('/refund',{job}).then(()=>coinRefresh()).catch(()=>{})}
+const left=()=>hm((CRESET-Date.now())/1000);
+async function outOfCoins(){const a=await modal('<div class="coin big">B</div><h3>You are out of AI coins</h3><p>You get '+COINMAX+' free AI coins every day. New coins in <b>'+left()+'</b>.</p>'+
+ (PAYON?'<button class="pri" data-a="pro">Get Pro: unlimited AI · '+PRICE_TXT+'</button>':'')+
+ '<button data-a="device">Use on-device AI (free, slower)</button><button data-a="wait">Wait for new coins</button>');
+ if(a==='pro'){openPro();return 'stop'}return a==='device'?'device':'stop'}
+async function coinInfo(){await coinRefresh();const a=await modal('<div class="coin big">B</div><h3>'+(CPRO?'Unlimited AI':'AI coins')+'</h3>'+
+ (CPRO?'<p>You are Pro, so the online AI has no daily limit.</p>':'<p>1 coin = 1 Auto captions or 1 Auto lyrics with the online AI.<br>You have <b>'+(COINS==null?COINMAX:COINS)+' of '+COINMAX+'</b> today. New coins in <b>'+left()+'</b>.</p>')+
+ (!CPRO&&PAYON?'<button class="pri" data-a="pro">Get Pro: unlimited AI</button>':'')+'<button data-a="ok">OK</button>');if(a==='pro')openPro()}
+async function openPro(){
+ if(CPRO){const a=await modal('<div class="coin big">B</div><h3>You are Pro ✓</h3><p>Your Pro code (keep it to use Pro on up to 3 devices):</p><div class="code">'+(CCODE||'')+'</div>'+
+   '<button data-a="manage">Manage or cancel subscription</button><button data-a="ok">OK</button><div class="err" id="pme"></div>');
+  if(a==='manage'){try{const j=await acct('/portal');if(j.url){location.href=j.url;return}}catch(_){}modal('<h3>Not available</h3><p>Could not open the subscription page. Please try again later.</p><button data-a="ok">OK</button>')}return}
+ const html='<h3>BeatReel Pro</h3><p>'+PRICE_TXT+' · cancel anytime</p><ul><li>Unlimited online AI captions and lyrics</li><li>No watermark</li><li>Full HD 1080p export</li><li>No 30-second clip limit</li></ul>'+
+  (PAYON?'<button class="pri" data-a="_buy" id="pmb">Subscribe</button>':'<button class="pri" disabled>Coming soon</button>')+
+  '<p class="sm">Already Pro on another device? Enter your code:</p><input id="pmi" placeholder="BR-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters"><button data-a="_restore">Restore Pro</button><button data-a="close">Not now</button><div class="err" id="pme"></div>';
+ const p=modal(html),c=document.getElementById('pmc'),er=()=>document.getElementById('pme');
+ c.querySelectorAll('[data-a="_buy"],[data-a="_restore"]').forEach(b=>b.onclick=async()=>{const buy=b.getAttribute('data-a')==='_buy';b.disabled=true;er().textContent=buy?'Opening the secure payment page...':'Checking your code...';
+  try{if(buy){const j=await acct('/checkout',{},25000);if(j.url){location.href=j.url;return}er().textContent='Could not open the payment page'+(j.error?' ('+String(j.error).slice(0,90)+')':'')+'.'}
+   else{const code=(document.getElementById('pmi').value||'').trim().toUpperCase(),j=await acct('/restore',{code});
+    if(j.pro){setPro(true,j.code);modal('<div class="coin big">B</div><h3>Pro restored ✓</h3><p>Unlimited AI and no watermark on this device.</p><button class="pri" data-a="ok">Great</button>');return}
+    er().textContent=j.error==='device_limit'?'This code is already used on 3 devices.':j.error==='not_active'?'This subscription is not active anymore.':'That code is not valid.'}}
+  catch(_){er().textContent='No internet connection. Please try again.'}b.disabled=false});
+ await p}
+(async()=>{const q=/[?&]paid=([^&#]+)/.exec(location.search);
+ if(q){try{history.replaceState(null,'',location.pathname)}catch(_){}
+  if(q[1]==='cancel'){coinRefresh();return}
+  for(let t=0;t<4;t++){try{const j=await acct('/claim',{session:decodeURIComponent(q[1])},25000);
+    if(j.pro){setPro(true,j.code);hit('pro_new');modal('<div class="coin big">B</div><h3>Welcome to Pro ✓</h3><p>Unlimited AI, no watermark, Full HD.</p><p>Your Pro code, keep it to use Pro on up to 3 devices:</p><div class="code">'+j.code+'</div><button class="pri" data-a="ok">Start creating</button>');return}
+    if(j._s===402){await new Promise(r=>setTimeout(r,2500));continue}}catch(_){}break}
+  modal('<h3>Almost there</h3><p>We could not confirm the payment yet. If you paid, open BeatReel again in a minute, or use “Restore Pro” with the code from your email.</p><button data-a="ok">OK</button>')}
+ coinRefresh()})();
 function wavB64(f){const n=f.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),W=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
  W(0,'RIFF');v.setUint32(4,36+n*2,true);W(8,'WAVE');W(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,16000,true);v.setUint32(28,32000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);W(36,'data');v.setUint32(40,n*2,true);
  for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,f[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}
@@ -1350,7 +1424,7 @@ function cutPoints(p){const SR=16000,MAX=30*SR,FR=320,out=[0];let a=0;
  out.push(p.length);return out}
 async function cloudASR(pcm,lang,onStep,song){const cp=cutPoints(pcm),chunks=[];let text='';
  for(let k=0;k<cp.length-1;k++){if(CCAN)throw new Error('cancel');onStep(k+1,cp.length-1);
-  const a=cp[k],b=cp[k+1],off=a/16000,body={audio:wavB64(pcm.subarray(a,b))};if(lang)body.language=lang;if(song){body.vad=false;body.prompt='Song lyrics, sung over music.'}
+  const a=cp[k],b=cp[k+1],off=a/16000,body={audio:wavB64(pcm.subarray(a,b)),job:AIJOB};if(lang)body.language=lang;if(song){body.vad=false;body.prompt='Song lyrics, sung over music.'}
   let j=null,last=null;
   for(let t=0;t<2&&!j;t++){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),90000);asrRej=()=>ctl.abort();
    try{const r=await fetch(API_URL+'/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
@@ -1372,7 +1446,7 @@ function applyLook(li,ci,e,k,mood){const lk=LOOKS[li]||LOOKS[0],ar=/[؀-ۿ]/.tes
  if(mood!==''&&/^Captions ready/.test(msg.textContent))msg.textContent+=' Style picked by AI: '+lk.n+(mood?' ('+String(mood).slice(0,30)+')':'')+'. You can change it in Text style.'}
 async function aiStyle(text){const lines=L.slice(0,80).map(x=>x.slice(0,80));
  try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),40000);
-  const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.slice(0,1500),lines:lines,looks:LOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
+  const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job:AIJOB,text:text.slice(0,1500),lines:lines,looks:LOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
   const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error||!Number.isInteger(j.look))throw 0;
   applyLook(j.look,j.color,j.e,j.k,j.mood||null)}catch(_){applyLook(0,0,null,null,'')}}
 $('cutx').onchange=e=>{CUTON=e.target.checked;KPK=''};$('zmx').onchange=e=>{ZOOMON=e.target.checked};
@@ -1380,7 +1454,11 @@ $('alb').onclick=()=>{$('acb').click()};
 $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){msg.textContent=song?'Choose a song first.':'Add a video (or a song) first.';return}
  acBusy=true;const btn=song?$('alb'):$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
  const wasPlaying=!au.paused;au.pause();{const v=$('bgv');if(v.src)v.pause()}
+ let JOB_='',FORCEDEV=false;AIJOB='';
  try{
+  if($('acm').value==='cloud'){msg.textContent='Checking your AI coins...';const cj=await coinJob();
+   if(cj&&cj.no){coShow(false);const ch=await outOfCoins();if(ch!=='device')throw new Error('nocoins');FORCEDEV=true;coShow(true)}
+   else if(cj&&cj.job){JOB_=cj.job;AIJOB=JOB_}}
   const from=CS||0,to=Math.min(CE,DUR||1e9);
   msg.textContent='Preparing the sound...';
   await new Promise(r=>setTimeout(r,60));
@@ -1390,10 +1468,11 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   msg.textContent='Starting the speech model...';
   const onP=p=>{if(p&&p.status==='progress'&&isFinite(p.progress))msg.textContent='Downloading the speech model... '+Math.round(p.progress)+'% (only the first time)'},onL=()=>{tick=setInterval(()=>{msg.textContent='Listening to the speech... '+Math.round((performance.now()-t0)/1000)+'s. Keep this page open.'},500)};
   let res=null,mdl=$('acm').value,viaCloud=false;
+  if(mdl==='cloud'&&(FORCEDEV||!JOB_)){mdl='Xenova/whisper-base';if(!FORCEDEV)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
   if(mdl==='cloud'){mdl='Xenova/whisper-base';
    try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent=(song?'Listening to the song':'Listening to the speech')+' (online AI)... part '+k+' of '+n+'. Keep this page open.'},song);if(!res.chunks.length&&!String(res.text||'').trim())res=null;viaCloud=!!res}
    catch(ce){if(ce&&ce.message==='cancel')throw ce;res=null}
-   if(!res)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
+   if(!res){coinRefund(JOB_);JOB_='';msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}}
   if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
   if(tick){clearInterval(tick);tick=null}
   let lines=groupWords(res.chunks||[],song);
@@ -1405,7 +1484,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';{KPK='';const K=keepParts();if(K){const cut=(Math.min(CE,DUR||1e9)-CS)-keepTotal(K);if(cut>.3)msg.textContent+=' Cut '+(K.length-1)+' pauses ('+cut.toFixed(1)+'s).'}}
   if(song){TS.frame=0;try{$('tr').value=0}catch(_){}MLK='';msg.textContent='Lyrics ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'}
   else if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
- }catch(e){const m=e&&e.message;msg.textContent=m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
+ }catch(e){const m=e&&e.message;if(m==='cancel'&&JOB_)coinRefund(JOB_);msg.textContent=m==='nocoins'?'No AI coins left today. Tap the coin at the top to see when new coins arrive.':m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
   if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
  finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent=song?'🎤 Auto lyrics (from song)':'Auto captions (from speech)'}};
 
@@ -2122,7 +2201,8 @@ ui();
 try{const mm=/[#?&]pro=([A-Za-z0-9-]+)/.exec(location.hash+location.search);if(mm&&CODES.indexOf(mm[1].toUpperCase())>-1){PRO=true;try{localStorage.setItem('br_pro','1')}catch(_){}ui()}}catch(_){}
 const proOn=()=>{PRO=true;try{localStorage.setItem('br_pro','1')}catch(_){}ui();if(DUR)clipUI();m.textContent='Watermark removed. Thank you!'};
 ac_.onclick=async()=>{const raw=(cd.value||'').trim(),v=raw.toUpperCase();
- if(!v){if(BUY_URL)window.open(BUY_URL,'_blank');else m.textContent='Pro is coming soon. If you have an activation code, type it in the box and tap the button again.';return}
+ if(!v){openPro();return}
+ if(/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)){acct('/restore',{code:v}).then(j=>{if(j.pro){setPro(true,j.code);m.textContent='Pro restored. Thank you!'}else m.textContent='That code is not valid or not active.'}).catch(()=>{m.textContent='No internet connection.'});return}
  if(CODES.indexOf(v)>-1){proOn();return}
  if(!LS_STORE){m.textContent='That code is not valid.';return}
  m.textContent='Checking your key...';ac_.disabled=true;

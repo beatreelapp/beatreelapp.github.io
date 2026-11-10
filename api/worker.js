@@ -4,10 +4,21 @@
 //   POST /style       {text, lines, looks, colors, emojis}       -> {mood, look, color, e:[emoji index per line], k:[keyword index per line]}
 //                     (old shape {text, options} still works)
 //   POST /hit         text body: event name                    -> counts anonymous usage (no IP, no personal data stored)
+//   POST /me      {did}               -> {coins, max, pro, reset}      (AI coins: 3 free per device per day, Pro = unlimited)
+//   POST /job     {did}               -> {job, coins} or 402 no_coins  (one coin = one Auto captions / Auto lyrics run)
+//   POST /refund  {job}               -> gives the coin back if the run produced nothing
+//   POST /checkout {did}              -> {url}  Stripe Checkout (Managed Payments, 4.99 EUR / month)
+//   POST /claim   {did, session}      -> {pro, code}  after paying; code restores Pro on other devices (max 3)
+//   POST /restore {did, code}         -> {pro}
+//   POST /portal  {did}               -> {url}  Stripe customer portal (cancel, change card)
 //   GET  /stats?k=KEY                                          -> private usage page (only the SHA-256 of the key is stored here)
 import { DurableObject } from "cloudflare:workers";
 const STATS_KEY_SHA256 = "3cfa6b59a11a89f3a83c08f056b077129a9cf05e77458de92e556dfc8b23c3a7";
-const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style"];
+const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 1000, JOB_CALLS = 120, MAX_DEVICES = 3;
+const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
+const SITE = "https://beatreelapp.github.io";
+const ACCT_ROUTES = ["/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
+const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 const STYLE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const STYLE_KEYS = ["font", "col", "size", "anim", "fx", "frame"];
@@ -17,7 +28,7 @@ export default {
     const origin = req.headers.get("Origin") || "";
     const cors = {
       "Access-Control-Allow-Origin": ALLOWED.includes(origin) ? origin : ALLOWED[0],
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     };
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -33,14 +44,31 @@ export default {
       }
       return new Response(null, { status: 204, headers: cors });
     }
+    if (ACCT_ROUTES.includes(route) && req.method === "POST") {
+      if (!ALLOWED.includes(origin)) return new Response("Forbidden", { status: 403, headers: cors });
+      try {
+        const body = await req.json().catch(() => ({}));
+        const out = await account(env, route, body, req);
+        return Response.json(out.body, { status: out.status || 200, headers: cors });
+      } catch (e) {
+        return Response.json({ error: String((e && e.message) || e) }, { status: (e && e.status) || 500, headers: cors });
+      }
+    }
     if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style"))
       return new Response("BeatReel API OK", { headers: cors });
     if (!ALLOWED.includes(origin))
       return new Response("Forbidden", { status: 403, headers: cors });
     try {
       const body = await req.json();
+      // /transcribe needs a paid-for job (one coin). /style is cheap: allowed with a job, or a few times a day per network without one.
+      const gate = await bank(env).gate(route, typeof body.job === "string" ? body.job : "", await ipKey(req));
+      if (!gate.ok) return Response.json({ error: gate.error }, { status: 402, headers: cors });
       ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : "ai_style", ""));
-      if (route === "/transcribe") return Response.json(await transcribe(env, body), { headers: cors });
+      if (route === "/transcribe") {
+        const out = await transcribe(env, body);
+        if (body.job) ctx.waitUntil(Promise.resolve().then(() => bank(env).worked(body.job)).catch(() => {}));
+        return Response.json(out, { headers: cors });
+      }
       if (Array.isArray(body.looks)) return Response.json(await look(env, body), { headers: cors });
       return Response.json(await style(env, body), { headers: cors });
     } catch (e) {
@@ -196,6 +224,7 @@ const LABELS = [
   ["apk", "ضغطات تحميل APK"],
   ["ai_style", "استعمال الذكاء (ستايل)"],
   ["ai_tr", "طلبات تفريغ الصوت"],
+  ["pro_new", "اشتراكات Pro جديدة"],
 ];
 
 async function statsPage(env, k) {
@@ -221,4 +250,201 @@ async function statsPage(env, k) {
   html += "</table><h2>الدول (30 يوم)</h2><table>" + (top.length ? top.map(([c, n]) => "<tr><td>" + esc(c) + "</td><td>" + n + "</td></tr>").join("") : "<tr><td>لا شيء بعد</td></tr>") + "</table>";
   const page = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>BeatReel stats</title><style>body{font:16px system-ui,sans-serif;margin:16px;background:#0d0d12;color:#eee}h1{font-size:22px}h2{font-size:17px;margin-top:24px;color:#bbb}table{border-collapse:collapse;width:100%}td,th{padding:8px 6px;border-bottom:1px solid #2a2a33;text-align:center}td:first-child,th:first-child{text-align:right}th{color:#999;font-weight:500}small{color:#888}</style></head><body><h1>إحصائيات BeatReel</h1><small>بدون أسماء ولا عناوين IP. الأيام بتوقيت UTC. أعد تحميل الصفحة للتحديث.</small>' + html + "</body></html>";
   return new Response(page, { headers: h });
+}
+
+// ---------- AI coins and Pro (one SQLite Durable Object "Bank") ----------
+function bank(env) { return env.BANK.get(env.BANK.idFromName("main")); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function resetIn() { const n = new Date(); return Math.ceil((Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1) - n.getTime()) / 1000); }
+async function ipKey(req) { return (await sha(today() + "|" + (req.headers.get("CF-Connecting-IP") || "?") + "|br")).slice(0, 24); }
+function okDid(d) { if (typeof d !== "string" || !/^[A-Za-z0-9-]{16,64}$/.test(d)) throw bad("did required"); return d; }
+
+async function stripe(env, method, path, form) {
+  if (!env.STRIPE_SECRET_KEY) throw Object.assign(new Error("payments are not set up yet"), { status: 503 });
+  const r = await fetch("https://api.stripe.com/v1/" + path, {
+    method,
+    headers: { Authorization: "Bearer " + env.STRIPE_SECRET_KEY, "Content-Type": "application/x-www-form-urlencoded", "Stripe-Version": STRIPE_VERSION },
+    body: form ? new URLSearchParams(form).toString() : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error("stripe: " + ((j.error && j.error.message) || r.status)), { status: 502 });
+  return j;
+}
+const ACTIVE = ["active", "trialing", "past_due"];
+
+async function subStatus(env, b, row, force) {
+  // refresh from Stripe at most every 6 hours (or when forced)
+  if (!force && Date.now() - row.checked < 6 * 3600e3) return row.status;
+  try {
+    const sub = await stripe(env, "GET", "subscriptions/" + row.sub);
+    await b.setStatus(row.code, sub.status, sub.customer || row.cust);
+    return sub.status;
+  } catch (_) { return row.status; }
+}
+
+async function account(env, route, body, req) {
+  const b = bank(env);
+  if (route === "/refund") { await b.refund(String(body.job || "")); return { body: { ok: true } }; }
+  const did = okDid(body.did);
+  const proRow = async (force) => {
+    const row = await b.proOf(did);
+    if (!row) return null;
+    const st = await subStatus(env, b, row, force);
+    return ACTIVE.includes(st) ? row : null;
+  };
+  if (route === "/me") {
+    const pro = await proRow(false);
+    return { body: { pro: !!pro, code: pro ? pro.code : "", coins: pro ? FREE_COINS : await b.coins(did, FREE_COINS), max: FREE_COINS, reset: resetIn() } };
+  }
+  if (route === "/job") {
+    const pro = await proRow(false);
+    const r = await b.newJob(did, !!pro, await ipKey(req), FREE_COINS);
+    if (!r.ok) return { status: 402, body: { error: "no_coins", coins: 0, reset: resetIn() } };
+    return { body: { job: r.job, coins: pro ? FREE_COINS : r.coins, pro: !!pro, reset: resetIn() } };
+  }
+  if (route === "/checkout") {
+    let price = await b.getKV("price");
+    if (!price) {
+      const prod = await stripe(env, "POST", "products", {
+        name: "BeatReel Pro",
+        description: "Unlimited AI captions and lyrics, no watermark, Full HD, no clip limit.",
+        tax_code: TAX_CODE,
+        "default_price_data[currency]": "eur",
+        "default_price_data[unit_amount]": String(PRICE_EUR_CENTS),
+        "default_price_data[recurring][interval]": "month",
+      });
+      price = prod.default_price;
+      await b.setKV("price", price);
+    }
+    const ses = await stripe(env, "POST", "checkout/sessions", {
+      mode: "subscription",
+      "line_items[0][price]": price,
+      "line_items[0][quantity]": "1",
+      "managed_payments[enabled]": "true",
+      client_reference_id: did,
+      "metadata[did]": did,
+      "subscription_data[metadata][did]": did,
+      success_url: SITE + "/?paid={CHECKOUT_SESSION_ID}",
+      cancel_url: SITE + "/?paid=cancel",
+    });
+    return { body: { url: ses.url } };
+  }
+  if (route === "/claim") {
+    const id = String(body.session || "");
+    if (!/^cs_[A-Za-z0-9_]+$/.test(id)) throw bad("session required");
+    const ses = await stripe(env, "GET", "checkout/sessions/" + id);
+    if (ses.status !== "complete" || !ses.subscription) return { status: 402, body: { error: "not_paid" } };
+    const subId = typeof ses.subscription === "string" ? ses.subscription : ses.subscription.id;
+    const sub = await stripe(env, "GET", "subscriptions/" + subId);
+    const code = await b.claim(subId, sub.customer || ses.customer || "", sub.status, did, MAX_DEVICES);
+    return { body: { pro: ACTIVE.includes(sub.status), code } };
+  }
+  if (route === "/restore") {
+    const code = String(body.code || "").trim().toUpperCase();
+    if (!/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) return { status: 404, body: { error: "bad_code" } };
+    const row = await b.byCode(code);
+    if (!row) return { status: 404, body: { error: "bad_code" } };
+    const st = await subStatus(env, b, row, true);
+    if (!ACTIVE.includes(st)) return { status: 402, body: { error: "not_active" } };
+    const r = await b.link(code, did, MAX_DEVICES);
+    if (!r.ok) return { status: 409, body: { error: "device_limit" } };
+    return { body: { pro: true, code } };
+  }
+  if (route === "/portal") {
+    const row = await b.proOf(did);
+    if (!row || !row.cust) return { status: 404, body: { error: "no_subscription" } };
+    const p = await stripe(env, "POST", "billing_portal/sessions", { customer: row.cust, return_url: SITE + "/" });
+    return { body: { url: p.url } };
+  }
+  throw bad("unknown route");
+}
+
+function rndCode() {
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", u = crypto.getRandomValues(new Uint8Array(12));
+  let s = "BR";
+  for (let i = 0; i < 12; i++) { if (i % 4 === 0) s += "-"; s += A[u[i] % A.length]; }
+  return s;
+}
+
+export class Bank extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    const q = ctx.storage.sql;
+    this.sql = q;
+    q.exec("CREATE TABLE IF NOT EXISTS used (did TEXT, day TEXT, n INTEGER, PRIMARY KEY (did, day))");
+    q.exec("CREATE TABLE IF NOT EXISTS ipuse (ip TEXT, day TEXT, n INTEGER, s INTEGER DEFAULT 0, PRIMARY KEY (ip, day))");
+    q.exec("CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, did TEXT, day TEXT, exp INTEGER, calls INTEGER, paid INTEGER, tr INTEGER DEFAULT 0, ok INTEGER DEFAULT 0)");
+    q.exec("CREATE TABLE IF NOT EXISTS pro (code TEXT PRIMARY KEY, sub TEXT UNIQUE, cust TEXT, status TEXT, checked INTEGER)");
+    q.exec("CREATE TABLE IF NOT EXISTS link (did TEXT PRIMARY KEY, code TEXT)");
+    q.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)");
+  }
+  one(q, ...a) { const r = this.sql.exec(q, ...a).toArray(); return r[0] || null; }
+  clean() {
+    const old = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+    this.sql.exec("DELETE FROM used WHERE day < ?", old);
+    this.sql.exec("DELETE FROM ipuse WHERE day < ?", old);
+    this.sql.exec("DELETE FROM jobs WHERE exp < ?", Date.now() - 864e5);
+  }
+  coins(did, max) { const r = this.one("SELECT n FROM used WHERE did = ? AND day = ?", did, today()); return Math.max(0, max - (r ? r.n : 0)); }
+  newJob(did, pro, ip, max) {
+    const day = today();
+    if (Math.random() < 0.05) this.clean();
+    let left = max;
+    if (!pro) {
+      left = this.coins(did, max);
+      const ipr = this.one("SELECT n FROM ipuse WHERE ip = ? AND day = ?", ip, day);
+      if (left <= 0 || (ipr && ipr.n >= IP_DAY_CAP)) return { ok: false };
+      this.sql.exec("INSERT INTO used (did, day, n) VALUES (?, ?, 1) ON CONFLICT (did, day) DO UPDATE SET n = n + 1", did, day);
+      this.sql.exec("INSERT INTO ipuse (ip, day, n) VALUES (?, ?, 1) ON CONFLICT (ip, day) DO UPDATE SET n = n + 1", ip, day);
+      left -= 1;
+    }
+    const id = crypto.randomUUID();
+    this.sql.exec("INSERT INTO jobs (id, did, day, exp, calls, paid) VALUES (?, ?, ?, ?, 0, ?)", id, did, day, Date.now() + JOB_TTL, pro ? 0 : 1);
+    return { ok: true, job: id, coins: left };
+  }
+  gate(route, job, ip) {
+    if (job) {
+      const j = this.one("SELECT * FROM jobs WHERE id = ?", job);
+      if (j && j.exp > Date.now() && j.calls < JOB_CALLS) {
+        this.sql.exec("UPDATE jobs SET calls = calls + 1, tr = tr + ? WHERE id = ?", route === "/transcribe" ? 1 : 0, job);
+        return { ok: true };
+      }
+      if (route === "/transcribe") return { ok: false, error: "job_expired" };
+    }
+    if (route === "/transcribe") return { ok: false, error: "no_coins" };
+    const day = today(), r = this.one("SELECT s FROM ipuse WHERE ip = ? AND day = ?", ip, day);
+    if (r && r.s >= STYLE_FREE_CAP) return { ok: false, error: "no_coins" };
+    this.sql.exec("INSERT INTO ipuse (ip, day, n, s) VALUES (?, ?, 0, 1) ON CONFLICT (ip, day) DO UPDATE SET s = s + 1", ip, day);
+    return { ok: true };
+  }
+  refund(job) {
+    const j = this.one("SELECT * FROM jobs WHERE id = ?", job);
+    if (!j || !j.paid || j.ok > 0) return; // only when the online AI produced nothing
+    this.sql.exec("UPDATE jobs SET paid = 0, exp = 0 WHERE id = ?", job);
+    this.sql.exec("UPDATE used SET n = MAX(0, n - 1) WHERE did = ? AND day = ?", j.did, j.day);
+  }
+  worked(job) { this.sql.exec("UPDATE jobs SET ok = ok + 1 WHERE id = ?", job); }
+  proOf(did) { return this.one("SELECT pro.* FROM link JOIN pro ON pro.code = link.code WHERE link.did = ?", did); }
+  byCode(code) { return this.one("SELECT * FROM pro WHERE code = ?", code); }
+  setStatus(code, status, cust) { this.sql.exec("UPDATE pro SET status = ?, cust = ?, checked = ? WHERE code = ?", status, cust || "", Date.now(), code); }
+  getKV(k) { const r = this.one("SELECT v FROM kv WHERE k = ?", k); return r ? r.v : ""; }
+  setKV(k, v) { this.sql.exec("INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v", k, v); }
+  claim(sub, cust, status, did, maxDev) {
+    let row = this.one("SELECT * FROM pro WHERE sub = ?", sub);
+    if (!row) {
+      const code = rndCode();
+      this.sql.exec("INSERT INTO pro (code, sub, cust, status, checked) VALUES (?, ?, ?, ?, ?)", code, sub, cust, status, Date.now());
+      row = { code };
+    } else this.setStatus(row.code, status, cust);
+    this.link(row.code, did, maxDev + 1); // the paying device always gets in
+    return row.code;
+  }
+  link(code, did, maxDev) {
+    const cur = this.one("SELECT code FROM link WHERE did = ?", did);
+    if (cur && cur.code === code) return { ok: true };
+    const n = this.one("SELECT COUNT(*) AS n FROM link WHERE code = ?", code).n;
+    if (n >= maxDev) return { ok: false };
+    this.sql.exec("INSERT INTO link (did, code) VALUES (?, ?) ON CONFLICT (did) DO UPDATE SET code = excluded.code", did, code);
+    return { ok: true };
+  }
 }

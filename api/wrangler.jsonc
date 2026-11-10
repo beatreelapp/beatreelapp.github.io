@@ -4,7 +4,7 @@
   "main": "worker.js",
   "compatibility_date": "2025-09-01",
   "ai": { "binding": "AI" },
-  "durable_objects": { "bindings": [{ "name": "STATS", "class_name": "Stats" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Stats"] }],
+  "durable_objects": { "bindings": [{ "name": "STATS", "class_name": "Stats" }, { "name": "BANK", "class_name": "Bank" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Stats"] }, { "tag": "v2", "new_sqlite_classes": ["Bank"] }],
   "observability": { "enabled": true }
 }
