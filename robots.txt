@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /diag.html
+Disallow: /press/
 
 Sitemap: https://beatreelapp.github.io/sitemap.xml
