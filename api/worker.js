@@ -361,13 +361,13 @@ function pickYt(j) {
     .sort((a, b) => (orig(b) - orig(a)) || (num(b.bitrate) - num(a.bitrate)));
   const many = new Set(aud.map(lang)).size > 1;
   if (many && !aud.some(orig)) aud = []; // several voices and none marked original: use the file that has its own sound
-  // try in this order on the phone: sharp video without sound (+ separate sound), then the file with sound
+  // Only the single file with picture AND sound: YouTube always puts the ORIGINAL voice in it
+  // (the separate sound files can be AI-dubbed in other languages, with no way to tell which one is original).
   const c = [];
-  if (aud.length) only.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: true }));
   muxed.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: false }));
   if (!c.length) return null;
   const strip = (v) => { const o = {}; Object.keys(v || {}).slice(0, 14).forEach((k) => { if (k !== "url") o[k] = typeof v[k] === "object" ? "{}" : String(v[k]).slice(0, 40); }); return o; };
-  return { cands: c, audio: aud.length ? { url: aud[0].url } : null, video: c[0], dbg: {
+  return { cands: c, audio: null, video: c[0], dbg: {
     videos: vs.slice(0, 14).map((v) => [h(v), mt(v).slice(0, 45), v.hasAudio === true ? "+sound" : "-", bad(v) ? "skip" : ""].join(" ")),
     audios: as.slice(0, 10).map((v) => meta(v).replace(/[{}"]/g, "").slice(0, 110)),
   } };

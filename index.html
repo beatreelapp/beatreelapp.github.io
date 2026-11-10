@@ -1201,7 +1201,8 @@ function vaZoom(z){const bv=$('bgv');if(!bv.videoWidth)return;const R=vidRect(),
 function vaLoop(){if(!vaOn)return;requestAnimationFrame(vaLoop);const bv=$('bgv'),cv2=$('vac'),x=cv2.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,cv2.width,cv2.height);if(bv.src&&bv.readyState>=2&&bv.videoWidth){vidDraw(x,bv,0,0,cv2.width,cv2.height,0)}}
 function openVA(){const bv=$('bgv');if(vaOn)return;vaOn=true;vaWas=!au.paused;au.pause();vaFit();vaSlider();$('va').classList.add('on');vaLoop()}
 function closeVA(){vaOn=false;$('va').classList.remove('on');
- if(AUTOCAP){AUTOCAP=false;let n=0;const iv=setInterval(()=>{if(DUR>0||++n>40){clearInterval(iv);if(DUR>0&&!L.length)$('acb').click()}},250)}
+ if(AUTOCAP){AUTOCAP=false;let n=0;const iv=setInterval(()=>{const bv=$('bgv'),pic=!bv.src||(bv.readyState>=2&&bv.videoWidth>0);
+  if((DUR>0&&pic)||++n>40){clearInterval(iv);if(DUR>0&&pic&&!L.length)$('acb').click();else if(!pic)msg.textContent='The video picture is not showing, so no captions were made (no coin used). Try another video.'}},250)}
  else if(vaWas){au.play().catch(()=>{})}}
 (function(){const cv2=$('vac'),P=new Map();let d0=0,z0=1;
  cv2.addEventListener('pointerdown',e=>{e.preventDefault();try{cv2.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});if(P.size==2){const q=[...P.values()];d0=Math.hypot(q[0].x-q[1].x,q[0].y-q[1].y);z0=VZ}});
@@ -1356,7 +1357,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=false,PRICE_TXT='€4.99/month';
-const APPV='v14';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v15';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1434,7 +1435,8 @@ function wavB64(f){const n=f.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),
 function cutPoints(p){const SR=16000,MAX=30*SR,FR=320,out=[0];let a=0;
  while(p.length-a>MAX){const lo=a+24*SR,hi=a+MAX;let best=hi,bv=Infinity;for(let i=lo;i+FR<=hi;i+=FR){let e=0;for(let j=i;j<i+FR;j++)e+=p[j]*p[j];if(e<bv){bv=e;best=i+(FR>>1)}}a=best;out.push(a)}
  out.push(p.length);return out}
-async function cloudASR(pcm,lang,onStep,song){const cp=cutPoints(pcm),chunks=[];let text='';
+const LNAME=c=>{try{return new Intl.DisplayNames(['en'],{type:'language'}).of(c)||c}catch(_){return c}};
+async function cloudASR(pcm,lang,onStep,song,onLang){const cp=cutPoints(pcm),chunks=[];let text='';
  for(let k=0;k<cp.length-1;k++){if(CCAN)throw new Error('cancel');onStep(k+1,cp.length-1);
   const a=cp[k],b=cp[k+1],off=a/16000,body={audio:wavB64(pcm.subarray(a,b)),job:AIJOB};if(lang)body.language=lang;if(song){body.vad=false;body.prompt='Song lyrics, sung over music.'}
   let j=null,last=null;
@@ -1443,6 +1445,8 @@ async function cloudASR(pcm,lang,onStep,song){const cp=cutPoints(pcm),chunks=[];
     const d=await r.json().catch(()=>null);if(!r.ok||!d||d.error)throw new Error('cloud '+r.status+' '+String(d&&d.error||'').slice(0,80));j=d}
    catch(e){if(CCAN)throw new Error('cancel');last=e}finally{clearTimeout(to)}}
   if(!j)throw last||new Error('cloud');
+  // Auto language: keep the language heard in the first clear part for all the next parts (no mixing, no translating)
+  {const ti=j.transcription_info||{};if(!lang&&ti.language&&(+ti.language_probability||0)>=.7){lang=String(ti.language);if(onLang)onLang(lang)}}
   const segs=Array.isArray(j.segments)?j.segments:[];
   segs.forEach(sg=>{const ws=Array.isArray(sg.words)?sg.words:[];
    if(ws.length)ws.forEach(w=>chunks.push({text:String(w.word||''),timestamp:[(+w.start||0)+off,(+w.end||+w.start||0)+off]}));
@@ -1482,7 +1486,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   let res=null,mdl=$('acm').value,viaCloud=false;
   if(mdl==='cloud'&&(FORCEDEV||!JOB_)){mdl='Xenova/whisper-base';if(!FORCEDEV)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
   if(mdl==='cloud'){mdl='Xenova/whisper-base';
-   try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent=(song?'Listening to the song':'Listening to the speech')+' (online AI)... part '+k+' of '+n+'. Keep this page open.'},song);if(!res.chunks.length&&!String(res.text||'').trim())res=null;viaCloud=!!res}
+   try{let HL='';res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent=(HL?'Language: '+HL+' ✓ · ':'')+(song?'Listening to the song':'Listening to the speech')+' (online AI)... part '+k+' of '+n+'. Keep this page open.'},song,c=>{HL=LNAME(c);msg.textContent='Language: '+HL+' ✓'});if(!res.chunks.length&&!String(res.text||'').trim())res=null;viaCloud=!!res}
    catch(ce){if(ce&&ce.message==='cancel')throw ce;res=null}
    if(!res){coinRefund(JOB_);JOB_='';msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}}
   if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
@@ -1537,10 +1541,14 @@ async function ytLink(pre){
   const vf=new File([vid],nm+'.mp4',{type:'video/mp4'});
   $('vf').onchange({target:{files:[vf]}});
   if(aud){const af=new File([aud],nm+'.m4a',{type:'audio/mp4'});loadAudio(af,"Using the video's sound. Making captions...");curVid=true}
-  setTimeout(()=>ytDiag('✅ Video loaded'),5000);
+
  }catch(e){go.disabled=false;er.style.color='';er.textContent='Could not get a video that plays here ('+String(e&&e.message||e).slice(0,260)+'). Please try again, or upload it from your phone.';return ytAgain()}}
-function ytPlays(blob){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let done=false;const fin=ok=>{if(done)return;done=true;clearTimeout(t);v.removeAttribute('src');v.load();URL.revokeObjectURL(u);res(ok)};
- v.muted=true;v.playsInline=true;v.preload='auto';v.onloadeddata=()=>fin(!!v.videoWidth);v.onerror=()=>fin(false);const t=setTimeout(()=>fin(false),15000);v.src=u;v.load()})}
+function ytPlays(blob){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let done=false,iv=0;
+ const fin=ok=>{if(done)return;done=true;clearTimeout(t);clearInterval(iv);try{v.pause()}catch(_){}v.removeAttribute('src');v.load();URL.revokeObjectURL(u);res(ok)};
+ // play it 1 second without sound: the picture must exist AND move forward
+ v.muted=true;v.defaultMuted=true;v.playsInline=true;v.preload='auto';v.onerror=()=>fin(false);const t=setTimeout(()=>fin(false),12000);
+ v.onloadeddata=()=>{if(!v.videoWidth)return fin(false);const t0=v.currentTime;v.play().catch(()=>{});iv=setInterval(()=>{if(v.videoWidth&&v.readyState>=2&&v.currentTime-t0>=.8)fin(true)},150)};
+ v.src=u;v.load()})}
 var YTD=null;
 function ytDiag(head){const d=YTD||{},j=d.j||{},g=j.dbg||{},bv=$('bgv'),mb=x=>(x/1048576).toFixed(1)+' MB';
  const lines=['App '+APPV+' · '+head,'Title: '+(j.title||'?')+' · '+Math.round(j.len||0)+' s',
