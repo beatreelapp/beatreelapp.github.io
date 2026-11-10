@@ -1,5 +1,6 @@
 {
   "name": "beatreel-api",
+  "account_id": "9ca4aece7f331911cb684b316d5e9abb",
   "main": "worker.js",
   "compatibility_date": "2025-09-01",
   "ai": { "binding": "AI" },
