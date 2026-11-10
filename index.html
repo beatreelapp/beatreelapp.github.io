@@ -1056,6 +1056,14 @@ async function cloudASR(pcm,lang,onStep){const cp=cutPoints(pcm),chunks=[];let t
   if(!segs.length&&j.text)chunks.push({text:String(j.text),timestamp:[off,b/16000]});
   text+=(text?' ':'')+String(j.text||'').trim()}
  return {text:text,chunks:chunks}}
+async function aiStyle(text){
+ const opts={font:FONTS.map(f=>f.n),col:COLS.map(c=>c[0]),size:SIZES.map(z=>z[0]),anim:ANIMS,fx:['None','Shadow','Glow','Outline','Neon'],frame:FRAMES},ids={font:'tf',col:'tc',size:'tz',anim:'ta',fx:'tx',frame:'tr'};
+ try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),30000);
+  const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text.slice(0,1500),options:opts}),signal:ctl.signal});clearTimeout(to);
+  const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error)return;
+  if(/[\u0600-\u06FF]/.test(text)&&Number.isInteger(j.font)&&j.font!==0&&j.font!==7)j.font=7; // Arabic words: keep a font that has Arabic letters
+  let n=0;for(const k in ids)if(Number.isInteger(j[k])&&j[k]>=0&&j[k]<$(ids[k]).options.length){TS[k]=j[k];$(ids[k]).value=j[k];n++}
+  if(n&&/^Captions ready/.test(msg.textContent))msg.textContent+=' Style picked by AI'+(j.mood?' ('+String(j.mood).slice(0,30)+')':'')+'. You can change it in Text style.'}catch(_){}}
 $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textContent='Add a video (or a song) first.';return}
  acBusy=true;const btn=$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
  const wasPlaying=!au.paused;au.pause();{const v=$('bgv');if(v.src)v.pause()}
@@ -1068,9 +1076,9 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textConte
   const lang=$('acl').value,opt={task:'transcribe',chunk_length_s:30,stride_length_s:5};if(lang)opt.language=lang;
   msg.textContent='Starting the speech model...';
   const onP=p=>{if(p&&p.status==='progress'&&isFinite(p.progress))msg.textContent='Downloading the speech model... '+Math.round(p.progress)+'% (only the first time)'},onL=()=>{tick=setInterval(()=>{msg.textContent='Listening to the speech... '+Math.round((performance.now()-t0)/1000)+'s. Keep this page open.'},500)};
-  let res=null,mdl=$('acm').value;
+  let res=null,mdl=$('acm').value,viaCloud=false;
   if(mdl==='cloud'){mdl='Xenova/whisper-base';
-   try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent='Listening to the speech (online AI)... part '+k+' of '+n+'. Keep this page open.'});if(!res.chunks.length&&!String(res.text||'').trim())res=null}
+   try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent='Listening to the speech (online AI)... part '+k+' of '+n+'. Keep this page open.'});if(!res.chunks.length&&!String(res.text||'').trim())res=null;viaCloud=!!res}
    catch(ce){if(ce&&ce.message==='cancel')throw ce;res=null}
    if(!res)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
   if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
@@ -1081,7 +1089,8 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textConte
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));S=[];$('lyt').value=L.join('\n');$('lyp').hidden=false;
   setup();ac.resume();au.currentTime=from;au.play().catch(()=>{});{const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
-  msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'
+  msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';
+  if(viaCloud)aiStyle(L.join('\n'))
  }catch(e){const m=e&&e.message;msg.textContent=m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
   if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
  finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent='Auto captions (from speech)'}};
