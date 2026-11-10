@@ -224,6 +224,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="m-both">
 <div class="gl">Text and lyrics</div>
 <div class="row"><input type="text" id="ttl" placeholder="Song title (one line, optional)" value="" maxlength="40"></div>
+<div class="row m-music"><button class="m" id="alb" type="button">🎤 Auto lyrics (from song)</button></div>
 <div class="row"><button id="lyb">Write lyrics</button><button id="tsb">Text style</button></div>
 <div id="tsp" hidden>
 <div class="row"><select id="tf"></select><select id="tc"></select></div>
@@ -233,7 +234,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 </div>
 <div id="lyp" hidden>
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
-<div class="row m-video"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
+<div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
 <div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
 <div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="cutx" checked> ✂️ Cut silences</label><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
@@ -1135,8 +1136,8 @@ new MutationObserver(()=>{if(!$('co').classList.contains('on'))return;const t=ms
  if(m=/Downloading.*?(\d+)%/.exec(t))coSet(10+m[1]*.4);else if(/Listening/.test(t)){const el=(performance.now()-COT0)/1000,len=Math.max(5,Math.min(CE,DUR||30)-(CS||0));coSet(50+45*(1-Math.exp(-el/(len*1.2+8))))}else if(/Preparing/.test(t))coSet(5);else if(/Starting/.test(t))coSet(10);else if(/ready/.test(t))coSet(100)}).observe(msg,{childList:true,characterData:true,subtree:true});
 $('cc').onclick=()=>{CCAN=true;try{if(ASRW){ASRW.terminate();ASRW=null}}catch(_){}if(asrRej)asrRej(new Error('cancel'))};
 
-function groupWords(ws){const out=[];let cur=null;ws.forEach(w=>{const t=String(w.text||'').trim();if(!t||!w.timestamp)return;const a=w.timestamp[0],b=w.timestamp[1]==null?a+.4:w.timestamp[1];
- if(cur&&(a-cur.e>.6||cur.n>=4||(cur.t+' '+t).length>24||/[.!?؟]$/.test(cur.t))){out.push(cur);cur=null}
+function groupWords(ws,song){const out=[];let cur=null;const GW=song?.8:.6,NW=song?6:4,NC=song?34:24;ws.forEach(w=>{const t=String(w.text||'').trim();if(!t||!w.timestamp)return;const a=w.timestamp[0],b=w.timestamp[1]==null?a+.4:w.timestamp[1];
+ if(cur&&(a-cur.e>GW||cur.n>=NW||(cur.t+' '+t).length>NC||/[.!?؟]$/.test(cur.t))){out.push(cur);cur=null}
  const ww=t.split(/\s+/).length;if(!cur)cur={t:t,s:a,e:Math.max(b,a+.2),n:1,w:[]};else{cur.t+=' '+t;cur.e=Math.max(b,cur.e);cur.n++}for(let q=0;q<ww;q++)cur.w.push([a+(b-a)*q/ww,a+(b-a)*(q+1)/ww])});
  if(cur)out.push(cur);return out}
 const ASRW_SRC=`let asr=null,mid=null;
@@ -1195,8 +1196,9 @@ async function aiStyle(text){const lines=L.slice(0,80).map(x=>x.slice(0,80));
   const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error||!Number.isInteger(j.look))throw 0;
   applyLook(j.look,j.color,j.e,j.k,j.mood||null)}catch(_){applyLook(0,0,null,null,'')}}
 $('cutx').onchange=e=>{CUTON=e.target.checked;KPK=''};$('zmx').onchange=e=>{ZOOMON=e.target.checked};
-$('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textContent='Add a video (or a song) first.';return}
- acBusy=true;const btn=$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
+$('alb').onclick=()=>{$('acb').click()};
+$('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){msg.textContent=song?'Choose a song first.':'Add a video (or a song) first.';return}
+ acBusy=true;const btn=song?$('alb'):$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
  const wasPlaying=!au.paused;au.pause();{const v=$('bgv');if(v.src)v.pause()}
  try{
   const from=CS||0,to=Math.min(CE,DUR||1e9);
@@ -1214,17 +1216,18 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textConte
    if(!res)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
   if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
   if(tick){clearInterval(tick);tick=null}
-  let lines=groupWords(res.chunks||[]);
+  let lines=groupWords(res.chunks||[],song);
   if(!lines.length&&res.text&&res.text.trim()){lines=[{t:res.text.trim().slice(0,60),s:0,e:Math.max(2,(to-from))}]}
   if(!lines.length){msg.textContent='No speech was found in this clip.';return}
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');$('lyp').hidden=false;
   setup();ac.resume();au.currentTime=from;au.play().catch(()=>{});{const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
   msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';{KPK='';const K=keepParts();if(K){const cut=(Math.min(CE,DUR||1e9)-CS)-keepTotal(K);if(cut>.3)msg.textContent+=' Cut '+(K.length-1)+' pauses ('+cut.toFixed(1)+'s).'}}
-  if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
+  if(song){TS.frame=0;try{$('tr').value=0}catch(_){}MLK='';msg.textContent='Lyrics ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'}
+  else if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
  }catch(e){const m=e&&e.message;msg.textContent=m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
   if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
- finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent='Auto captions (from speech)'}};
+ finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent=song?'🎤 Auto lyrics (from song)':'Auto captions (from speech)'}};
 
 
 /* ===== Store links, ad slot and in-app launch =====
