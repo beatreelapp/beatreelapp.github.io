@@ -233,7 +233,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 </div>
 <div id="lyp" hidden>
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
-<div class="row m-video"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
+<div class="row m-video"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
 <div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
 <div class="row"><button id="nlb" type="button">+ New line</button><button class="m m-music" id="aut">Auto sync</button></div>
@@ -1031,6 +1031,31 @@ async function pcm16k(file,from,to){const OC=window.OfflineAudioContext||window.
  const ab=await new Promise((res,rej)=>{const p=ctx.decodeAudioData(buf,res,rej);if(p&&p.then)p.then(res,rej)});
  const n=ab.length,ch=ab.numberOfChannels,m=new Float32Array(n);for(let c2=0;c2<ch;c2++){const d=ab.getChannelData(c2);for(let i=0;i<n;i++)m[i]+=d[i]/ch}
  const sr=ab.sampleRate,a=Math.max(0,Math.floor(from*sr)),b=Math.min(n,Math.ceil(to*sr));return m.slice(a,b)}
+/* ===== Online AI captions (Cloudflare Worker, Whisper large-v3-turbo) ===== */
+const API_URL='https://beatreel-api.renardkatty8.workers.dev',LANGC={arabic:'ar',french:'fr',english:'en'};
+function wavB64(f){const n=f.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),W=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+ W(0,'RIFF');v.setUint32(4,36+n*2,true);W(8,'WAVE');W(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,16000,true);v.setUint32(28,32000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);W(36,'data');v.setUint32(40,n*2,true);
+ for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,f[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}
+ const u=new Uint8Array(b);let t='';for(let i=0;i<u.length;i+=32768)t+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(t)}
+function cutPoints(p){const SR=16000,MAX=30*SR,FR=320,out=[0];let a=0;
+ while(p.length-a>MAX){const lo=a+24*SR,hi=a+MAX;let best=hi,bv=Infinity;for(let i=lo;i+FR<=hi;i+=FR){let e=0;for(let j=i;j<i+FR;j++)e+=p[j]*p[j];if(e<bv){bv=e;best=i+(FR>>1)}}a=best;out.push(a)}
+ out.push(p.length);return out}
+async function cloudASR(pcm,lang,onStep){const cp=cutPoints(pcm),chunks=[];let text='';
+ for(let k=0;k<cp.length-1;k++){if(CCAN)throw new Error('cancel');onStep(k+1,cp.length-1);
+  const a=cp[k],b=cp[k+1],off=a/16000,body={audio:wavB64(pcm.subarray(a,b))};if(lang)body.language=lang;
+  let j=null,last=null;
+  for(let t=0;t<2&&!j;t++){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),90000);asrRej=()=>ctl.abort();
+   try{const r=await fetch(API_URL+'/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
+    const d=await r.json().catch(()=>null);if(!r.ok||!d||d.error)throw new Error('cloud '+r.status+' '+String(d&&d.error||'').slice(0,80));j=d}
+   catch(e){if(CCAN)throw new Error('cancel');last=e}finally{clearTimeout(to)}}
+  if(!j)throw last||new Error('cloud');
+  const segs=Array.isArray(j.segments)?j.segments:[];
+  segs.forEach(sg=>{const ws=Array.isArray(sg.words)?sg.words:[];
+   if(ws.length)ws.forEach(w=>chunks.push({text:String(w.word||''),timestamp:[(+w.start||0)+off,(+w.end||+w.start||0)+off]}));
+   else if(sg.text)chunks.push({text:String(sg.text),timestamp:[(+sg.start||0)+off,(+sg.end||+sg.start||0)+off]})});
+  if(!segs.length&&j.text)chunks.push({text:String(j.text),timestamp:[off,b/16000]});
+  text+=(text?' ':'')+String(j.text||'').trim()}
+ return {text:text,chunks:chunks}}
 $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textContent='Add a video (or a song) first.';return}
  acBusy=true;const btn=$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
  const wasPlaying=!au.paused;au.pause();{const v=$('bgv');if(v.src)v.pause()}
@@ -1043,7 +1068,12 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textConte
   const lang=$('acl').value,opt={task:'transcribe',chunk_length_s:30,stride_length_s:5};if(lang)opt.language=lang;
   msg.textContent='Starting the speech model...';
   const onP=p=>{if(p&&p.status==='progress'&&isFinite(p.progress))msg.textContent='Downloading the speech model... '+Math.round(p.progress)+'% (only the first time)'},onL=()=>{tick=setInterval(()=>{msg.textContent='Listening to the speech... '+Math.round((performance.now()-t0)/1000)+'s. Keep this page open.'},500)};
-  let res;try{res=await asrRun(pcm.slice(),$('acm').value,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',$('acm').value,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}
+  let res=null,mdl=$('acm').value;
+  if(mdl==='cloud'){mdl='Xenova/whisper-base';
+   try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent='Listening to the speech (online AI)... part '+k+' of '+n+'. Keep this page open.'});if(!res.chunks.length&&!String(res.text||'').trim())res=null}
+   catch(ce){if(ce&&ce.message==='cancel')throw ce;res=null}
+   if(!res)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
+  if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
   if(tick){clearInterval(tick);tick=null}
   let lines=groupWords(res.chunks||[]);
   if(!lines.length&&res.text&&res.text.trim()){lines=[{t:res.text.trim().slice(0,60),s:0,e:Math.max(2,(to-from))}]}
