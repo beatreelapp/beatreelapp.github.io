@@ -220,7 +220,8 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="gl m-music">Scene</div>
 <div class="row m-music"><select id="sj"><option value="0">Subject: Car</option><option value="1">Subject: Vinyl in space</option><option value="2">Subject: Concert</option><option value="3">Subject: Space runner</option><optgroup label="Soft (calm, no bars)"><option value="5">Soft: Aurora</option><option value="6">Soft: Blurred cover</option><option value="7">Soft: Bokeh lights</option><option value="8">Soft: Frosted glass</option><option value="9">Soft: Ink in water</option></optgroup></select></div>
 <div class="row m-music" id="cvr" style="display:none"><button class="m" id="cvb" type="button">Choose cover image (optional)</button></div>
-<div class="row m-both"><select id="th"></select><select id="cs"></select></div>
+<div class="row m-music"><select id="th"></select><select id="cs"></select></div>
+<div class="row m-video"><select id="cbg"><option value="0">Background: Blue-grey fog</option><option value="1">Background: Amber fog</option><option value="2">Background: Forest fog</option><option value="3">Background: Ocean fog</option><option value="4">Background: Charcoal fog</option><option value="5">Background: Cinema</option><option value="6">Background: Golden dust</option><option value="7">Background: Blue night</option><option value="8">Background: Warm sand</option><option value="9">Background: Light lines</option></select></div>
 <div class="row m-music" id="rsr"><select id="rs"><option value="0">Rhythm: Blocks</option><option value="1">Rhythm: Smooth bars</option><option value="2">Rhythm: Wave</option><option value="3">Rhythm: Dots</option></select></div>
 <div class="m-both">
 <div class="gl">Text and lyrics</div>
@@ -250,7 +251,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 </div>
 <div class="m-both">
 <div class="gl">Video and export</div>
-<div class="row m-video"><select id="cbg"><option value="0">Background: Blue-grey fog</option><option value="1">Background: Amber fog</option><option value="2">Background: Forest fog</option><option value="3">Background: Ocean fog</option><option value="4">Background: Charcoal fog</option><option value="5">Background: Cinema</option><option value="6">Background: Golden dust</option><option value="7">Background: Blue night</option><option value="8">Background: Warm sand</option><option value="9">Background: Light lines</option></select></div>
+
 <div class="row"><label class="btn" id="vb" for="vf">Add your video</label><button id="vadj" type="button" hidden>Adjust video</button><button id="vx" hidden>Remove video</button></div>
 <div class="gl m-video">Music (optional)</div>
 <div class="row m-video"><label class="btn" id="mb" for="mf">Add music</label><button id="mx" type="button" hidden>Remove music</button></div>
@@ -1388,7 +1389,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v19';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v20';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
