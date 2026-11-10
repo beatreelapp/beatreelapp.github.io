@@ -198,7 +198,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="card" style="padding:20px"><h4 style="margin:0 0 10px">Free</h4><p style="margin:0;opacity:.8;line-height:1.7">All scenes<br>Auto-synced lyrics<br>Text styles<br>540p and 720p<br>Clips up to 30 seconds<br>BeatReel watermark</p></div>
 <div class="card" style="padding:20px;border-color:#ff4fa3"><h4 style="margin:0 0 10px;color:#ff7ac8">Pro <span style="font-size:13px;font-weight:700;color:#fff;opacity:.85">€4.99/month</span></h4><p style="margin:0;opacity:.9;line-height:1.7">Everything in Free<br>No watermark<br>Full HD 1080p<br>Clips longer than 30 seconds<br>Unlimited AI captions and lyrics<br>Cancel anytime</p></div></div></section>
 <section class="final"><h3>Ready to make yours?</h3><p>Free to try. No account needed.</p><button data-go>Start creating</button></section>
-<footer><div style="margin-bottom:12px"><a href="#" id="lg1" style="color:#ff7ac8">Privacy</a> &nbsp;&middot;&nbsp; <a href="#" id="lg2" style="color:#ff7ac8">Terms</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#ff7ac8" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your songs and videos are processed on your device and are never uploaded.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
+<footer><div style="margin-bottom:12px"><a href="/privacy.html" id="lg1" style="color:#ff7ac8">Privacy</a> &nbsp;&middot;&nbsp; <a href="/terms.html" id="lg2" style="color:#ff7ac8">Terms</a> &nbsp;&middot;&nbsp; <a href="mailto:beatreel.app@gmail.com" style="color:#ff7ac8">Contact</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#ff7ac8" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your videos are made on your device. Only the Auto (AI) features send audio to our server, which does not keep it.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
 </div>
 
 <button id="hb" hidden>&larr; Home</button>
@@ -1389,7 +1389,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v20';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v21';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2366,10 +2366,8 @@ ac_.onclick=async()=>{const raw=(cd.value||'').trim(),v=raw.toUpperCase();
 (()=>{const r=document.getElementById('rs');if(r)r.onchange=()=>{RSH=+r.value}})();
 
 (()=>{const m=document.getElementById('lg'),t=document.getElementById('lgt');
-const PR='<h2>Privacy</h2><p>BeatReel runs in your browser. The songs, videos and lyrics you choose stay on your device and are never uploaded to our servers.</p><p>Your videos are created on your device. We do not store them.</p><p>Your activation code, if you use one, is saved in your browser so the watermark stays removed.</p><p>This site may load fonts from Google Fonts, which can see that your browser requested them.</p>';
-const TE='<h2>Terms</h2><p>BeatReel is provided as is, without guarantees. It may change or stop working at any time.</p><p>You are responsible for the music, videos and text you use. Only use content you own or have the right to use. You are responsible for how you publish your videos.</p><p>Activation codes are for the person who bought them and may not be shared or resold.</p>';
 function open(h){t.innerHTML=h;m.hidden=false;m.scrollTop=0}
-document.getElementById('lg1').onclick=e=>{e.preventDefault();open(PR)};document.getElementById('lg2').onclick=e=>{e.preventDefault();open(TE)};document.getElementById('lgx').onclick=()=>{m.hidden=true}})();
+document.getElementById('lgx').onclick=()=>{m.hidden=true}})();
 </script>
 </body>
 </html>
