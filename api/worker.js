@@ -3,6 +3,7 @@
 //   POST /transcribe  {audio: base64 WAV, language?}         -> Whisper large-v3-turbo result (text, segments, words)
 //   POST /style       {text, lines, looks, colors, emojis}       -> {mood, look, color, e:[emoji index per line], k:[keyword index per line]}
 //                     (old shape {text, options} still works)
+//   POST /clips      {job, lines:[[start,end,text],...]}        -> {clips:[{a,b,title}]}  Pro only: best moments (line a to b) + hook title
 //   POST /hit         text body: event name                    -> counts anonymous usage (no IP, no personal data stored)
 //   POST /me      {did}               -> {coins, max, pro, reset}      (AI coins: 3 free per device per day, Pro = unlimited)
 //   POST /job     {did}               -> {job, coins} or 402 no_coins  (one coin = one Auto captions / Auto lyrics run)
@@ -14,11 +15,12 @@
 //   GET  /stats?k=KEY                                          -> private usage page (only the SHA-256 of the key is stored here)
 import { DurableObject } from "cloudflare:workers";
 const STATS_KEY_SHA256 = "3cfa6b59a11a89f3a83c08f056b077129a9cf05e77458de92e556dfc8b23c3a7";
+const JOB_TR_MAX = 22; // about 10 minutes of audio (30 s parts) per Auto captions run
 const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 1000, JOB_CALLS = 120, MAX_DEVICES = 3;
 const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
 const SITE = "https://beatreelapp.github.io";
 const ACCT_ROUTES = ["/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
-const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new"];
+const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 const STYLE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const STYLE_KEYS = ["font", "col", "size", "anim", "fx", "frame"];
@@ -54,7 +56,7 @@ export default {
         return Response.json({ error: String((e && e.message) || e) }, { status: (e && e.status) || 500, headers: cors });
       }
     }
-    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style"))
+    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips"))
       return new Response("BeatReel API OK", { headers: cors });
     if (!ALLOWED.includes(origin))
       return new Response("Forbidden", { status: 403, headers: cors });
@@ -63,7 +65,8 @@ export default {
       // /transcribe needs a paid-for job (one coin). /style is cheap: allowed with a job, or a few times a day per network without one.
       const gate = await bank(env).gate(route, typeof body.job === "string" ? body.job : "", await ipKey(req));
       if (!gate.ok) return Response.json({ error: gate.error }, { status: 402, headers: cors });
-      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : "ai_style", ""));
+      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : "ai_style", ""));
+      if (route === "/clips") return Response.json(await clips(env, body), { headers: cors });
       if (route === "/transcribe") {
         const out = await transcribe(env, body);
         if (body.job) ctx.waitUntil(Promise.resolve().then(() => bank(env).worked(body.job)).catch(() => {}));
@@ -186,6 +189,47 @@ async function look(env, body) {
     res.k.push(idx(K[i], lines[i].split(/\s+/).filter(Boolean).length));
   }
   return res;
+}
+
+// Clipping (Pro): read the timed lines of a long video, pick the 3 to 5 strongest moments and write a short hook title for each.
+async function clips(env, body) {
+  if (!Array.isArray(body.lines) || body.lines.length < 3 || body.lines.length > 400) throw bad("lines must be a list");
+  const ls = body.lines.map((x) => ({ s: Number(x && x[0]) || 0, e: Number(x && x[1]) || 0, t: String((x && x[2]) || "").slice(0, 90) }));
+  const N = ls.length, total = ls[N - 1].e - ls[0].s;
+  const system =
+    "You are the video editor of BeatReel. You cut long talking videos into short viral clips for TikTok, Reels and Shorts. " +
+    "You get numbered lines of speech with their start and end time in seconds. Pick the 3 to 5 strongest moments: " +
+    "a strong hook at the start, one complete idea, story, tip, joke or emotional moment, and a clean ending (never cut in the middle of a sentence). " +
+    "Each clip must be between 15 and 60 seconds long (end time of line b minus start time of line a), and clips must not overlap. Best clip first. " +
+    "For each clip write a short hook title (3 to 7 words, max 40 characters) that makes people want to watch, in the SAME language as the speech " +
+    "(Arabic speech gets an Arabic title, French gets French). No hashtags, no emojis, no quotes. " +
+    'Answer with JSON only, no other text, exactly this shape: {"clips":[{"a":0,"b":7,"title":"..."}]} where a is the first line and b the last line of the clip.';
+  const user = "Video length: " + Math.round(total) + " s, " + N + " lines.\n\n" +
+    ls.map((x, i) => i + " [" + x.s.toFixed(1) + "-" + x.e.toFixed(1) + "] " + x.t).join("\n");
+  const out = await env.AI.run(STYLE_MODEL, {
+    messages: [{ role: "system", content: system }, { role: "user", content: user }],
+    max_tokens: 500,
+    temperature: 0.3,
+  });
+  const raw = out && (typeof out.response === "string" ? out.response : JSON.stringify(out.response || ""));
+  const m = /\{[\s\S]*\}/.exec(raw || "");
+  if (!m) throw new Error("clip model gave no JSON");
+  let j;
+  try { j = JSON.parse(m[0]); } catch { throw new Error("clip model gave bad JSON"); }
+  const res = [];
+  for (const k of Array.isArray(j.clips) ? j.clips : []) {
+    let a = Number(k && k.a), b = Number(k && k.b);
+    if (!Number.isInteger(a) || !Number.isInteger(b)) continue;
+    a = Math.max(0, Math.min(N - 1, a)); b = Math.max(a, Math.min(N - 1, b));
+    while (b < N - 1 && ls[b].e - ls[a].s < 12) b++;          // too short: grow to the next lines
+    while (b > a && ls[b].e - ls[a].s > 75) b--;              // too long: shrink
+    const d = ls[b].e - ls[a].s;
+    if (d < 8 || d > 90) continue;
+    if (res.some((r) => !(b < r.a || a > r.b))) continue;     // overlap
+    res.push({ a, b, title: String((k && k.title) || "").replace(/["#]/g, "").trim().slice(0, 40) });
+    if (res.length >= 5) break;
+  }
+  return { clips: res };
 }
 
 // ---------- Anonymous usage counter (one SQLite Durable Object, free plan) ----------
@@ -406,12 +450,15 @@ export class Bank extends DurableObject {
     if (job) {
       const j = this.one("SELECT * FROM jobs WHERE id = ?", job);
       if (j && j.exp > Date.now() && j.calls < JOB_CALLS) {
+        if (route === "/clips" && j.paid) return { ok: false, error: "pro_only" };
+        if (route === "/transcribe" && (j.tr || 0) >= JOB_TR_MAX) return { ok: false, error: "too_long" };
         this.sql.exec("UPDATE jobs SET calls = calls + 1, tr = tr + ? WHERE id = ?", route === "/transcribe" ? 1 : 0, job);
         return { ok: true };
       }
-      if (route === "/transcribe") return { ok: false, error: "job_expired" };
+      if (route === "/transcribe" || route === "/clips") return { ok: false, error: "job_expired" };
     }
     if (route === "/transcribe") return { ok: false, error: "no_coins" };
+    if (route === "/clips") return { ok: false, error: "pro_only" };
     const day = today(), r = this.one("SELECT s FROM ipuse WHERE ip = ? AND day = ?", ip, day);
     if (r && r.s >= STYLE_FREE_CAP) return { ok: false, error: "no_coins" };
     this.sql.exec("INSERT INTO ipuse (ip, day, n, s) VALUES (?, ?, 0, 1) ON CONFLICT (ip, day) DO UPDATE SET s = s + 1", ip, day);

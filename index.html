@@ -239,6 +239,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
 <div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
 <div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
+<div class="row m-video"><button id="clb" type="button" style="background:linear-gradient(135deg,#2a1450,#120a24);border:1px solid #d9a93c;color:#ffe6a0">✂️ Clipping <span style="font-size:11px;font-weight:800;background:linear-gradient(135deg,#ffe08a,#e0a526);color:#3a2600;border-radius:8px;padding:2px 7px;margin-left:4px;vertical-align:middle">✨ PRO</span></button></div>
 <div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="cutx" checked> ✂️ Cut silences</label><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
 <div class="row"><button id="nlb" type="button">+ New line</button><button class="m m-music" id="aut">Auto sync</button></div>
@@ -901,14 +902,21 @@ function frameBody(){
  else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
  if(bv.src&&bv.readyState>=2&&bv.videoWidth){const R=vidRect();vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,SJ==4?0:.28)}
  if(!curVid&&SJ<5)drawRhythm();
- let fs=64,t=ttl.value.toUpperCase()||' ';c.textAlign='center';
+ if(SJ==4&&ttl.value.trim())hookDraw(ttl.value.trim());else{let fs=64,t=ttl.value.toUpperCase()||' ';c.textAlign='center';
  do{c.font='bold '+fs+'px system-ui,sans-serif';fs-=4}while(c.measureText(t).width>W-60&&fs>24);
- c.fillStyle='#ffebf5';c.fillText(t,W/2,100);
+ c.fillStyle='#ffebf5';c.fillText(t,W/2,100)}
  
  lyr();
  if(fl>.02&&SJ!=4&&SJ<5){c.fillStyle='rgba(255,255,255,'+Math.min(fl*.12,.1)+')';c.fillRect(-60,-60,W+120,H+120)}
  c.restore();wm()}
 
+/* Hook title on top of a captions video (Clipping writes it, the user can edit it in the title box) */
+function hookDraw(t){const ar=/[\u0600-\u06ff]/.test(t),ff=z=>ar?FONTS[7].f(z):'900 '+z+'px system-ui,sans-serif',mw=W-120;let px=56,ls;
+ for(;;){c.font=ff(px);ls=wrap(t,mw);if((ls.length<=2&&ls.every(x=>c.measureText(x).width<=mw))||px<=30)break;px-=2}
+ ls=ls.slice(0,2);const lh=px*1.22,bw=Math.min(W-40,Math.max(...ls.map(x=>c.measureText(x).width))+56),bh=ls.length*lh+30,bx=(W-bw)/2,by=78;
+ c.save();c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=18;c.shadowOffsetY=6;c.fillStyle='rgba(10,6,22,.86)';rrp(bx,by,bw,bh,20);c.fill();c.restore();
+ c.save();c.textAlign='center';c.textBaseline='middle';c.font=ff(px);c.fillStyle=TS.col==1?'#ffffff':'#ffe14d';c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=4;c.shadowOffsetY=2;
+ ls.forEach((x,i)=>c.fillText(x,W/2,by+15+lh*(i+.5)));c.restore();c.textBaseline='alphabetic'}
 var SFT=(function(){
  const sr=s=>()=>{s=(s*16807)%2147483647;return(s-1)/2147483646};
  const ST=[];{const r=sr(7);for(let i=0;i<90;i++)ST.push([r()*360,r()*450,r()*6.28,.7+r()*1.6])}
@@ -1344,7 +1352,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=false,PRICE_TXT='€4.99/month';
-let AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1459,7 +1467,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   if($('acm').value==='cloud'){msg.textContent='Checking your AI coins...';const cj=await coinJob();
    if(cj&&cj.no){coShow(false);const ch=await outOfCoins();if(ch!=='device')throw new Error('nocoins');FORCEDEV=true;coShow(true)}
    else if(cj&&cj.job){JOB_=cj.job;AIJOB=JOB_}}
-  const from=CS||0,to=Math.min(CE,DUR||1e9);
+  const from=CS||0,to=Math.min(CE,DUR||1e9,from+AIMAX);CAPLONG=Math.min(CE,DUR||1e9)-from>AIMAX+.5;
   msg.textContent='Preparing the sound...';
   await new Promise(r=>setTimeout(r,60));
   const pcm=await pcm16k(f,from,to);
@@ -1481,12 +1489,60 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');$('lyp').hidden=false;
   setup();ac.resume();au.currentTime=from;au.play().catch(()=>{});{const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
-  msg.textContent='Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';{KPK='';const K=keepParts();if(K){const cut=(Math.min(CE,DUR||1e9)-CS)-keepTotal(K);if(cut>.3)msg.textContent+=' Cut '+(K.length-1)+' pauses ('+cut.toFixed(1)+'s).'}}
+  CAPR={f:f,a:from,b:to};
+  msg.textContent=(CAPLONG?'Only the first 10 minutes get captions. ':'')+'Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';{KPK='';const K=keepParts();if(K){const cut=(Math.min(CE,DUR||1e9)-CS)-keepTotal(K);if(cut>.3)msg.textContent+=' Cut '+(K.length-1)+' pauses ('+cut.toFixed(1)+'s).'}}
   if(song){TS.frame=0;try{$('tr').value=0}catch(_){}MLK='';msg.textContent='Lyrics ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'}
   else if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
  }catch(e){const m=e&&e.message;if(m==='cancel'&&JOB_)coinRefund(JOB_);msg.textContent=m==='nocoins'?'No AI coins left today. Tap the coin at the top to see when new coins arrive.':m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
   if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
  finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent=song?'🎤 Auto lyrics (from song)':'Auto captions (from speech)'}};
+/* ===== Add video chooser + Clipping (Pro): the AI picks the best moments of a video and writes a hook title for each ===== */
+(()=>{const st=document.createElement('style');st.textContent='#pmc{max-height:88vh;overflow:auto}#pmc .clp{text-align:left;margin:12px 0 0;padding:10px;border:1px solid #4a2a7a;border-radius:14px;background:#120a24}#pmc .clp input{text-align:left;font:700 15px system-ui,sans-serif;letter-spacing:0}#pmc .clp .sm{margin:0;opacity:.7}';document.head.appendChild(st)})();
+const clEsc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+async function pickVideo(){const a=await modal('<h3>Add your video</h3><p>Where is your video?</p><button class="pri" data-a="phone">📱 From your phone</button><button disabled>🔗 YouTube link · Soon</button><button data-a="close">Cancel</button>');if(a==='phone')$('vf').click()}
+$('vb').addEventListener('click',e=>{e.preventDefault();pickVideo()});
+function capLines(){return L.map((t,i)=>({t:String(t).slice(0,90),s:RNG[i].s,e:RNG[i].e}))}
+function localClips(ls){const out=[];let a=0;
+ for(let i=0;i<ls.length;i++){const d=ls[i].e-ls[a].s;if(d>=28||i===ls.length-1){if(d>=8)out.push({a:a,b:i});a=i+1}}
+ return out.slice(0,5).map(x=>({a:x.a,b:x.b,title:ls[x.a].t.split(/\s+/).slice(0,6).join(' ')}))}
+async function aiClips(ls){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),60000);
+ try{const r=await fetch(API_URL+'/clips',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job:AIJOB,lines:ls.map(x=>[+x.s.toFixed(1),+x.e.toFixed(1),x.t])}),signal:ctl.signal});
+  const j=await r.json().catch(()=>null);if(!r.ok||!j||!Array.isArray(j.clips))return null;
+  return j.clips.filter(k=>k&&Number.isInteger(k.a)&&Number.isInteger(k.b)&&k.a>=0&&k.b>=k.a&&k.b<ls.length).map(k=>({a:k.a,b:k.b,title:String(k.title||'').trim().slice(0,40)}))}
+ catch(_){return null}finally{clearTimeout(to)}}
+async function showClips(){const K=CLIPS.list;
+ let h='<h3>✂️ Best moments</h3><p>'+(CLIPS.ai?'The AI found '+K.length+' strong moments.':'Here are '+K.length+' parts of your video.')+' Pick one. Its title shows at the top of the video, and you can change it here.</p>';
+ K.forEach((k,i)=>{h+='<div class="clp"><p class="sm">Clip '+(i+1)+' · '+fmt(k.s)+' – '+fmt(k.e)+' · '+Math.round(k.e-k.s)+' s</p><input data-i="'+i+'" maxlength="40" value="'+clEsc(k.title)+'"><button class="pri" data-a="u'+i+'">Use clip '+(i+1)+'</button></div>'});
+ h+='<button data-a="close">Close</button>';
+ const a=await modal(h);
+ document.querySelectorAll('#pmc input[data-i]').forEach(x=>{const k=K[+x.getAttribute('data-i')];if(k)k.title=x.value.trim()});
+ const m=/^u(\d+)$/.exec(a||'');if(m)useClip(+m[1])}
+function useClip(i){const k=CLIPS&&CLIPS.list[i];if(!k)return;
+ CS=k.s;CE=k.e;KPK='';VW=Math.min(DUR,Math.max(60,(CE-CS)*1.4));VS=CS-(VW-(CE-CS))/2;clampVS();clipUI();
+ ttl.value=k.title;au.pause();au.currentTime=CS;{const v=$('bgv');try{v.currentTime=CS}catch(_){}}au.play().catch(()=>{});
+ msg.textContent='Clip '+(i+1)+' ready: "'+k.title+'". Tap Download video. For another clip, tap Clipping again.'}
+let clBusy=false;
+$('clb').onclick=async()=>{
+ if(!(CPRO||PRO)){openPro();return}
+ if(acBusy||clBusy)return;
+ if(!curVid||!$('bgv').src){msg.textContent='Add your video first, then tap Clipping.';pickVideo();return}
+ const end=Math.min(DUR||0,AIMAX);if(end<20){msg.textContent='Clipping needs a video of at least 20 seconds.';return}
+ if(CLIPS&&CLIPS.f===curFile)return showClips();
+ clBusy=true;const b=$('clb'),old=b.innerHTML;b.textContent='Working...';
+ try{
+  const have=CAPR&&CAPR.f===curFile&&CAPR.a<=.5&&CAPR.b>=end-.5&&L.length&&RNG&&RNG.length===L.length;
+  if(!have){CS=0;CE=end;VS=0;clipUI();await $('acb').onclick();
+   if(!(CAPR&&CAPR.f===curFile&&L.length&&RNG&&RNG.length===L.length))return}
+  else if(CPRO){const cj=await coinJob();if(cj&&cj.job)AIJOB=cj.job}
+  msg.textContent='Finding the best moments...';
+  const ls=capLines();let ks=CPRO?await aiClips(ls):null;const ai=!!(ks&&ks.length);if(!ai)ks=localClips(ls);
+  const list=ks.map(k=>({s:Math.max(0,ls[k.a].s-.25),e:Math.min(DUR||1e9,ls[k.b].e+.35),title:k.title||ls[k.a].t.split(/\s+/).slice(0,6).join(' ')})).filter(k=>k.e-k.s>=6);
+  if(!list.length){msg.textContent='Could not find clear moments in this video. Try a longer video with more talking.';return}
+  CLIPS={f:curFile,ai:ai,list:list};hit('clip');
+  msg.textContent=list.length+' clips found.';showClips()}
+ catch(e){msg.textContent='Clipping stopped: '+String(e&&e.message||e).slice(0,100)}
+ finally{clBusy=false;b.innerHTML=old}};
+
 
 
 /* ===== Store links, ad slot and in-app launch =====
@@ -1550,7 +1606,7 @@ function setMode(m){MODE=m;try{[...$('tc').options].forEach(o=>{o.textContent=o.
  if(m==='video'){SJ=4;try{$('cs').style.display='none'}catch(_){}$('lyp').hidden=false;$('tsp').hidden=true;msg.textContent=$('bgv').src?'Video mode. Change the words or style below, then download.':'Video captions: choose your video.'}
  else{if(SJ==4){SJ=+$('sj').value||0}$('cs').style.display=SJ?'none':'';softUI();msg.textContent=curFile&&!curVid?msg.textContent:'Music video: choose a song, then a scene.'}}
 $('m1').onclick=()=>{const had=MODE==='music';setMode('music');if(!had&&(!curFile||curVid))$('f').click()};
-$('m2').onclick=()=>{const had=MODE==='video';setMode('video');if(!had&&!$('bgv').src)$('vf').click()};
+$('m2').onclick=()=>{const had=MODE==='video';setMode('video');if(!had&&!$('bgv').src)pickVideo()};
 function setVol(){if(G1)G1.gain.value=$('vv').value/100;if(G2)G2.gain.value=$('mv').value/100;$('vvp').textContent=$('vv').value+'%';$('mvp').textContent=$('mv').value+'%'}
 $('vv').oninput=setVol;$('mv').oninput=setVol;
 $('mf').onchange=e=>{const f=e.target.files[0];if(!f)return;const a2=$('au2');a2.src=URL.createObjectURL(f);setup();ac.resume();
@@ -2026,7 +2082,7 @@ AACEnc.CB=null;
 AACEnc.CB=AAC_CB;
 return {AACEnc};})();
 
-let FORCESOFT=false,OFFWK=null,WRES=[],WPEND=0,WNEXT=0,WWAIT=null,WERR=null,WMUX=null,WFPS=30,WKB=6500;
+let LASTENC='',LASTSECS=0,FORCESOFT=false,OFFWK=null,WRES=[],WPEND=0,WNEXT=0,WWAIT=null,WERR=null,WMUX=null,WFPS=30,WKB=6500;
 function WDRAIN(){while(WRES[WNEXT]){const d=WRES[WNEXT];WRES[WNEXT]=0;WMUX.addVideo(d.data,Math.round(WNEXT*1e6/WFPS),d.key);WNEXT++}}
 const WWAITP=ms=>new Promise((res,rej)=>{const t=setTimeout(()=>{WWAIT=null;rej(new Error('encoder timeout'))},ms);WWAIT=()=>{clearTimeout(t);res()}});
 const offSupport=(()=>{let c=null;return async()=>{
@@ -2131,7 +2187,7 @@ async function offlineExport(){
   if(!mux.o.avcC)throw new Error('no video header');
   const hasAudio=!!mux.o.audio;
   const out=mux.finish();
-  blob=new Blob([out],{type:'video/mp4'});ext='mp4';LASTH264=true;
+  blob=new Blob([out],{type:'video/mp4'});ext='mp4';LASTH264=true;LASTENC=softV?'built-in encoder':'fast phone encoder';LASTSECS=Math.round((oldPN()-t0)/1000);
   return await (async()=>{ if(blob.size<20000)throw new Error('empty');$('save').hidden=false;$('pv').src=URL.createObjectURL(blob);$('pv').hidden=false;ui_(100,'Done. Saving...');return 'ok'})();
  }catch(e){
   if(e&&e.cancel){msg.textContent='Cancelled.';return 'cancel'}
@@ -2165,7 +2221,7 @@ $('save').onclick=async()=>{
   if(d){await d.save({filename:'beatreel_video.'+ext,data:blob})}
   else{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='beatreel_video.'+ext;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
   hit(SJ==4?'export_cap':'export_music');
-  msg.textContent=(LASTH264&&ext==='mp4'?'Saved to your phone as MP4.':'Saved. This file may not open in TikTok or CapCut. Tap Convert for TikTok below.')+(WHY?' ['+WHY+']':'')+(SLOW?' Your phone was slow, so the video may stutter. Try Quality: Low (360p).':'');$('cvt').hidden=LASTH264&&ext==='mp4'}
+  msg.textContent=(LASTH264&&ext==='mp4'?'Saved to your phone as MP4'+(LASTENC?' (made in '+LASTSECS+' s, '+LASTENC+')':'')+'.':'Saved. This file may not open in TikTok or CapCut. Tap Convert for TikTok below.')+(WHY?' ['+WHY+']':'')+(SLOW?' Your phone was slow, so the video may stutter. Try Quality: Low (360p).':'');$('cvt').hidden=LASTH264&&ext==='mp4'}
  catch(e){msg.textContent=e&&e.code==='declined'?'Save cancelled.':'Could not save.'}};
 
 try{const fl_=document.createElement('link');fl_.rel='stylesheet';fl_.href='https://fonts.googleapis.com/css2?family=Anton&family=Pacifico&family=Playfair+Display:ital,wght@1,400;1,700;1,900&family=Fredoka:wght@700&family=Bangers&family=Cinzel:wght@400&family=Inter:wght@300;500;800&family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@700&family=Press+Start+2P&family=Cairo:wght@400;600;700;900&family=Caveat:wght@700&family=Oswald:wght@700&display=swap';document.head.appendChild(fl_)}catch(e){}
