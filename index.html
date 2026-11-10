@@ -1318,7 +1318,11 @@ new MutationObserver(()=>{if(!$('co').classList.contains('on'))return;const t=ms
  if(m=/Downloading.*?(\d+)%/.exec(t))coSet(10+m[1]*.4);else if(/Listening/.test(t)){const el=(performance.now()-COT0)/1000,len=Math.max(5,Math.min(CE,DUR||30)-(CS||0));coSet(50+45*(1-Math.exp(-el/(len*1.2+8))))}else if(/Preparing/.test(t))coSet(5);else if(/Starting/.test(t))coSet(10);else if(/ready/.test(t))coSet(100)}).observe(msg,{childList:true,characterData:true,subtree:true});
 $('cc').onclick=()=>{CCAN=true;try{if(ASRW){ASRW.terminate();ASRW=null}}catch(_){}if(asrRej)asrRej(new Error('cancel'))};
 
-function groupWords(ws,song){const out=[];let cur=null;const GW=song?.8:.6,NW=song?6:4,NC=song?34:24;ws.forEach(w=>{const t=String(w.text||'').trim();if(!t||!w.timestamp)return;const a=w.timestamp[0],b=w.timestamp[1]==null?a+.4:w.timestamp[1];
+function joinWords(ws){const m=[];(ws||[]).forEach(w=>{const t=String(w&&w.text||'').trim();if(!t||!w.timestamp)return;const p=m[m.length-1];
+ // French and English pieces: d + 'étonnée -> d'étonnée, c'est + -à + -dire -> c'est-à-dire, word + , -> word,
+ if(p&&(/^['’-]/.test(t)||/['’-]$/.test(p.text)||/^[.,!?;:%»)…؟،]+$/.test(t))&&(w.timestamp[0]||0)-(p.timestamp[1]||0)<.6){p.text+=t;if(w.timestamp[1]!=null)p.timestamp=[p.timestamp[0],w.timestamp[1]]}
+ else m.push({text:t,timestamp:[w.timestamp[0],w.timestamp[1]]})});return m}
+function groupWords(ws,song){ws=joinWords(ws);const out=[];let cur=null;const GW=song?.8:.6,NW=song?6:4,NC=song?34:24;ws.forEach(w=>{const t=String(w.text||'').trim();if(!t||!w.timestamp)return;const a=w.timestamp[0],b=w.timestamp[1]==null?a+.4:w.timestamp[1];
  if(cur&&(a-cur.e>GW||cur.n>=NW||(cur.t+' '+t).length>NC||/[.!?؟]$/.test(cur.t))){out.push(cur);cur=null}
  const ww=t.split(/\s+/).length;if(!cur)cur={t:t,s:a,e:Math.max(b,a+.2),n:1,w:[]};else{cur.t+=' '+t;cur.e=Math.max(b,cur.e);cur.n++}for(let q=0;q<ww;q++)cur.w.push([a+(b-a)*q/ww,a+(b-a)*(q+1)/ww])});
  if(cur)out.push(cur);return out}
