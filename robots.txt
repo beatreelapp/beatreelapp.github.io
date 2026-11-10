@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /diag.html
+
+Sitemap: https://beatreelapp.github.io/sitemap.xml
