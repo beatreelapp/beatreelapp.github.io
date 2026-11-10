@@ -360,7 +360,7 @@ async function subStatus(env, b, row, force) {
     return row.status;
   }
 }
-const stripeMode = (env) => (String(env.STRIPE_SECRET_KEY || "").startsWith("sk_live_") ? "live" : "test");
+const stripeMode = (env) => (/_live_/.test(String(env.STRIPE_SECRET_KEY || "")) ? "live" : "test");
 
 // ---------- YouTube link -> video file (RapidAPI "YouTube Media Downloader", DataFanatic) ----------
 function ytId(u) {
