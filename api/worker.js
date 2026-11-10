@@ -40,10 +40,12 @@ function bad(message) {
   return e;
 }
 
-async function transcribe(env, { audio, language }) {
+async function transcribe(env, { audio, language, vad, prompt }) {
   if (typeof audio !== "string" || !audio) throw bad("audio (base64) required");
-  const input = { audio, task: "transcribe", vad_filter: true };
+  // vad=false for songs: the voice filter tends to drop singing over music
+  const input = { audio, task: "transcribe", vad_filter: vad !== false };
   if (language) input.language = language;
+  if (typeof prompt === "string" && prompt.trim()) input.initial_prompt = prompt.slice(0, 200);
   return env.AI.run("@cf/openai/whisper-large-v3-turbo", input);
 }
 

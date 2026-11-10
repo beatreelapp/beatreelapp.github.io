@@ -1168,9 +1168,9 @@ function wavB64(f){const n=f.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),
 function cutPoints(p){const SR=16000,MAX=30*SR,FR=320,out=[0];let a=0;
  while(p.length-a>MAX){const lo=a+24*SR,hi=a+MAX;let best=hi,bv=Infinity;for(let i=lo;i+FR<=hi;i+=FR){let e=0;for(let j=i;j<i+FR;j++)e+=p[j]*p[j];if(e<bv){bv=e;best=i+(FR>>1)}}a=best;out.push(a)}
  out.push(p.length);return out}
-async function cloudASR(pcm,lang,onStep){const cp=cutPoints(pcm),chunks=[];let text='';
+async function cloudASR(pcm,lang,onStep,song){const cp=cutPoints(pcm),chunks=[];let text='';
  for(let k=0;k<cp.length-1;k++){if(CCAN)throw new Error('cancel');onStep(k+1,cp.length-1);
-  const a=cp[k],b=cp[k+1],off=a/16000,body={audio:wavB64(pcm.subarray(a,b))};if(lang)body.language=lang;
+  const a=cp[k],b=cp[k+1],off=a/16000,body={audio:wavB64(pcm.subarray(a,b))};if(lang)body.language=lang;if(song){body.vad=false;body.prompt='Song lyrics, sung over music.'}
   let j=null,last=null;
   for(let t=0;t<2&&!j;t++){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),90000);asrRej=()=>ctl.abort();
    try{const r=await fetch(API_URL+'/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl.signal});
@@ -1211,7 +1211,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   const onP=p=>{if(p&&p.status==='progress'&&isFinite(p.progress))msg.textContent='Downloading the speech model... '+Math.round(p.progress)+'% (only the first time)'},onL=()=>{tick=setInterval(()=>{msg.textContent='Listening to the speech... '+Math.round((performance.now()-t0)/1000)+'s. Keep this page open.'},500)};
   let res=null,mdl=$('acm').value,viaCloud=false;
   if(mdl==='cloud'){mdl='Xenova/whisper-base';
-   try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent='Listening to the speech (online AI)... part '+k+' of '+n+'. Keep this page open.'});if(!res.chunks.length&&!String(res.text||'').trim())res=null;viaCloud=!!res}
+   try{res=await cloudASR(pcm,LANGC[lang]||'',(k,n)=>{msg.textContent=(song?'Listening to the song':'Listening to the speech')+' (online AI)... part '+k+' of '+n+'. Keep this page open.'},song);if(!res.chunks.length&&!String(res.text||'').trim())res=null;viaCloud=!!res}
    catch(ce){if(ce&&ce.message==='cancel')throw ce;res=null}
    if(!res)msg.textContent='The online AI is not available right now, so the on-device model is used instead...'}
   if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
