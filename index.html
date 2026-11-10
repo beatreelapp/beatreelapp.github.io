@@ -1059,7 +1059,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile;if(!f){msg.textConte
 
 /* ===== Store links, ad slot and in-app launch =====
    Fill these when you have the links. Empty = hidden. */
-const STORES={apk:'',uptodown:'',aptoide:'',appgallery:'',playstore:''};
+const STORES={apk:'BeatReel.apk',uptodown:'',aptoide:'',appgallery:'',playstore:''};
 const ADS={top:''}; // paste ad HTML (e.g. an AdSense <ins> block) between the quotes; leave '' for no ad
 (function(){
  const q=location.search||'',inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(q)||window.navigator.standalone===true;
@@ -1068,7 +1068,7 @@ const ADS={top:''}; // paste ad HTML (e.g. an AdSense <ins> block) between the q
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(go,0));else setTimeout(go,0)}
  const box=document.getElementById('stores'),note=document.getElementById('storesnote');
  if(box){const L=[['apk','Download APK (Android)',1],['playstore','Google Play'],['appgallery','Huawei AppGallery'],['uptodown','Uptodown'],['aptoide','Aptoide']];let n=0;
-  L.forEach(x=>{if(STORES[x[0]]){const a=document.createElement('a');a.className='stb'+(x[2]?' hl':'');a.href=STORES[x[0]];a.target='_blank';a.rel='noopener';a.textContent=x[1];box.appendChild(a);n++}});
+  L.forEach(x=>{if(STORES[x[0]]){const a=document.createElement('a');a.className='stb'+(x[2]?' hl':'');a.href=STORES[x[0]];if(x[0]=='apk')a.setAttribute('download','BeatReel.apk');else a.target='_blank';a.rel='noopener';a.textContent=x[1];box.appendChild(a);n++}});
   let dp=null;const ib=document.createElement('button');ib.className='stb'+(n?'':' hl');ib.textContent='Install on this device';ib.hidden=true;box.appendChild(ib);
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;ib.hidden=false});
   ib.onclick=async()=>{if(!dp)return;dp.prompt();try{await dp.userChoice}catch(_){}dp=null;ib.hidden=true};

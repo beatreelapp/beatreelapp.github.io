@@ -1,8 +1,26 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "app.netlify.beatreel.twa",
-        "sha256_cert_fingerprints": ["B1:31:AD:A0:E0:B5:32:DD:6E:F3:23:BC:8E:01:62:28:30:7B:0F:00:32:0B:B8:C8:EC:5F:B8:A9:AB:60:EC:38"]
-      }
-    }]
+[
+ {
+  "relation": [
+   "delegate_permission/common.handle_all_urls"
+  ],
+  "target": {
+   "namespace": "android_app",
+   "package_name": "app.netlify.beatreel.twa",
+   "sha256_cert_fingerprints": [
+    "B1:31:AD:A0:E0:B5:32:DD:6E:F3:23:BC:8E:01:62:28:30:7B:0F:00:32:0B:B8:C8:EC:5F:B8:A9:AB:60:EC:38"
+   ]
+  }
+ },
+ {
+  "relation": [
+   "delegate_permission/common.handle_all_urls"
+  ],
+  "target": {
+   "namespace": "android_app",
+   "package_name": "io.github.beatreelapp.twa",
+   "sha256_cert_fingerprints": [
+    "CA:5B:1E:15:BF:4C:10:F9:64:59:2D:CD:93:06:8F:9F:2A:57:B1:F4:04:27:7D:9F:2C:1D:23:5E:AD:DA:E2:88"
+   ]
+  }
+ }
+]
