@@ -1356,7 +1356,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=false,PRICE_TXT='€4.99/month';
-let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v14';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1530,15 +1530,26 @@ async function ytLink(pre){
     er.textContent='Checking the video...';
     if(await ytPlays(v)){vid=v;used=k;break}why.push((k.h||'?')+'p: does not play')}
    catch(e){why.push((k.h||'?')+'p: '+String(e&&e.message||e).slice(0,30))}}
-  if(!vid)throw new Error(why.join(', ')+(j.dbg?' · '+JSON.stringify(j.dbg).slice(0,160):''));
+  YTD={j:j,why:why,used:used,aud:aud?aud.size:0,vid:vid?vid.size:0};
+  if(!vid){ytDiag('❌ No video played');return}
   if(!used.sep)aud=null;
   PMR&&PMR('close');hit('yt_ok');
   const vf=new File([vid],nm+'.mp4',{type:'video/mp4'});
   $('vf').onchange({target:{files:[vf]}});
   if(aud){const af=new File([aud],nm+'.m4a',{type:'audio/mp4'});loadAudio(af,"Using the video's sound. Making captions...");curVid=true}
+  setTimeout(()=>ytDiag('✅ Video loaded'),5000);
  }catch(e){go.disabled=false;er.style.color='';er.textContent='Could not get a video that plays here ('+String(e&&e.message||e).slice(0,260)+'). Please try again, or upload it from your phone.';return ytAgain()}}
 function ytPlays(blob){return new Promise(res=>{const v=document.createElement('video'),u=URL.createObjectURL(blob);let done=false;const fin=ok=>{if(done)return;done=true;clearTimeout(t);v.removeAttribute('src');v.load();URL.revokeObjectURL(u);res(ok)};
  v.muted=true;v.playsInline=true;v.preload='auto';v.onloadeddata=()=>fin(!!v.videoWidth);v.onerror=()=>fin(false);const t=setTimeout(()=>fin(false),15000);v.src=u;v.load()})}
+var YTD=null;
+function ytDiag(head){const d=YTD||{},j=d.j||{},g=j.dbg||{},bv=$('bgv'),mb=x=>(x/1048576).toFixed(1)+' MB';
+ const lines=['App '+APPV+' · '+head,'Title: '+(j.title||'?')+' · '+Math.round(j.len||0)+' s',
+  'Chosen: '+(d.used?(d.used.h||'?')+'p '+(d.used.mime||'')+(d.used.sep?' + separate sound':' (sound inside)'):'none'),
+  'Downloaded: video '+mb(d.vid||0)+(d.aud?' · sound '+mb(d.aud):''),
+  'Player: '+(bv.videoWidth?bv.videoWidth+'x'+bv.videoHeight:'no picture')+' · state '+bv.readyState+(bv.error?' · error '+bv.error.code:''),
+  'Tried: '+((j.cands||[]).map(k=>(k.h||'?')+'p'+(k.sep?'+s':'')).join(', ')||'-')+(d.why&&d.why.length?' · fails: '+d.why.join('; '):''),
+  'Videos from service:'].concat((g.videos||[]).map(x=>'  '+x),['Sounds from service:'],(g.audios||[]).map(x=>'  '+x));
+ modal('<h3>YouTube check</h3><p class="sm" style="margin:0 0 8px">Take a screenshot of this and send it.</p><pre style="text-align:left;white-space:pre-wrap;word-break:break-all;font:11px/1.45 ui-monospace,monospace;background:#0b0714;border:1px solid #4a2a7a;border-radius:10px;padding:10px;margin:0;max-height:55vh;overflow:auto">'+clEsc(lines.join('\n'))+'</pre><button class="pri" data-a="ok">OK</button>')}
 function ytAgain(){const go=document.querySelector('#pmc [data-a="_go"]');if(!go)return;go.onclick=()=>{const v=($('yti')||{}).value||'';ytLink(v)}}
 async function ytFetch(url,onP){const C=4<<20,sep=url.indexOf('?')>-1?'&':'?';
  // googlevideo sends big files fast only in parts, so ask 4 MB at a time

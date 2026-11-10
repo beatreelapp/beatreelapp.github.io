@@ -367,7 +367,10 @@ function pickYt(j) {
   muxed.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: false }));
   if (!c.length) return null;
   const strip = (v) => { const o = {}; Object.keys(v || {}).slice(0, 14).forEach((k) => { if (k !== "url") o[k] = typeof v[k] === "object" ? "{}" : String(v[k]).slice(0, 40); }); return o; };
-  return { cands: c, audio: aud.length ? { url: aud[0].url } : null, video: c[0], dbg: { v: strip(vs[0]), au: strip(as[0]), n: vs.length, a: as.length, langs: [...new Set(as.map(lang))].slice(0, 6) } };
+  return { cands: c, audio: aud.length ? { url: aud[0].url } : null, video: c[0], dbg: {
+    videos: vs.slice(0, 14).map((v) => [h(v), mt(v).slice(0, 45), v.hasAudio === true ? "+sound" : "-", bad(v) ? "skip" : ""].join(" ")),
+    audios: as.slice(0, 10).map((v) => meta(v).replace(/[{}"]/g, "").slice(0, 110)),
+  } };
 }
 async function yt(env, b, did, pro, body, req) {
   if (!env.RAPIDAPI_KEY) return { status: 503, body: { error: "not_ready" } };
