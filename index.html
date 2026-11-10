@@ -1335,6 +1335,12 @@ async function pcm16k(file,from,to){const OC=window.OfflineAudioContext||window.
  const sr=ab.sampleRate,a=Math.max(0,Math.floor(from*sr)),b=Math.min(n,Math.ceil(to*sr));return m.slice(a,b)}
 /* ===== Online AI captions (Cloudflare Worker, Whisper large-v3-turbo) ===== */
 const API_URL='https://beatreel-api.renardkatty8.workers.dev',LANGC={arabic:'ar',french:'fr',english:'en'};
+/* Anonymous usage counter: sends only an event name (no ids, no personal data). Only on the live site. */
+const LIVE=location.hostname==='beatreelapp.github.io';
+const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,keepalive:true,mode:'no-cors'}).catch(()=>{})}catch(_){}};
+(()=>{if(!LIVE)return;const d=new Date().toISOString().slice(0,10),g=k=>{try{return localStorage.getItem(k)||''}catch(_){return''}},p=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
+ const inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(location.search)||window.navigator.standalone===true;
+ hit('visit');if(g('br_day')!==d){p('br_day',d);hit('dev')}if(!g('br_seen')){p('br_seen','1');hit('new')}if(inApp&&g('br_aday')!==d){p('br_aday',d);hit('app')}})();
 function wavB64(f){const n=f.length,b=new ArrayBuffer(44+n*2),v=new DataView(b),W=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
  W(0,'RIFF');v.setUint32(4,36+n*2,true);W(8,'WAVE');W(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,16000,true);v.setUint32(28,32000,true);v.setUint16(32,2,true);v.setUint16(34,16,true);W(36,'data');v.setUint32(40,n*2,true);
  for(let i=0;i<n;i++){const x=Math.max(-1,Math.min(1,f[i]));v.setInt16(44+i*2,x<0?x*32768:x*32767,true)}
@@ -1415,7 +1421,7 @@ const ADS={top:''}; // paste ad HTML (e.g. an AdSense <ins> block) between the q
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(go,0));else setTimeout(go,0)}
  const box=document.getElementById('stores'),note=document.getElementById('storesnote');
  if(box){const L=[['apk','Download APK (Android)',1],['playstore','Google Play'],['appgallery','Huawei AppGallery'],['uptodown','Uptodown'],['aptoide','Aptoide']];let n=0;
-  L.forEach(x=>{if(STORES[x[0]]){const a=document.createElement('a');a.className='stb'+(x[2]?' hl':'');a.href=STORES[x[0]];if(x[0]=='apk')a.setAttribute('download','BeatReel.apk');else a.target='_blank';a.rel='noopener';a.textContent=x[1];box.appendChild(a);n++}});
+  L.forEach(x=>{if(STORES[x[0]]){const a=document.createElement('a');a.className='stb'+(x[2]?' hl':'');a.href=STORES[x[0]];if(x[0]=='apk')a.setAttribute('download','BeatReel.apk');else a.target='_blank';a.rel='noopener';a.textContent=x[1];if(x[0]=='apk')a.addEventListener('click',()=>hit('apk'));box.appendChild(a);n++}});
   let dp=null;const ib=document.createElement('button');ib.className='stb'+(n?'':' hl');ib.textContent='Install on this device';ib.hidden=true;box.appendChild(ib);
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;ib.hidden=false});
   ib.onclick=async()=>{if(!dp)return;dp.prompt();try{await dp.userChoice}catch(_){}dp=null;ib.hidden=true};
@@ -2079,6 +2085,7 @@ $('save').onclick=async()=>{
  try{let d=null;try{d=window.claude&&await claude.use('downloads')}catch(_){d=null}
   if(d){await d.save({filename:'beatreel_video.'+ext,data:blob})}
   else{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='beatreel_video.'+ext;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+  hit(SJ==4?'export_cap':'export_music');
   msg.textContent=(LASTH264&&ext==='mp4'?'Saved to your phone as MP4.':'Saved. This file may not open in TikTok or CapCut. Tap Convert for TikTok below.')+(WHY?' ['+WHY+']':'')+(SLOW?' Your phone was slow, so the video may stutter. Try Quality: Low (360p).':'');$('cvt').hidden=LASTH264&&ext==='mp4'}
  catch(e){msg.textContent=e&&e.code==='declined'?'Save cancelled.':'Could not save.'}};
 
@@ -2087,7 +2094,7 @@ try{const fl_=document.createElement('link');fl_.rel='stylesheet';fl_.href='http
 (()=>{const h=document.getElementById('home'),hb=document.getElementById('hb'),B=document.getElementById('hbars');
 for(let i=0;i<22;i++){const e=document.createElement('i');e.style.animationDelay=(-(i*37%10)/10)+'s';e.style.animationDuration=(.7+(i*13%7)/10)+'s';B.appendChild(e)}
 document.body.style.overflow='hidden';
-h.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{h.classList.add('off');hb.hidden=false;document.body.style.overflow='';window.scrollTo(0,0)});
+let st_=0;h.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{if(!st_){st_=1;hit('start')}h.classList.add('off');hb.hidden=false;document.body.style.overflow='';window.scrollTo(0,0)});
 hb.onclick=()=>{h.classList.remove('off');hb.hidden=true;document.body.style.overflow='hidden'}})();
 
 (()=>{const ph=document.getElementById('ph'),cap=document.getElementById('cap'),base=document.getElementById('base'),chips=[...document.querySelectorAll('#chips i')],ly1=document.getElementById('ly1'),ly2=document.getElementById('ly2'),dr=document.getElementById('dr'),dp=document.getElementById('dp'),dn=document.getElementById('dn'),dots=[...document.querySelectorAll('#dots i')];

@@ -3,12 +3,17 @@
 //   POST /transcribe  {audio: base64 WAV, language?}         -> Whisper large-v3-turbo result (text, segments, words)
 //   POST /style       {text, lines, looks, colors, emojis}       -> {mood, look, color, e:[emoji index per line], k:[keyword index per line]}
 //                     (old shape {text, options} still works)
+//   POST /hit         text body: event name                    -> counts anonymous usage (no IP, no personal data stored)
+//   GET  /stats?k=KEY                                          -> private usage page (only the SHA-256 of the key is stored here)
+import { DurableObject } from "cloudflare:workers";
+const STATS_KEY_SHA256 = "3cfa6b59a11a89f3a83c08f056b077129a9cf05e77458de92e556dfc8b23c3a7";
+const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 const STYLE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const STYLE_KEYS = ["font", "col", "size", "anim", "fx", "frame"];
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const origin = req.headers.get("Origin") || "";
     const cors = {
       "Access-Control-Allow-Origin": ALLOWED.includes(origin) ? origin : ALLOWED[0],
@@ -18,12 +23,23 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(req.url);
     const route = url.pathname;
+    if (route === "/stats" && req.method === "GET") return statsPage(env, url.searchParams.get("k") || "");
+    if (route === "/hit" && req.method === "POST") {
+      if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
+      const ev = (await req.text()).trim().slice(0, 20);
+      if (EVENTS.includes(ev)) {
+        const cc = ev === "dev" && req.cf && /^[A-Z]{2}$/.test(req.cf.country || "") ? req.cf.country : "";
+        ctx.waitUntil(count(env, ev, cc));
+      }
+      return new Response(null, { status: 204, headers: cors });
+    }
     if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style"))
       return new Response("BeatReel API OK", { headers: cors });
     if (!ALLOWED.includes(origin))
       return new Response("Forbidden", { status: 403, headers: cors });
     try {
       const body = await req.json();
+      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : "ai_style", ""));
       if (route === "/transcribe") return Response.json(await transcribe(env, body), { headers: cors });
       if (Array.isArray(body.looks)) return Response.json(await look(env, body), { headers: cors });
       return Response.json(await style(env, body), { headers: cors });
@@ -142,4 +158,67 @@ async function look(env, body) {
     res.k.push(idx(K[i], lines[i].split(/\s+/).filter(Boolean).length));
   }
   return res;
+}
+
+// ---------- Anonymous usage counter (one SQLite Durable Object, free plan) ----------
+function stub(env) { return env.STATS.get(env.STATS.idFromName("main")); }
+async function count(env, ev, cc) { try { await stub(env).add(ev, cc); } catch (_) {} }
+
+export class Stats extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.sql.exec("CREATE TABLE IF NOT EXISTS c (day TEXT, ev TEXT, n INTEGER, PRIMARY KEY (day, ev))");
+  }
+  add(ev, cc) {
+    const day = new Date().toISOString().slice(0, 10);
+    const up = "INSERT INTO c (day, ev, n) VALUES (?, ?, 1) ON CONFLICT (day, ev) DO UPDATE SET n = n + 1 WHERE n < 1000000";
+    this.sql.exec(up, day, ev);
+    if (cc) this.sql.exec(up, day, "cc:" + cc);
+  }
+  rows(since) { return this.sql.exec("SELECT day, ev, n FROM c WHERE day >= ? ORDER BY day DESC", since).toArray(); }
+  all() { return this.sql.exec("SELECT ev, SUM(n) AS n FROM c GROUP BY ev").toArray(); }
+}
+
+async function sha(s) {
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+const LABELS = [
+  ["dev", "زوار (جهاز مختلف في اليوم)"],
+  ["new", "زوار جدد لأول مرة"],
+  ["app", "فتحوا من تطبيق APK"],
+  ["visit", "مرات فتح الموقع"],
+  ["start", "ضغطوا Start"],
+  ["export_music", "فيديو موسيقى محفوظ"],
+  ["export_cap", "فيديو ترجمة محفوظ"],
+  ["apk", "ضغطات تحميل APK"],
+  ["ai_style", "استعمال الذكاء (ستايل)"],
+  ["ai_tr", "طلبات تفريغ الصوت"],
+];
+
+async function statsPage(env, k) {
+  const h = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" };
+  if ((await sha(k)) !== STATS_KEY_SHA256) return new Response("Not found", { status: 404, headers: h });
+  const d = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const s = stub(env);
+  const rows = await s.rows(d(29));
+  const tot = Object.fromEntries((await s.all()).map((r) => [r.ev, r.n]));
+  const sum = (ev, from) => rows.filter((r) => r.ev === ev && r.day >= from).reduce((a, r) => a + r.n, 0);
+  const esc = (x) => String(x).replace(/[<>&"]/g, (c) => "&#" + c.charCodeAt(0) + ";");
+  let html = '<table><tr><th></th><th>اليوم</th><th>7 أيام</th><th>30 يوم</th><th>الكل</th></tr>';
+  for (const [ev, name] of LABELS)
+    html += "<tr><td>" + name + "</td><td>" + sum(ev, d(0)) + "</td><td>" + sum(ev, d(6)) + "</td><td>" + sum(ev, d(29)) + "</td><td>" + (tot[ev] || 0) + "</td></tr>";
+  html += "</table><h2>كل يوم (زوار / فيديوهات محفوظة)</h2><table><tr><th>اليوم</th><th>زوار</th><th>جدد</th><th>فيديوهات</th></tr>";
+  for (let i = 0; i < 14; i++) {
+    const day = d(i), g = (ev) => rows.filter((r) => r.day === day && r.ev === ev).reduce((a, r) => a + r.n, 0);
+    html += "<tr><td>" + day + "</td><td>" + g("dev") + "</td><td>" + g("new") + "</td><td>" + (g("export_music") + g("export_cap")) + "</td></tr>";
+  }
+  const cc = {};
+  for (const r of rows) if (r.ev.startsWith("cc:")) cc[r.ev.slice(3)] = (cc[r.ev.slice(3)] || 0) + r.n;
+  const top = Object.entries(cc).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  html += "</table><h2>الدول (30 يوم)</h2><table>" + (top.length ? top.map(([c, n]) => "<tr><td>" + esc(c) + "</td><td>" + n + "</td></tr>").join("") : "<tr><td>لا شيء بعد</td></tr>") + "</table>";
+  const page = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>BeatReel stats</title><style>body{font:16px system-ui,sans-serif;margin:16px;background:#0d0d12;color:#eee}h1{font-size:22px}h2{font-size:17px;margin-top:24px;color:#bbb}table{border-collapse:collapse;width:100%}td,th{padding:8px 6px;border-bottom:1px solid #2a2a33;text-align:center}td:first-child,th:first-child{text-align:right}th{color:#999;font-weight:500}small{color:#888}</style></head><body><h1>إحصائيات BeatReel</h1><small>بدون أسماء ولا عناوين IP. الأيام بتوقيت UTC. أعد تحميل الصفحة للتحديث.</small>' + html + "</body></html>";
+  return new Response(page, { headers: h });
 }
