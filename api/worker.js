@@ -336,7 +336,9 @@ function ytId(u) {
   u = String(u || "").trim();
   if (/^[A-Za-z0-9_-]{11}$/.test(u)) return u;
   const m = /(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/|\/v\/)([A-Za-z0-9_-]{11})/.exec(u);
-  return m && /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)/.test(u) ? m[1] : "";
+  let host = "";
+  try { host = new URL(/^https?:\/\//i.test(u) ? u : "https://" + u).hostname.toLowerCase(); } catch { host = ""; }
+  return m && /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/.test(host) ? m[1] : "";
 }
 const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 function fmtList(x) { return Array.isArray(x) ? x : x && Array.isArray(x.items) ? x.items : []; }
