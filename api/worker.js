@@ -345,15 +345,21 @@ function fmtList(x) { return Array.isArray(x) ? x : x && Array.isArray(x.items) 
 function pickYt(j) {
   const vs = fmtList(j.videos).filter((v) => v && typeof v.url === "string" && /^https:/.test(v.url));
   const as = fmtList(j.audios).filter((v) => v && typeof v.url === "string" && /^https:/.test(v.url));
-  const h = (v) => num(v.height) || num(String(v.quality || v.qualityLabel || "").replace(/[^0-9]/g, ""));
-  const mp4 = (v) => /mp4/i.test(String(v.mimeType || v.extension || v.ext || "")) && !/vp9|av01|av1/i.test(String(v.mimeType || v.codec || ""));
+  const h = (v) => num(v.height) || num(String(v.quality || v.qualityLabel || v.label || "").replace(/[^0-9]/g, ""));
+  const mt = (v) => String(v.mimeType || v.mime || v.extension || v.ext || "");
+  const bad = (v) => /vp9|vp09|av01|av1|webm/i.test(mt(v) + " " + String(v.codec || v.codecs || ""));
+  const avc = (v) => /avc1/i.test(mt(v) + " " + String(v.codec || v.codecs || ""));
+  const mp4 = (v) => /mp4/i.test(mt(v)) && !bad(v);
   const muxed = vs.filter((v) => mp4(v) && v.hasAudio === true && h(v) <= 1080).sort((a, b) => h(b) - h(a));
-  const only = vs.filter((v) => mp4(v) && v.hasAudio !== true && h(v) <= 720).sort((a, b) => h(b) - h(a));
-  const aud = as.filter((v) => /mp4|m4a|aac/i.test(String(v.mimeType || v.extension || v.ext || ""))).sort((a, b) => num(b.bitrate) - num(a.bitrate));
-  // a separate 720p video + m4a audio is sharper than the 360p file with sound
-  if (only.length && aud.length && (!muxed.length || h(only[0]) > h(muxed[0]))) return { video: { url: only[0].url, h: h(only[0]) }, audio: { url: aud[0].url } };
-  if (muxed.length) return { video: { url: muxed[0].url, h: h(muxed[0]) }, audio: null };
-  return null;
+  const only = vs.filter((v) => mp4(v) && v.hasAudio !== true && h(v) <= 720).sort((a, b) => (avc(b) - avc(a)) || (h(b) - h(a)));
+  const aud = as.filter((v) => /mp4|m4a|aac/i.test(mt(v)) && !/opus|webm/i.test(mt(v))).sort((a, b) => num(b.bitrate) - num(a.bitrate));
+  // try in this order on the phone: sharp video without sound (+ separate sound), then the file with sound
+  const c = [];
+  if (aud.length) only.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: true }));
+  muxed.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: false }));
+  if (!c.length) return null;
+  const strip = (v) => { const o = {}; Object.keys(v || {}).slice(0, 14).forEach((k) => { if (k !== "url") o[k] = typeof v[k] === "object" ? "{}" : String(v[k]).slice(0, 40); }); return o; };
+  return { cands: c, audio: aud.length ? { url: aud[0].url } : null, video: c[0], dbg: { v: strip(vs[0]), n: vs.length, a: as.length } };
 }
 async function yt(env, b, did, pro, body, req) {
   if (!env.RAPIDAPI_KEY) return { status: 503, body: { error: "not_ready" } };
@@ -380,7 +386,7 @@ async function yt(env, b, did, pro, body, req) {
     await b.ytUndo(did, pro, ip, false);
     return { status: 502, body: { error: "no_format", detail: "keys:" + Object.keys(j).slice(0, 15).join(",") + " v:" + fmtList(j.videos).length + " a:" + fmtList(j.audios).length } };
   }
-  return { body: { title: String(j.title || "").slice(0, 100), len, video: f.video, audio: f.audio, pro } };
+  return { body: { title: String(j.title || "").slice(0, 100), len, video: f.video, audio: f.audio, cands: f.cands, dbg: f.dbg, pro } };
 }
 async function ytProxy(req, url, cors, origin) {
   if (!ALLOWED.includes(origin)) return new Response("Forbidden", { status: 403, headers: cors });
