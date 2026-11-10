@@ -1,4 +1,4 @@
-// BeatReel API (Cloudflare Worker). No secrets here: Workers AI is reached through the "AI" binding.
+// BeatReel API (Cloudflare Worker). No secrets here: Workers AI is reached through the "AI" binding. Deployed by GitHub Actions.
 const ALLOWED = ["https://beatreelapp.github.io"];
 
 export default {
