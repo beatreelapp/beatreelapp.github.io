@@ -15,6 +15,7 @@
 //   POST /yt      {did, url}          -> {title, len, video:{url}, audio:{url}|null}  YouTube link (RapidAPI, key in secret RAPIDAPI_KEY)
 //                                       free: 1 try per device ever, max 2 min; Pro: 5 a day, max 10 min; whole app: ~32 links a month (free plan = 100 units, 3 per link)
 //   GET  /ytget?u=URL                 -> streams a googlevideo.com file with CORS (only if the phone cannot fetch it directly)
+//   POST /err     {w, m, v, ua}       -> stores an app problem (where, message, app version, phone/browser), last 60 kept, shown on /stats
 //   GET  /stats?k=KEY                                          -> private usage page (only the SHA-256 of the key is stored here)
 import { DurableObject } from "cloudflare:workers";
 const STATS_KEY_SHA256 = "3cfa6b59a11a89f3a83c08f056b077129a9cf05e77458de92e556dfc8b23c3a7";
@@ -42,6 +43,14 @@ export default {
     const route = url.pathname;
     if (route === "/ytget" && req.method === "GET") return ytProxy(req, url, cors, origin);
     if (route === "/stats" && req.method === "GET") return statsPage(env, url.searchParams.get("k") || "");
+    if (route === "/err" && req.method === "POST") {
+      if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
+      let j = {};
+      try { j = JSON.parse((await req.text()).slice(0, 1500)); } catch (_) {}
+      const ip = await ipKey(req);
+      ctx.waitUntil(stub(env).err(ip, String(j.w || "").slice(0, 40), String(j.m || "").slice(0, 400), String(j.v || "").slice(0, 10), String(j.ua || "").slice(0, 80)).catch(() => {}));
+      return new Response(null, { status: 204, headers: cors });
+    }
     if (route === "/hit" && req.method === "POST") {
       if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
       const ev = (await req.text()).trim().slice(0, 20);
@@ -246,7 +255,20 @@ export class Stats extends DurableObject {
     super(ctx, env);
     this.sql = ctx.storage.sql;
     this.sql.exec("CREATE TABLE IF NOT EXISTS c (day TEXT, ev TEXT, n INTEGER, PRIMARY KEY (day, ev))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS errs (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, w TEXT, m TEXT, v TEXT, ua TEXT, u TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS errip (ip TEXT, day TEXT, n INTEGER, PRIMARY KEY (ip, day))");
   }
+  // app problems: max 30 per network per day, only the last 60 are kept
+  err(ip, w, m, v, ua) {
+    const day = new Date().toISOString().slice(0, 10);
+    const r = this.sql.exec("SELECT n FROM errip WHERE ip = ? AND day = ?", ip, day).toArray()[0];
+    if (r && r.n >= 30) return;
+    this.sql.exec("INSERT INTO errip (ip, day, n) VALUES (?, ?, 1) ON CONFLICT (ip, day) DO UPDATE SET n = n + 1", ip, day);
+    this.sql.exec("DELETE FROM errip WHERE day < ?", day);
+    this.sql.exec("INSERT INTO errs (ts, w, m, v, ua, u) VALUES (?, ?, ?, ?, ?, ?)", Date.now(), w, m, v, ua, ip.slice(0, 4));
+    this.sql.exec("DELETE FROM errs WHERE id <= (SELECT MAX(id) FROM errs) - 60");
+  }
+  errs() { return this.sql.exec("SELECT ts, w, m, v, ua, u FROM errs ORDER BY id DESC LIMIT 50").toArray(); }
   add(ev, cc) {
     const day = new Date().toISOString().slice(0, 10);
     const up = "INSERT INTO c (day, ev, n) VALUES (?, ?, 1) ON CONFLICT (day, ev) DO UPDATE SET n = n + 1 WHERE n < 1000000";
@@ -297,6 +319,9 @@ async function statsPage(env, k) {
   for (const r of rows) if (r.ev.startsWith("cc:")) cc[r.ev.slice(3)] = (cc[r.ev.slice(3)] || 0) + r.n;
   const top = Object.entries(cc).sort((a, b) => b[1] - a[1]).slice(0, 15);
   html += "</table><h2>الدول (30 يوم)</h2><table>" + (top.length ? top.map(([c, n]) => "<tr><td>" + esc(c) + "</td><td>" + n + "</td></tr>").join("") : "<tr><td>لا شيء بعد</td></tr>") + "</table>";
+  const er = await s.errs();
+  html += "<h2>المشاكل (آخر 50) · الوقت UTC</h2>" + (er.length ? "<table><tr><th>متى</th><th>أين</th><th>ماذا</th><th>نسخة</th><th>الجهاز</th></tr>" + er.map((e) =>
+    "<tr><td>" + esc(new Date(e.ts).toISOString().slice(5, 16).replace("T", " ")) + "</td><td>" + esc(e.w) + "</td><td style=\"text-align:left;direction:ltr;font-size:12px;word-break:break-all\">" + esc(e.m) + "</td><td>" + esc(e.v) + "</td><td style=\"font-size:12px\">" + esc(e.ua) + " <small>#" + esc(e.u) + "</small></td></tr>").join("") + "</table>" : "<p>لا توجد مشاكل مسجّلة 👍</p>");
   const page = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>BeatReel stats</title><style>body{font:16px system-ui,sans-serif;margin:16px;background:#0d0d12;color:#eee}h1{font-size:22px}h2{font-size:17px;margin-top:24px;color:#bbb}table{border-collapse:collapse;width:100%}td,th{padding:8px 6px;border-bottom:1px solid #2a2a33;text-align:center}td:first-child,th:first-child{text-align:right}th{color:#999;font-weight:500}small{color:#888}</style></head><body><h1>إحصائيات BeatReel</h1><small>بدون أسماء ولا عناوين IP. الأيام بتوقيت UTC. أعد تحميل الصفحة للتحديث.</small>' + html + "</body></html>";
   return new Response(page, { headers: h });
 }
