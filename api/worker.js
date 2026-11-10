@@ -344,12 +344,17 @@ async function stripe(env, method, path, form) {
   if (!r.ok) throw Object.assign(new Error("stripe: " + ((j.error && j.error.message) || r.status)), { status: 502, code: (j.error && j.error.code) || "", http: r.status });
   return j;
 }
+// Pro rows checked before payments went live (test mode) are checked again at once
+const LIVE_SINCE = Date.parse("2026-11-10T20:55:00Z");
+// the owner's free Pro code: only its SHA-256 is here, the code itself is kept by the owner
+const OWNER_HASH = "acdc6f23621658d6567f27f164aa9718d095b8af3835f40520ef3410969ac918";
 const YT_ON = false, CLIPS_ON = false; // YouTube links and Clipping are shown as "Soon" in the app
 const ACTIVE = ["active", "trialing", "past_due"];
 
 async function subStatus(env, b, row, force) {
+  if (row.sub === "owner") return "active";
   // refresh from Stripe at most every 6 hours (or when forced)
-  if (!force && Date.now() - row.checked < 6 * 3600e3) return row.status;
+  if (!force && row.checked > LIVE_SINCE && Date.now() - row.checked < 6 * 3600e3) return row.status;
   try {
     const sub = await stripe(env, "GET", "subscriptions/" + row.sub);
     await b.setStatus(row.code, sub.status, sub.customer || row.cust);
@@ -508,7 +513,8 @@ async function account(env, route, body, req) {
   if (route === "/restore") {
     const code = String(body.code || "").trim().toUpperCase();
     if (!/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) return { status: 404, body: { error: "bad_code" } };
-    const row = await b.byCode(code);
+    let row = await b.byCode(code);
+    if (!row && (await sha(code)) === OWNER_HASH) row = await b.owner(code);
     if (!row) return { status: 404, body: { error: "bad_code" } };
     const st = await subStatus(env, b, row, true);
     if (!ACTIVE.includes(st)) return { status: 402, body: { error: "not_active" } };
@@ -622,6 +628,7 @@ export class Bank extends DurableObject {
   proOf(did) { return this.one("SELECT pro.* FROM link JOIN pro ON pro.code = link.code WHERE link.did = ?", did); }
   byCode(code) { return this.one("SELECT * FROM pro WHERE code = ?", code); }
   setStatus(code, status, cust) { this.sql.exec("UPDATE pro SET status = ?, cust = ?, checked = ? WHERE code = ?", status, cust || "", Date.now(), code); }
+  owner(code) { this.sql.exec("INSERT OR IGNORE INTO pro (code, sub, cust, status, checked) VALUES (?, 'owner', '', 'active', ?)", code, Date.now()); return this.one("SELECT * FROM pro WHERE code = ?", code); }
   getKV(k) { const r = this.one("SELECT v FROM kv WHERE k = ?", k); return r ? r.v : ""; }
   setKV(k, v) { this.sql.exec("INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v", k, v); }
   claim(sub, cust, status, did, maxDev) {
