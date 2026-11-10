@@ -352,14 +352,22 @@ function pickYt(j) {
   const mp4 = (v) => /mp4/i.test(mt(v)) && !bad(v);
   const muxed = vs.filter((v) => mp4(v) && v.hasAudio === true && h(v) <= 1080).sort((a, b) => h(b) - h(a));
   const only = vs.filter((v) => mp4(v) && v.hasAudio !== true && h(v) <= 720).sort((a, b) => (avc(b) - avc(a)) || (h(b) - h(a)));
-  const aud = as.filter((v) => /mp4|m4a|aac/i.test(mt(v)) && !/opus|webm/i.test(mt(v))).sort((a, b) => num(b.bitrate) - num(a.bitrate));
+  // YouTube can carry several sound tracks (dubbed / AI-translated voices): keep the ORIGINAL voice
+  const meta = (v) => { try { return JSON.stringify(Object.fromEntries(Object.entries(v).filter(([k]) => k !== "url"))).toLowerCase(); } catch { return ""; } };
+  const orig = (v) => /original|"isdefault":true|"default":true|"is_default":true/.test(meta(v));
+  const dub = (v) => /dub|translat|"isautodubbed":true|secondary/.test(meta(v)) && !orig(v);
+  const lang = (v) => String(v.language || v.lang || v.languageCode || v.audioLanguage || (v.audioTrack && (v.audioTrack.id || v.audioTrack.displayName)) || "");
+  let aud = as.filter((v) => /mp4|m4a|aac/i.test(mt(v)) && !/opus|webm/i.test(mt(v)) && !dub(v))
+    .sort((a, b) => (orig(b) - orig(a)) || (num(b.bitrate) - num(a.bitrate)));
+  const many = new Set(aud.map(lang)).size > 1;
+  if (many && !aud.some(orig)) aud = []; // several voices and none marked original: use the file that has its own sound
   // try in this order on the phone: sharp video without sound (+ separate sound), then the file with sound
   const c = [];
   if (aud.length) only.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: true }));
   muxed.slice(0, 2).forEach((v) => c.push({ url: v.url, h: h(v), mime: mt(v).slice(0, 80), sep: false }));
   if (!c.length) return null;
   const strip = (v) => { const o = {}; Object.keys(v || {}).slice(0, 14).forEach((k) => { if (k !== "url") o[k] = typeof v[k] === "object" ? "{}" : String(v[k]).slice(0, 40); }); return o; };
-  return { cands: c, audio: aud.length ? { url: aud[0].url } : null, video: c[0], dbg: { v: strip(vs[0]), n: vs.length, a: as.length } };
+  return { cands: c, audio: aud.length ? { url: aud[0].url } : null, video: c[0], dbg: { v: strip(vs[0]), au: strip(as[0]), n: vs.length, a: as.length, langs: [...new Set(as.map(lang))].slice(0, 6) } };
 }
 async function yt(env, b, did, pro, body, req) {
   if (!env.RAPIDAPI_KEY) return { status: 503, body: { error: "not_ready" } };
