@@ -233,8 +233,8 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="row m-music"><button class="m" id="alb" type="button">🎤 Auto lyrics (from song)</button></div>
 <div class="row"><button id="lyb">Write lyrics</button><button id="tsb">Text style</button></div>
 <div id="tsp" hidden>
-<div class="row m-music m-noedit"><select id="tsy"></select></div>
-<div class="row m-music m-noedit"><select id="tan"></select></div>
+<div class="row m-music"><select id="tsy"></select></div>
+<div class="row m-music"><select id="tan"></select></div>
 <div class="row m-video"><select id="tf"></select><select id="tc"></select></div>
 <div class="row"><select id="tz"></select><select id="tp"></select></div>
 <div class="row m-video"><select id="ta"></select><select id="tx"></select></div>
@@ -572,13 +572,13 @@ function musicLyr(i){
  let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
  const lastS=wt[n-1][0],lastE=wt[n-1][1],te=Math.min(nextS,Math.max(se.e,lastE+.8)),exitAt=Math.max(lastS+.35,te-.4);
  if(t>te+.05)return;
- const base=[.75,1,1.2,1.4,1.6][TS.size]||1;let size=112*base*(rtl?(S_.ka||1):S_.k);if(SJ==10)size*=.6;
+ const base=[.75,1,1.2,1.4,1.6][TS.size]||1;let size=112*base*(rtl?(S_.ka||1):S_.k);if(SJ==10)size*=.55;
  const fontOf=(k,sz)=>{if(S_.edit){const big=k===0;return(rtl?(big?AFB:AFS):(big?S_.f:'italic 400 PXpx "Playfair Display",serif')).replace('PX',Math.round(sz*(big?1.15:.55)))}return(rtl?S_.fa:S_.f).replace('PX',Math.round(sz))};
- const maxW=W-80;let rows,wd,sp;
+ const maxW=SJ==10?OF.w-60:W-80;let rows,wd,sp;
  for(let tries=0;tries<8;tries++){c.save();c.letterSpacing=(S_.ls&&!rtl?S_.ls*size/64:0)+'px';wd=words.map((w,k)=>{c.font=fontOf(k,size);return c.measureText(w).width});c.font=fontOf(1,size);sp=c.measureText(' ').width*1.15;c.restore();
   rows=[];let cur=[],cw=0;words.forEach((w,k)=>{const add=(cur.length?sp:0)+wd[k];if(cur.length&&cw+add>maxW){rows.push({ix:cur,w:cw});cur=[];cw=0}cw+=(cur.length?sp:0)+wd[k];cur.push(k)});if(cur.length)rows.push({ix:cur,w:cw});
   const widest=Math.max.apply(null,wd);if(rows.length<=3&&widest<=maxW)break;size*=.88}
- const r=size/118,lh=size*(S_.edit?1.2:1.25),y0=(SJ==10?OF.y+OF.h+64:POSS[TS.pos][1])+size*.5,units=[];
+ const r=size/118,lh=size*(S_.edit?1.2:1.25),y0=SJ==10?OF.y+OF.h/2-(Math.min(3,rows.length)-1)*lh/2+size*.35:POSS[TS.pos][1]+size*.5,units=[];
  rows.slice(0,3).forEach((row,ri)=>{let x=rtl?(W+row.w)/2:(W-row.w)/2;const y=y0+ri*lh;
   row.ix.forEach(k=>{const w=wd[k],x0=rtl?x-w:x,f=fontOf(k,size),sz=parseInt(f.match(/(\d+)px/)[1]);
    if(rtl||S_.u==='W'||an==='spread'&&S_.u==='W')units.push({ch:words[k],cx:x0+w/2,x0:x0,w:w,y:y,t0:wt[k][0],k:k,f:f,s:sz});
@@ -1044,10 +1044,10 @@ function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)retu
  const ch=[];ws.forEach((w,k)=>{w=w.toUpperCase();const a=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-a));for(let j=0;j<w.length;j++)ch.push([w[j],a+d*j/w.length]);if(k<n-1)ch.push([' ',a+d])});
  orbitDraw(ch,sh,t,cl01((te-t)/.25));return true}
 /* while Edit text is open and paused, show a whole line so the place can be judged */
-function orbitShow(){const sh=shotNow();let s=(L.find(x=>x&&!/[؀-ۿ]/.test(x))||'YOUR LYRICS HERE').toUpperCase();if(sh.part==='straight'){c.save();c.textAlign='center';c.font='44px "Anton",Impact,sans-serif';c.lineWidth=6;c.strokeStyle='#000';c.lineJoin='round';c.strokeText(s.slice(0,30),W/2,OF.y+OF.h+80);c.fillStyle='#fff';c.fillText(s.slice(0,30),W/2,OF.y+OF.h+80);c.restore();return}
+function orbitShow(){const sh=shotNow();let s=(L.find(x=>x&&!/[؀-ۿ]/.test(x))||'YOUR LYRICS HERE').toUpperCase();if(sh.part==='straight'){c.save();c.textAlign='center';c.font='44px "Anton",Impact,sans-serif';c.lineWidth=6;c.strokeStyle='#000';c.lineJoin='round';c.textBaseline='middle';c.font='40px "Anton",Impact,sans-serif';let z=s.slice(0,34);while(c.measureText(z).width>OF.w-60&&z.length>4)z=z.slice(0,-2);c.strokeText(z,W/2,OF.y+OF.h/2);c.fillStyle='#fff';c.fillText(z,W/2,OF.y+OF.h/2);c.restore();return}
  orbitDraw([...s].map(x=>[x,0]),sh,null,1)}
 /* ---- Edit text panel ---- */
-const PARTS=[['head','⌒ Head'],['left','◜ Left'],['right','◝ Right'],['both','∩ Both sides'],['edge','▭ Frame edge'],['straight','— Straight']];
+const PARTS=[['head','⌒ Head'],['left','◜ Left'],['right','◝ Right'],['both','∩ Both sides'],['edge','▭ Frame edge'],['straight','▬ Normal text']];
 function etBuild(){if($('etp'))return;const st=document.createElement('style');st.textContent='#etp{position:fixed;left:0;right:0;bottom:0;z-index:90;max-height:66vh;overflow:auto;background:#120a24;border-top:1px solid #4a2a7a;border-radius:18px 18px 0 0;padding:10px 12px 18px;box-shadow:0 -12px 30px rgba(0,0,0,.55);color:#f3eefc;font:14px system-ui,sans-serif}#etp[hidden]{display:none}#etp .eh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#etp .eh b{font-size:16px}#etp button{width:auto;flex:0 0 auto;padding:9px 12px;border-radius:12px;border:1px solid #4a2a7a;background:#1b1033;color:#f3eefc;font:600 13px system-ui,sans-serif;cursor:pointer}#etp button.on{background:linear-gradient(90deg,#ff4fa3,#a64dff);border:0}#etp .er{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}#etv{display:block;margin:0 auto;width:min(48vw,180px);height:auto;border-radius:10px;background:#000}#etc{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 4px}#etc .sc{flex:0 0 auto;width:96px;text-align:center;font-size:11px;opacity:.85}#etc canvas{width:96px;height:96px;border-radius:8px;display:block;outline-offset:2px}#etc .sc.on canvas{outline:2px solid #ff4fa3}#etp .hint{font-size:12px;opacity:.7;text-align:center;margin-top:6px}';document.head.appendChild(st);
  const d=document.createElement('div');d.id='etp';d.hidden=true;d.innerHTML='<div class="eh"><b>✏️ Edit text</b><button id="etx" class="on">Done ✓</button></div><canvas id="etv" width="340" height="395"></canvas><div id="etc"></div><div class="hint" id="eth">Tap a shot, then choose where the words go.</div><div class="er" id="etparts"></div><div class="er"><button data-m="l" aria-label="Left">◀</button><button data-m="u" aria-label="Up">▲</button><button data-m="d" aria-label="Down">▼</button><button data-m="r" aria-label="Right">▶</button><button data-m="-" aria-label="Smaller">−</button><button data-m="+" aria-label="Bigger">＋</button></div><div class="er"><button id="etall">Same for all shots</button><button id="etmg">Merge with previous</button></div><div class="er"><button id="etcv">Change video</button><button id="etzm">Zoom video</button></div>';document.body.appendChild(d);
  $('etparts').innerHTML=PARTS.map(p=>'<button data-p="'+p[0]+'">'+p[1]+'</button>').join('');
@@ -1482,7 +1482,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v28';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v29';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
