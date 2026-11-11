@@ -1057,7 +1057,7 @@ function songName(){if(!curFile||curVid)return'';return curFile.name.replace(/\.
 function sceneUI(){document.body.classList.toggle('ed',SJ==10);etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap "✏️ Edit text" to place the words.':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
 var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOPEN=false,SHAUTO='';
 /* ---- shots: the video is cut into shots where the picture changes at once; each shot keeps its own text place ---- */
-function shotDef(){return{part:'shape',x:OH.x,y:OH.y,r:OH.r,f:'head',k:-100,a:0,c:false,s:1,dx:0,dy:0,nx:.5,ny:.5}}
+function shotDef(){return{part:'shape',x:OH.x,y:OH.y,r:OH.r,f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5}}
 function shotNow(){const bv=$('bgv');if(!SH.length)return shotDef();const t=bv.currentTime||0;for(const q of SH)if(t>=q.s&&t<q.e)return q;return SH[SH.length-1]}
 function coverDraw(x,v,S){const vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;const g=vidGeom(v,OF.w,OF.h),k=S/OF.w;const ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;x.drawImage(v,ox*k,oy*k,g.dw*k,g.dh*k)}
 async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.src&&SH.length)return;SHBUSY=true;const key=v.src;
@@ -1156,7 +1156,7 @@ function shotAuto(){if(!TRK.length)return;let prev='';const med=a=>{const b=a.sl
   q.trk=true;q.auto=true;const up=fe.filter(f=>f.up).length/fe.length,c=[];
   if(q.has.hand&&up>=.5)c.push('hand');if(q.has.eyes&&q.r>=.15)c.push('eyes');if(q.has.feet&&!q.has.eyes)c.push('feet');
   if(hd.length)c.push(q.y-q.r<.16?'both':'head','both');else c.push('edge');
-  const pk=c.find(x=>x!==prev)||c[0];prev=pk;Object.assign(q,{part:'shape',a:0,s:1,dx:0,dy:0,c:false},
+  const pk=c.find(x=>x!==prev)||c[0];prev=pk;Object.assign(q,{part:'shape',a:0,sz:1,dx:0,dy:0,c:false},
    pk==='hand'?{f:'hand',c:true,k:0}:pk==='eyes'?{f:'eyes',k:0}:pk==='feet'?{f:'feet',k:25}:pk==='head'?{f:'head',k:-60}:pk==='both'?{f:'head',k:-100}:{f:'none',k:-30,nx:.5,ny:.1})})}
 /* ---- text paths around the person ---- */
 /* ---- shapes (like Canva's curve slider + CapCut's 'follow'): one curve -100 (∩) .. 0 (line) .. +100 (U), turn, circle,
@@ -1171,7 +1171,7 @@ function shapeAnchor(sh){const X=v=>OF.x+v*OF.w,Y=v=>OF.y+v*OF.h,k=sh.k||0,f=sh.
  else if(f==='feet'&&sh.fx!=null){ax=X(sh.fx);ay=Math.min(Y(sh.fy)+30,OF.y+OF.h-40);w=sh.c?2*Math.PI*90:Math.max(240,sh.fw*OF.w*1.6)}
  else if(f==='none'){ax=X(sh.nx!=null?sh.nx:.5);ay=Y(sh.ny!=null?sh.ny:.5);w=sh.c?2*Math.PI*110:440}
  else head();
- w=Math.max(110,Math.min(1100,w*(sh.s||1)));return[ax+(sh.dx||0),ay+(sh.dy||0),w,ex]}
+ w=Math.max(110,Math.min(1100,w*(sh.sz||1)));return[ax+(sh.dx||0),ay+(sh.dy||0),w,ex]}
 function shapeQ(sh){const[ax,ay,w,ex]=shapeAnchor(sh),k=(sh.k||0)/100,P=[];
  if(sh.c){const R=w/(2*Math.PI);for(let i=0;i<=72;i++){const t=Math.PI+2*Math.PI*i/72;P.push([Math.cos(t)*R,Math.sin(t)*R])}}
  else{const th=Math.abs(k)*1.45*Math.PI;if(th<.03){for(let i=0;i<=30;i++)P.push([-w/2+w*i/30,0])}
@@ -1235,23 +1235,23 @@ function etBuild(){if($('etp'))return;const st=document.createElement('style');s
  const d=document.createElement('div');d.id='etp';d.hidden=true;d.innerHTML='<div class="eh"><b>✏️ Edit text</b><button id="etx" class="on">Done ✓</button></div><canvas id="etv" width="340" height="395"></canvas><div id="etc"></div><div class="hint" id="eth">Tap a shot, then choose where the words go.</div><div class="hint">Drag the yellow dot · pinch with two fingers to resize</div><div class="er" id="etf"></div><div class="sl"><b>∩</b><input type="range" id="etk" min="-100" max="100" step="1"><b>U</b></div><div class="sl"><span>Turn</span><input type="range" id="eta" min="-90" max="90" step="1"><span id="etao" style="min-width:36px">0°</span></div><div class="er"><button id="etci">○ Circle</button><button id="etst">▬ Normal text</button><button id="etrs">↺ Reset</button></div><div class="er"><button id="etall">Same for all shots</button><button id="etmg">Merge with previous</button></div><div class="er"><button id="etcv">Change video</button><button id="etzm">Zoom video</button></div>';document.body.appendChild(d);
  $('etf').innerHTML='<span class="lb">Follow:</span>'+FOLS.map(p=>'<button data-f="'+p[0]+'">'+p[1]+'</button>').join('');
  $('etx').onclick=etClose;$('etcv').onclick=()=>{etClose();$('vf').click()};$('etzm').onclick=()=>{etClose();openVA()};
- const cur=()=>{const q=SH[SHSEL];if(q&&!q.f)Object.assign(q,{f:'head',k:-100,a:0,c:false,s:1,dx:0,dy:0,nx:.5,ny:.5});return q};
- $('etf').onclick=e=>{const b=e.target.closest('[data-f]'),q=cur();if(!b||!q)return;const f=b.getAttribute('data-f');Object.assign(q,{part:'shape',f:f,dx:0,dy:0,s:1,a:0,c:f==='hand'},f==='head'?{k:-80}:f==='eyes'||f==='none'?{k:0}:f==='sho'?{k:-35}:{k:30});etUI()};
+ const cur=()=>{const q=SH[SHSEL];if(q&&!q.f)Object.assign(q,{f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5});return q};
+ $('etf').onclick=e=>{const b=e.target.closest('[data-f]'),q=cur();if(!b||!q)return;const f=b.getAttribute('data-f');Object.assign(q,{part:'shape',f:f,dx:0,dy:0,sz:1,a:0,c:f==='hand'},f==='head'?{k:-80}:f==='eyes'||f==='none'?{k:0}:f==='sho'?{k:-35}:{k:30});etUI()};
  $('etk').oninput=e=>{const q=cur();if(!q)return;q.k=+e.target.value;q.c=false;q.part='shape';etUI()};
  $('eta').oninput=e=>{const q=cur();if(!q)return;q.a=+e.target.value;$('etao').textContent=q.a+'°'};
  $('etci').onclick=()=>{const q=cur();if(!q)return;q.c=!q.c;q.part='shape';etUI()};
  $('etst').onclick=()=>{const q=cur();if(!q)return;q.part=q.part==='straight'?'shape':'straight';etUI()};
- $('etrs').onclick=()=>{const q=cur();if(!q)return;q.dx=q.dy=0;q.s=1;q.a=0;etUI()};
+ $('etrs').onclick=()=>{const q=cur();if(!q)return;q.dx=q.dy=0;q.sz=1;q.a=0;etUI()};
  etTouch();
- $('etall').onclick=()=>{const q=SH[SHSEL];if(!q)return;SH.forEach(o=>{if(o===q)return;['part','f','k','a','c','s','dx','dy','nx','ny'].forEach(k=>o[k]=q[k]);if(!o.trk){o.x=q.x;o.y=q.y;o.r=q.r}});etUI();msg.textContent='Same place used for all shots ✓'};
+ $('etall').onclick=()=>{const q=SH[SHSEL];if(!q)return;SH.forEach(o=>{if(o===q)return;['part','f','k','a','c','sz','dx','dy','nx','ny'].forEach(k=>o[k]=q[k]);if(!o.trk){o.x=q.x;o.y=q.y;o.r=q.r}});etUI();msg.textContent='Same place used for all shots ✓'};
  $('etmg').onclick=()=>{if(SHSEL<1)return;const a=SH[SHSEL-1],b=SH[SHSEL];a.e=b.e;SH.splice(SHSEL,1);SHSEL--;etPick(SHSEL)}}
 function etTouch(){const v=$('etv'),pts=new Map();let drag=null,pd=0,ps=1;
  const toC=e=>{const r=v.getBoundingClientRect();return[OF.x-40+(e.clientX-r.left)/r.width*(OF.w+80),OF.y-110+(e.clientY-r.top)/r.height*(OF.h+190)]};
  v.addEventListener('pointerdown',e=>{const q=SH[SHSEL];if(!q||q.part==='straight')return;try{v.setPointerCapture(e.pointerId)}catch(_){}pts.set(e.pointerId,toC(e));
-  if(pts.size===2){const[a,b]=[...pts.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1]);ps=q.s||1;drag=null}
+  if(pts.size===2){const[a,b]=[...pts.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1]);ps=q.sz||1;drag=null}
   else{const p=toC(e),Q=shapeQ(shotLive(q));if(Math.hypot(p[0]-Q.ax,p[1]-Q.ay)<70)drag={x:p[0],y:p[1],dx:q.dx||0,dy:q.dy||0}}e.preventDefault()});
  v.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const q=SH[SHSEL];if(!q)return;pts.set(e.pointerId,toC(e));
-  if(pts.size===2&&pd>0){const[a,b]=[...pts.values()];q.s=Math.max(.35,Math.min(3,ps*Math.hypot(a[0]-b[0],a[1]-b[1])/pd))}
+  if(pts.size===2&&pd>0){const[a,b]=[...pts.values()];q.sz=Math.max(.35,Math.min(3,ps*Math.hypot(a[0]-b[0],a[1]-b[1])/pd))}
   else if(drag){const p=toC(e);q.dx=Math.max(-500,Math.min(500,drag.dx+p[0]-drag.x));q.dy=Math.max(-600,Math.min(600,drag.dy+p[1]-drag.y))}e.preventDefault()});
  const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pd=0;if(!pts.size)drag=null};v.addEventListener('pointerup',up);v.addEventListener('pointercancel',up)}
 function etDots(q){return[['head',q.x*96,q.y*96-q.r*96-9],['left',q.x*96-q.r*96-13,q.y*96+q.r*110],['right',q.x*96+q.r*96+13,q.y*96+q.r*110]]}
@@ -1259,7 +1259,7 @@ function etUI(){if(!$('etp'))return;const box=$('etc');box.innerHTML='';
  SH.forEach((q,k)=>{const w=document.createElement('div');w.className='sc'+(k===SHSEL?' on':'');const cv2=document.createElement('canvas');cv2.width=cv2.height=96;const x=cv2.getContext('2d');if(q.th)x.drawImage(q.th,0,0,96,96);else{x.fillStyle='#222';x.fillRect(0,0,96,96)}
   cv2.onclick=()=>etPick(k);
   const lb=document.createElement('div');const e_=Math.min(q.e,$('bgv').duration||q.e);lb.textContent='Shot '+(k+1)+' · '+q.s.toFixed(1)+'–'+e_.toFixed(1)+'s'+(q.trk?' · ✨':'');w.appendChild(cv2);w.appendChild(lb);box.appendChild(w)});
- const q=SH[SHSEL];if(q&&!q.f)Object.assign(q,{f:'head',k:-100,a:0,c:false,s:1,dx:0,dy:0,nx:.5,ny:.5});
+ const q=SH[SHSEL];if(q&&!q.f)Object.assign(q,{f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5});
  $('etf').querySelectorAll('[data-f]').forEach(b=>{const f=b.getAttribute('data-f');b.classList.toggle('on',!!q&&q.part!=='straight'&&f===q.f);b.style.display=f==='head'||f==='none'||(q&&q.has&&q.has[f])?'':'none'});
  if(q){$('etk').value=q.k||0;$('eta').value=q.a||0;$('etao').textContent=(q.a||0)+'°';$('etci').classList.toggle('on',!!q.c&&q.part!=='straight');$('etst').classList.toggle('on',q.part==='straight')}$('etmg').disabled=SHSEL<1;
  $('eth').textContent=SH.length>1?'Your video has '+SH.length+' shots. Tap one, then choose where the words go.':'Choose where the words go.'}
@@ -1692,7 +1692,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v45';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v46';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
