@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+      KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -47,18 +47,39 @@ jobs:
         working-directory: app/android
         run: ./gradlew --no-daemon assembleDebug
 
-      - name: Build the signed app (only when the keystore secret exists)
-        if: ${{ env.KS_B64 != '' }}
+      - name: Build the signed app (only when the KEYSTORE_PASSWORD secret exists)
+        if: ${{ env.KS_PASS != '' }}
         working-directory: app/android
-        env:
-          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
-          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KS_KEYPASS: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/beatreel.keystore"
+          ENC="$GITHUB_WORKSPACE/app/signing/beatreel.keystore.enc"
           export KS_FILE="$RUNNER_TEMP/beatreel.keystore"
+          export KS_ALIAS=beatreel
+          if [ ! -f "$ENC" ]; then
+            echo "First signed build: making the app key (kept encrypted in the repo)"
+            keytool -genkeypair -v -storetype PKCS12 -keystore "$KS_FILE" -alias beatreel \
+              -keyalg RSA -keysize 4096 -validity 10000 -storepass "$KS_PASS" -keypass "$KS_PASS" \
+              -dname "CN=BeatReel, O=BeatReel, C=BE"
+            mkdir -p "$(dirname "$ENC")"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -in "$KS_FILE" -out "$ENC" -pass env:KS_PASS
+            touch "$RUNNER_TEMP/new_key"
+          else
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$ENC" -out "$KS_FILE" -pass env:KS_PASS
+          fi
+          keytool -list -keystore "$KS_FILE" -storepass "$KS_PASS" -alias beatreel | grep -i fingerprint || true
           ./gradlew --no-daemon assembleRelease
           rm -f "$KS_FILE"
+
+      - name: Save the encrypted key in the repo (first signed build only)
+        if: ${{ env.KS_PASS != '' }}
+        run: |
+          if [ -f "$RUNNER_TEMP/new_key" ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add app/signing/beatreel.keystore.enc
+            git commit -m "Add encrypted app signing key [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
       - name: Publish the files (download links for the phone)
         env:
