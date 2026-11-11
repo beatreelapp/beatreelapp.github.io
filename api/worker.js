@@ -361,7 +361,7 @@ async function stripe(env, method, path, form) {
 const LIVE_SINCE = Date.parse("2026-11-10T20:55:00Z");
 // the owner's free Pro code: only its SHA-256 is here, the code itself is kept by the owner
 const OWNER_HASH = "acdc6f23621658d6567f27f164aa9718d095b8af3835f40520ef3410969ac918";
-const YT_ON = false, CLIPS_ON = false; // YouTube links and Clipping are shown as "Soon" in the app
+const YT_ON = true, YT_PRO_ONLY = true, CLIPS_ON = false; // YouTube link: test phase, Pro only (app shows TEST to Pro, Soon to others)
 const ACTIVE = ["active", "trialing", "past_due"];
 
 async function subStatus(env, b, row, force) {
@@ -423,6 +423,7 @@ function pickYt(j) {
 }
 async function yt(env, b, did, pro, body, req) {
   if (!YT_ON) return { status: 503, body: { error: "soon" } };
+  if (YT_PRO_ONLY && !pro) return { status: 503, body: { error: "soon" } };
   if (!env.RAPIDAPI_KEY) return { status: 503, body: { error: "not_ready" } };
   const id = ytId(body.url);
   if (!id) return { status: 400, body: { error: "bad_link" } };
