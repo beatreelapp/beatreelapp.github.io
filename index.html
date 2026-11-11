@@ -16,44 +16,44 @@
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "BeatReel", "applicationCategory": "MultimediaApplication", "operatingSystem": "Web, Android", "url": "https://beatreelapp.github.io/", "image": "https://beatreelapp.github.io/og.png", "description": "Free music video maker: turn any song into a video that moves with the beat, with AI-synced lyrics and automatic video captions.", "offers": [{"@type": "Offer", "price": "0", "priceCurrency": "EUR", "name": "Free"}, {"@type": "Offer", "price": "4.99", "priceCurrency": "EUR", "name": "Pro (monthly)"}]}</script>
 <title>BeatReel – Free Music Video & Lyric Video Maker, Auto Captions</title>
 <style>
-:root{--bg:#0b0714;--card:#1a1030;--text:#f3eefc;--acc:#ff4fa3;--onacc:#fff;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#111315;--card:#1c1f24;--text:#e8eaed;--acc:#5ab4f0;--onacc:#fff;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:radial-gradient(700px 400px at 50% -5%,#2a1050 0%,var(--bg) 60%) fixed,var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:14px;max-width:440px;margin-inline:auto}
-canvas{width:100%;aspect-ratio:9/16;display:block;border-radius:16px;background:#14062a}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:14px;max-width:440px;margin-inline:auto}
+canvas{width:100%;aspect-ratio:9/16;display:block;border-radius:16px;background:#0d0f11}
 .row{display:flex;gap:8px;margin-top:10px}
-button,input[type=text],select,textarea{flex:1;padding:14px;border-radius:14px;border:1px solid #4a2a7a;background:var(--card);color:var(--text);font-size:16px;font-family:inherit;min-width:0}
+button,input[type=text],select,textarea{flex:1;padding:14px;border-radius:14px;border:1px solid #30343b;background:var(--card);color:var(--text);font-size:16px;font-family:inherit;min-width:0}
 textarea{width:100%;box-sizing:border-box;margin-top:10px;resize:vertical}
 #lyt{flex:none;display:block;height:170px;min-height:120px;white-space:pre-wrap;overflow-y:auto;-webkit-user-select:text;user-select:text;line-height:1.4}
-label.btn{flex:1;padding:14px;border-radius:14px;border:1px solid #4a2a7a;background:var(--card);color:var(--text);font-size:16px;text-align:center;cursor:pointer;box-sizing:border-box;min-width:0;user-select:none}
-label.btn.m{background:linear-gradient(90deg,#ff4fa3,#a64dff);border-color:transparent;color:#fff;font-weight:600}
-button.m{background:linear-gradient(90deg,#ff4fa3,#a64dff);border-color:transparent;color:#fff;font-weight:600}
+label.btn{flex:1;padding:14px;border-radius:14px;border:1px solid #30343b;background:var(--card);color:var(--text);font-size:16px;text-align:center;cursor:pointer;box-sizing:border-box;min-width:0;user-select:none}
+label.btn.m{background:#5ab4f0;border-color:transparent;color:#fff;font-weight:600}
+button.m{background:#5ab4f0;border-color:transparent;color:#fff;font-weight:600}
 button:active{opacity:.8}
 audio{width:100%;margin-top:10px}
 p{font-size:14px;opacity:.75;margin:10px 0 0}
-#xo{position:fixed;inset:0;z-index:99;background:#0b0714;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:24px}
+#xo{position:fixed;inset:0;z-index:99;background:#111315;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:24px}
 #xo.on{display:flex}#xo svg{width:200px;height:200px;transform:rotate(-90deg)}#xo circle{fill:none;stroke-width:12}
 #xp{position:absolute;font:700 44px system-ui}#xw{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center}
 #xt{margin:22px 0 6px;font-size:18px;font-weight:600}#xs{opacity:.65;font-size:13px;margin-bottom:22px}
-#co{position:fixed;inset:0;z-index:98;background:#0b0714;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:24px}
+#co{position:fixed;inset:0;z-index:98;background:#111315;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:24px}
 #co.on{display:flex}#co svg{width:200px;height:200px;transform:rotate(-90deg)}#co circle{fill:none;stroke-width:12}
 #cw{position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center}#cpct{position:absolute;font:700 44px system-ui}
 #co h3{margin:22px 0 6px;font-size:22px}#co #cst{max-width:320px;opacity:.8;font-size:15px;line-height:1.5;min-height:46px}#co .cn{max-width:320px;opacity:.5;font-size:13px;margin-top:10px}
-#co #cc{flex:none;width:auto;height:auto;min-height:0;flex-grow:0;align-self:center;background:#2a2140;color:#fff;border:0;border-radius:24px;padding:12px 28px;font-size:15px;margin-top:18px}
-#va{position:fixed;inset:0;z-index:100;background:#0b0714;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:16px;box-sizing:border-box}
-#va.on{display:flex}#vac{touch-action:none;border-radius:18px;background:#000;border:2px solid #4de8ff;box-shadow:0 0 30px rgba(77,232,255,.25)}
+#co #cc{flex:none;width:auto;height:auto;min-height:0;flex-grow:0;align-self:center;background:#262a30;color:#fff;border:0;border-radius:24px;padding:12px 28px;font-size:15px;margin-top:18px}
+#va{position:fixed;inset:0;z-index:100;background:#111315;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:16px;box-sizing:border-box}
+#va.on{display:flex}#vac{touch-action:none;border-radius:18px;background:#000;border:2px solid #5ab4f0;box-shadow:0 0 30px rgba(90,180,240,.25)}
 #va h3{margin:0 0 10px;font-size:20px}#va .vh{opacity:.65;font-size:13px;margin:10px 8px 6px;max-width:340px}
-#va .vr{display:flex;gap:10px;align-items:center;margin-top:10px;width:min(92vw,420px)}#va #vas{flex:1;width:auto;min-width:0;height:auto;padding:0;border:0;background:none;accent-color:#4de8ff}#va #vap{font-size:14px;min-width:92px;text-align:right}
-#va button{flex:none;width:auto;height:auto;min-height:0;border:0;border-radius:24px;padding:12px 26px;font-size:16px;background:#2a2140;color:#fff}#va #vad{background:linear-gradient(90deg,#ff4fa3,#a64dff);font-weight:600}
+#va .vr{display:flex;gap:10px;align-items:center;margin-top:10px;width:min(92vw,420px)}#va #vas{flex:1;width:auto;min-width:0;height:auto;padding:0;border:0;background:none;accent-color:#5ab4f0}#va #vap{font-size:14px;min-width:92px;text-align:right}
+#va button{flex:none;width:auto;height:auto;min-height:0;border:0;border-radius:24px;padding:12px 26px;font-size:16px;background:#262a30;color:#fff}#va #vad{background:#5ab4f0;font-weight:600}
 .mcs{display:flex;gap:10px;margin:48px 0 10px}
-.mcard{flex:1;text-align:left;padding:12px 14px;border-radius:16px;border:1px solid #4a2a7a;background:var(--card);color:var(--text);font-family:inherit;line-height:1.3}
+.mcard{flex:1;text-align:left;padding:12px 14px;border-radius:16px;border:1px solid #30343b;background:var(--card);color:var(--text);font-family:inherit;line-height:1.3}
 .mcard b{display:block;font-size:16px}.mcard span{display:block;font-size:12px;opacity:.65;margin-top:3px;font-weight:400}
-.mcard.on{border-color:#ff4fa3;background:linear-gradient(135deg,rgba(255,79,163,.22),rgba(166,77,255,.22))}
+.mcard.on{border-color:#5ab4f0;background:#1c2a36}
 body.nomode .m-music,body.nomode .m-video,body.nomode .m-both{display:none!important}
 body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 #vadd{position:absolute;left:8.333%;top:25%;width:83.333%;height:46.875%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font:700 18px system-ui,sans-serif;letter-spacing:.3px;cursor:pointer;text-shadow:0 2px 8px rgba(0,0,0,.6);white-space:nowrap;-webkit-tap-highlight-color:transparent}#vadd[style*="none"]{display:none!important}#vadd:active{opacity:.7}
 .m-edonly{display:none}body.ed .m-edonly{display:block}body.ed .row.m-edonly{display:flex}body.ed .m-noedit{display:none!important}
-.vrow{display:flex;gap:10px;align-items:center;margin-top:8px}.vrow span{font-size:14px;min-width:92px}.vrow input[type=range]{flex:1;width:auto;min-width:0;padding:0;border:0;background:none;accent-color:#ff4fa3}.vrow b{min-width:46px;text-align:right;font-size:14px;font-weight:600}
-#xo #xc{flex:none;width:auto;height:auto;min-height:0;flex-grow:0;align-self:center;background:#2a2140;color:#fff;border:0;border-radius:24px;padding:12px 28px;font-size:15px}
+.vrow{display:flex;gap:10px;align-items:center;margin-top:8px}.vrow span{font-size:14px;min-width:92px}.vrow input[type=range]{flex:1;width:auto;min-width:0;padding:0;border:0;background:none;accent-color:#5ab4f0}.vrow b{min-width:46px;text-align:right;font-size:14px;font-weight:600}
+#xo #xc{flex:none;width:auto;height:auto;min-height:0;flex-grow:0;align-self:center;background:#262a30;color:#fff;border:0;border-radius:24px;padding:12px 28px;font-size:15px}
 
 #home{position:fixed;inset:0;z-index:60;overflow-y:auto;background:radial-gradient(900px 500px at 50% -10%,#3a1466 0%,#120a24 55%,#07040f 100%);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-overflow-scrolling:touch}
 #home.off{display:none}
@@ -156,16 +156,41 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 #home .big{display:flex;justify-content:center;margin-top:28px}
 #home .big .ring{width:150px;height:150px}#home .big .ring svg{width:150px;height:150px}
 #home .final{padding:50px 20px 70px;background:radial-gradient(600px 300px at 50% 100%,rgba(255,79,163,.28),transparent)}
-#home .final button{flex:none;width:auto;border:0;border-radius:32px;padding:17px 38px;font-size:19px;font-weight:700;color:#fff;background:linear-gradient(90deg,#ff4fa3,#a64dff);margin-top:26px}
+#home .final button{flex:none;width:auto;border:0;border-radius:32px;padding:17px 38px;font-size:19px;font-weight:700;color:#fff;background:#5ab4f0;margin-top:26px}
 #home footer{text-align:center;opacity:.5;padding:0 20px;font-size:12px;padding:0 0 30px}
-#home .eb{display:inline-block;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ff7ac8;border:1px solid #5a2a7a;border-radius:16px;padding:6px 14px;margin-bottom:18px}
-.gl{margin:22px 4px 0;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#ff7ac8}
-#wo{width:100%;height:28px;aspect-ratio:auto;border-radius:8px;background:#1a1030;touch-action:none;display:block;margin-top:6px}
-#wf{width:100%;height:110px;aspect-ratio:auto;border-radius:14px;background:#1a1030;touch-action:none;display:block;margin-top:10px}
+#home .eb{display:inline-block;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8fcaf3;border:1px solid #5a2a7a;border-radius:16px;padding:6px 14px;margin-bottom:18px}
+.gl{margin:22px 4px 0;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#8fcaf3}
+#wo{width:100%;height:28px;aspect-ratio:auto;border-radius:8px;background:#1c1f24;touch-action:none;display:block;margin-top:6px}
+#wf{width:100%;height:110px;aspect-ratio:auto;border-radius:14px;background:#1c1f24;touch-action:none;display:block;margin-top:10px}
 .cpb{flex:none!important;width:92px!important;min-width:92px!important;padding:12px 0!important;text-align:center}
 #ct{flex:1;min-width:0;text-align:center;font-size:14px;opacity:.85;white-space:nowrap;font-variant-numeric:tabular-nums}
 #msg{min-height:36px}
 #cn{margin:8px 4px 0;font-size:12px;opacity:.6}
+button.m,label.btn.m{background:#5ab4f0;color:#06233a;border-color:transparent}
+button.m:disabled{opacity:.5}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239aa0a8' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:34px}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-4px;margin-right:8px;flex:none}
+#mrow{margin-top:12px}#mrow>*{display:flex;align-items:center;justify-content:center;font-weight:600;min-height:52px;box-sizing:border-box;padding:12px 10px}
+#mrow #rec{background:#1c1f24;color:#e8eaed;border:1px solid #3a3e45}
+body.hasmedia #mrow #rec{background:#5ab4f0;color:#06233a;border-color:transparent}
+body.hasmedia #mrow #pick,body.hasmedia #mrow #vbm{background:#1c1f24;color:#e8eaed;border:1px solid #3a3e45}
+#tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px;background:#16181c;border:1px solid #262a30;border-radius:16px;padding:5px}
+body.nomode #tabs{display:none}
+#tabs button{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 2px;border:0;border-radius:12px;background:transparent;color:#9aa0a8;font-size:12px;font-weight:600}
+#tabs button .ic{margin:0;width:22px;height:22px}
+#tabs button.on{background:#1c2a36;color:#5ab4f0}
+.tpn{display:none;background:#16181c;border:1px solid #262a30;border-radius:16px;padding:4px 10px 12px;margin-top:8px}
+body.mm .tpn.on,body.mv .tpn.on{display:block}
+.tpn .row:first-child{margin-top:8px}
+#tsp,#lyp{display:block!important}
+select.pks{display:none}
+.pk{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1;min-width:0}
+.pk::-webkit-scrollbar{display:none}
+.pk button{flex:0 0 82px;padding:0;border:2px solid transparent;border-radius:12px;background:#1c1f24;overflow:hidden;scroll-snap-align:start;display:flex;flex-direction:column;color:#c9ccd1;font-size:11px;font-weight:600}
+.pk img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#0d0f11}
+.pk span{padding:5px 3px 6px;line-height:1.2;text-align:center;min-height:2.4em;display:flex;align-items:center;justify-content:center}
+.pk button.on{border-color:#5ab4f0;color:#fff}
+#cbp{background:#e9c46a!important;color:#2a2416!important;box-shadow:none!important}
 </style>
 <style id="dlcss">#home .stb[hidden]{display:none!important}#home .stb{flex:none;width:auto;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:26px;background:#1a1030;color:#fff;border:1px solid #4a2a7a;font:600 15px system-ui,sans-serif;text-decoration:none;cursor:pointer}#home .stb.hl{background:linear-gradient(90deg,#ff4fa3,#a64dff);border:0}#adtop{max-width:728px;margin:0 auto;padding:10px 16px;text-align:center;min-height:50px}body.inapp #getapp,body.inapp #adtop,body.inapp #hb{display:none!important}</style>
 </head>
@@ -207,33 +232,34 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 </div>
 
 <button id="hb" hidden>&larr; Home</button>
-<div id="lg" hidden style="position:fixed;inset:0;z-index:120;background:rgba(5,3,12,.92);overflow:auto;padding:24px 20px;color:#f3eefc;font-family:system-ui,sans-serif"><div style="max-width:560px;margin:0 auto;line-height:1.6"><button id="lgx" style="flex:none;width:auto;padding:8px 16px;border-radius:16px;background:#1a1030;color:#fff;border:1px solid #4a2a7a">&larr; Back</button><div id="lgt"></div></div></div>
+<div id="lg" hidden style="position:fixed;inset:0;z-index:120;background:rgba(8,9,11,.94);overflow:auto;padding:24px 20px;color:#e8eaed;font-family:system-ui,sans-serif"><div style="max-width:560px;margin:0 auto;line-height:1.6"><button id="lgx" style="flex:none;width:auto;padding:8px 16px;border-radius:16px;background:#1c1f24;color:#fff;border:1px solid #30343b">&larr; Back</button><div id="lgt"></div></div></div>
 <div id="va"><h3>Adjust your video</h3><canvas id="vac" width="720" height="680"></canvas><div class="vh">Pinch with two fingers to zoom. Drag with one finger to move. What you see is what the video will show.</div><div class="vr"><input type="range" id="vas" min="100" max="400" value="100"><span id="vap">Zoom 100%</span></div><div class="vr" style="justify-content:center"><button id="var" type="button">Reset</button><button id="vad" type="button">Done</button></div></div>
-<div id="co"><div id="cw"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#2a2140"/><circle id="cring" cx="50" cy="50" r="44" stroke="#4de8ff" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/></svg><div id="cpct">0%</div></div><h3>Making your captions</h3><div id="cst">Preparing...</div><div class="cn">Keep this page open. The first time, a small speech model is downloaded (only once).</div><button id="cc" type="button">Cancel</button></div>
-<div id="xo"><div id="xw"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#2a2140"/><circle id="xr" cx="50" cy="50" r="44" stroke="#ff4fa3" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/></svg><div id="xp">0%</div></div>
+<div id="co"><div id="cw"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#262a30"/><circle id="cring" cx="50" cy="50" r="44" stroke="#5ab4f0" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/></svg><div id="cpct">0%</div></div><h3>Making your captions</h3><div id="cst">Preparing...</div><div class="cn">Keep this page open. The first time, a small speech model is downloaded (only once).</div><button id="cc" type="button">Cancel</button></div>
+<div id="xo"><div id="xw"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#262a30"/><circle id="xr" cx="50" cy="50" r="44" stroke="#5ab4f0" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/></svg><div id="xp">0%</div></div>
 <div id="xt">Creating your video</div><div id="xs">Keep this page open. It saves automatically when it reaches 100%.</div><button id="xc">Cancel</button></div>
 <div class="mcs"><button class="mcard" id="m1" type="button"><b>Musical video</b><span>Music scenes, or an Edit with your own video</span></button><button class="mcard" id="m2" type="button"><b>Video captions</b><span>Pick a video. Words and shapes appear automatically</span></button></div>
 <div id="cvw" style="position:relative"><canvas id="cv" width="720" height="1280"></canvas><label id="vadd" for="vf" style="display:none">＋ Add your video</label></div>
-<div class="row"><label class="btn m m-music" id="pick" for="f">Choose song</label><label class="btn m m-music" id="vb2" for="vf" style="display:none">Add your video</label><button class="m m-music" id="etb" type="button" style="display:none">✏️ Edit text</button><button id="rec" class="m m-both">Download video</button></div>
-<div class="row"><button id="cvt" class="m m-both" hidden>Convert for TikTok</button></div>
-<div id="ce" hidden>
-<div class="gl">Your clip</div>
-<canvas id="wf"></canvas><canvas id="wo" hidden></canvas>
-<div class="row" style="align-items:center"><button id="cp" class="cpb">Play</button><div id="ct"></div><button id="cr" class="cpb">Reset</button></div>
-<p id="cn"></p><p style="margin:4px 4px 0;font-size:12px;opacity:.5">Tip: drag the wave to scroll, drag the pink box to move it, drag its edges to resize it, tap to listen from there.</p>
+<div class="row" id="mrow"><label class="btn m m-music" id="pick" for="f"><svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Choose song</label><label class="btn m m-music" id="vb2" for="vf" style="display:none">Add your video</label><button class="m m-video" id="vbm" type="button"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>Add your video</button><button class="m m-music" id="etb" type="button" style="display:none">✏️ Edit text</button><button id="rec" class="m-both"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download video</button></div>
+<div class="row"><button class="m" id="save" hidden>Save video</button><button id="cvt" class="m m-both" hidden>Convert for TikTok</button></div>
+<div id="tabs" class="m-both">
+<button type="button" data-t="sc"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4l-2 5M14 4l-2 5M20 4l-2 5"/></svg><span class="m-music m-noedit">Scene</span><span class="m-video">Background</span><span class="m-edonly">Background</span></button>
+<button type="button" data-t="tx"><svg class="ic" viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg><span>Text</span></button>
+<button type="button" data-t="ly"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="m-music">Lyrics</span><span class="m-video">Captions</span></button>
+<button type="button" data-t="mo"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button>
 </div>
-<div class="gl m-music m-noedit">Scene</div><div class="gl m-edonly">✂️ Edit ✨ PRO</div><div class="row m-edonly"><select id="obg"></select><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div><div class="row m-edonly"><select id="ofo"></select></div>
-<div class="row m-music m-noedit"><select id="sj"><option value="0">Subject: Car</option><option value="1">Subject: Vinyl in space</option><option value="2">Subject: Concert</option><option value="3">Subject: Space runner</option><optgroup label="Soft (calm, no bars)"><option value="5">Soft: Aurora</option><option value="6">Soft: Blurred cover</option><option value="7">Soft: Bokeh lights</option><option value="8">Soft: Frosted glass</option><option value="9">Soft: Ink in water</option></optgroup></select></div>
+<div class="tpn m-both" id="tp-sc">
+<div class="row m-edonly"><select id="obg" class="pks"></select></div><div class="row m-edonly"><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div>
+<div class="row m-music m-noedit"><select id="sj" class="pks"><option value="0">Subject: Car</option><option value="1">Subject: Vinyl in space</option><option value="2">Subject: Concert</option><option value="3">Subject: Space runner</option><optgroup label="Soft (calm, no bars)"><option value="5">Soft: Aurora</option><option value="6">Soft: Blurred cover</option><option value="7">Soft: Bokeh lights</option><option value="8">Soft: Frosted glass</option><option value="9">Soft: Ink in water</option></optgroup></select></div>
 <div class="row m-music m-noedit" id="cvr" style="display:none"><button class="m" id="cvb" type="button">Choose cover image (optional)</button></div>
 <div class="row m-music m-noedit"><select id="th"></select><select id="cs"></select></div>
-<div class="row m-video"><select id="cbg"><option value="0">Background: Blue-grey fog</option><option value="1">Background: Amber fog</option><option value="2">Background: Forest fog</option><option value="3">Background: Ocean fog</option><option value="4">Background: Charcoal fog</option><option value="5">Background: Cinema</option><option value="6">Background: Golden dust</option><option value="7">Background: Blue night</option><option value="8">Background: Warm sand</option><option value="9">Background: Light lines</option></select></div>
+<div class="row m-video"><select id="cbg" class="pks"><option value="0">Background: Blue-grey fog</option><option value="1">Background: Amber fog</option><option value="2">Background: Forest fog</option><option value="3">Background: Ocean fog</option><option value="4">Background: Charcoal fog</option><option value="5">Background: Cinema</option><option value="6">Background: Golden dust</option><option value="7">Background: Blue night</option><option value="8">Background: Warm sand</option><option value="9">Background: Light lines</option></select></div>
 <div class="row m-music m-noedit" id="rsr"><select id="rs"><option value="0">Rhythm: Blocks</option><option value="1">Rhythm: Smooth bars</option><option value="2">Rhythm: Wave</option><option value="3">Rhythm: Dots</option></select></div>
-<div class="m-both">
-<div class="gl">Text and lyrics</div>
+</div>
+<div class="tpn m-both" id="tp-tx">
 <div class="row"><input type="text" id="ttl" placeholder="Song title (one line, optional)" value="" maxlength="40"></div>
-<div class="row m-music"><button class="m" id="alb" type="button">🎤 Auto lyrics (from song)</button></div>
-<div class="row"><button id="lyb">Write lyrics</button><button id="tsb">Text style</button></div>
-<div id="tsp" hidden>
+<button id="tsb" hidden></button><button id="lyb" hidden></button>
+<div id="tsp">
+<div class="row m-edonly"><select id="ofo"></select></div>
 <div class="row m-music"><select id="tsy"></select></div>
 <div class="row m-music"><select id="tan"></select></div>
 <div class="row m-music"><select id="tfo"></select></div>
@@ -242,34 +268,41 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="row m-video"><select id="ta"></select><select id="tx"></select></div>
 <div class="row m-video"><select id="tr"></select></div>
 </div>
-<div id="lyp" hidden>
+</div>
+<div class="tpn m-both" id="tp-ly">
+<div class="row m-music"><button class="m" id="alb" type="button">🎤 Auto lyrics (from song)</button></div>
+<div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
+<div id="lyp">
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
 <div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
-<div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
-<div class="row m-video"><button id="clb" type="button" aria-disabled="true" style="opacity:.6;border:1px solid #5a5a66">✂️ Clipping <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button></div>
+<div class="row m-video"><button id="clb" type="button" aria-disabled="true" style="opacity:.6">✂️ Clipping <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button></div>
 <div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
-<div class="row"><button id="nlb" type="button">+ New line</button><button class="m m-music" id="aut">Auto sync</button></div>
+<div class="row"><button id="nlb" type="button">+ New line</button><button class="m-music" id="aut">Auto sync</button></div>
 <div class="row m-music"><button id="ear">Earlier 0.3s</button><button id="lat">Later 0.3s</button></div>
 <div class="row m-music"><button id="syn">Sync by tapping</button><button class="m" id="nxt" hidden>Next line</button></div>
 <p class="m-music">Auto sync finds where each phrase is sung from the pauses in the song. For exact timing use "Sync by tapping", then "Next line" when each line starts.</p>
 </div>
 </div>
-<div class="m-both">
-<div class="gl">Video and export</div>
-
-<div class="row"><label class="btn" id="vb" for="vf">Add your video</label><button id="vadj" type="button" hidden>Adjust video</button><button id="vx" hidden>Remove video</button></div>
+<div class="tpn m-both" id="tp-mo">
+<div class="row"><label class="btn m-music" id="vb" for="vf">Add your video</label><button id="vadj" type="button" hidden>Adjust video</button><button id="vx" hidden>Remove video</button></div>
 <div class="gl m-video">Music (optional)</div>
 <div class="row m-video"><label class="btn" id="mb" for="mf">Add music</label><button id="mx" type="button" hidden>Remove music</button></div>
 <div class="vrow m-video" id="vvr"><span>Video sound</span><input type="range" id="vv" min="0" max="100" value="100"><b id="vvp">100%</b></div>
 <div class="vrow m-video" id="mvr" hidden><span>Music volume</span><input type="range" id="mv" min="0" max="100" value="30"><b id="mvp">30%</b></div>
+<div class="gl">Video</div>
 <div class="row"><select id="bm"></select><select id="qs"></select></div>
-<div class="row"><select id="fm"><option value="mp4">Format: MP4 (TikTok, Instagram, gallery)</option><option value="webm">Format: WebM (not accepted by TikTok)</option></select></div>
-<div class="row"><button class="m" id="save" hidden>Save video</button></div>
-<video id="pv" controls playsinline hidden style="width:100%;margin-top:10px;border-radius:12px"></video>
+<div class="row" style="display:none"><select id="fm"><option value="mp4">Format: MP4 (TikTok, Instagram, gallery)</option><option value="webm">Format: WebM (not accepted by TikTok)</option></select></div>
 <div class="gl">Remove watermark</div>
-<div class="row" id="prow"><input type="text" id="code" placeholder="Activation code" autocomplete="off"><button id="act">Pro <span style="font-size:10px;font-weight:700;background:#e5383b;color:#fff;border-radius:7px;padding:1px 6px;margin:0 4px 0 2px;vertical-align:middle">SOON</span> / enter code</button></div>
+<div class="row" id="prow"><input type="text" id="code" placeholder="Pro code (BR-...)" autocomplete="off"><button id="act">Get Pro</button></div>
 </div>
+<div id="ce" hidden>
+<div class="gl">Your clip</div>
+<canvas id="wf"></canvas><canvas id="wo" hidden></canvas>
+<div class="row" style="align-items:center"><button id="cp" class="cpb">Play</button><div id="ct"></div><button id="cr" class="cpb">Reset</button></div>
+<p id="cn"></p><p style="margin:4px 4px 0;font-size:12px;opacity:.5">Tip: drag the wave to scroll, drag the blue box to move it, drag its edges to resize it, tap to listen from there.</p>
+</div>
+<video id="pv" controls playsinline hidden style="width:100%;margin-top:10px;border-radius:12px"></video>
 <input type="file" id="mf" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <input type="file" id="f" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
 <input type="file" id="cvi" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
@@ -1122,7 +1155,7 @@ function orbitShow(){const sh=shotNow();let s=(L.find(x=>x&&!/[؀-ۿ]/.test(x))|
  orbitDraw([...s].map(x=>[x,0]),sh,null,1)}
 /* ---- Edit text panel ---- */
 const PARTS=[['head','⌒ Head'],['left','◜ Left'],['right','◝ Right'],['both','∩ Both sides'],['edge','▭ Frame edge'],['straight','▬ Normal text']];
-function etBuild(){if($('etp'))return;const st=document.createElement('style');st.textContent='#etp{position:fixed;left:0;right:0;bottom:0;z-index:90;max-height:66vh;overflow:auto;background:#120a24;border-top:1px solid #4a2a7a;border-radius:18px 18px 0 0;padding:10px 12px 18px;box-shadow:0 -12px 30px rgba(0,0,0,.55);color:#f3eefc;font:14px system-ui,sans-serif}#etp[hidden]{display:none}#etp .eh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#etp .eh b{font-size:16px}#etp button{width:auto;flex:0 0 auto;padding:9px 12px;border-radius:12px;border:1px solid #4a2a7a;background:#1b1033;color:#f3eefc;font:600 13px system-ui,sans-serif;cursor:pointer}#etp button.on{background:linear-gradient(90deg,#ff4fa3,#a64dff);border:0}#etp .er{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}#etv{display:block;margin:0 auto;width:min(48vw,180px);height:auto;border-radius:10px;background:#000}#etc{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 4px}#etc .sc{flex:0 0 auto;width:96px;text-align:center;font-size:11px;opacity:.85}#etc canvas{width:96px;height:96px;border-radius:8px;display:block;outline-offset:2px}#etc .sc.on canvas{outline:2px solid #ff4fa3}#etp .hint{font-size:12px;opacity:.7;text-align:center;margin-top:6px}';document.head.appendChild(st);
+function etBuild(){if($('etp'))return;const st=document.createElement('style');st.textContent='#etp{position:fixed;left:0;right:0;bottom:0;z-index:90;max-height:66vh;overflow:auto;background:#16181c;border-top:1px solid #30343b;border-radius:18px 18px 0 0;padding:10px 12px 18px;box-shadow:0 -12px 30px rgba(0,0,0,.55);color:#e8eaed;font:14px system-ui,sans-serif}#etp[hidden]{display:none}#etp .eh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#etp .eh b{font-size:16px}#etp button{width:auto;flex:0 0 auto;padding:9px 12px;border-radius:12px;border:1px solid #30343b;background:#22262c;color:#e8eaed;font:600 13px system-ui,sans-serif;cursor:pointer}#etp button.on{background:#5ab4f0;border:0}#etp .er{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}#etv{display:block;margin:0 auto;width:min(48vw,180px);height:auto;border-radius:10px;background:#000}#etc{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 4px}#etc .sc{flex:0 0 auto;width:96px;text-align:center;font-size:11px;opacity:.85}#etc canvas{width:96px;height:96px;border-radius:8px;display:block;outline-offset:2px}#etc .sc.on canvas{outline:2px solid #5ab4f0}#etp .hint{font-size:12px;opacity:.7;text-align:center;margin-top:6px}';document.head.appendChild(st);
  const d=document.createElement('div');d.id='etp';d.hidden=true;d.innerHTML='<div class="eh"><b>✏️ Edit text</b><button id="etx" class="on">Done ✓</button></div><canvas id="etv" width="340" height="395"></canvas><div id="etc"></div><div class="hint" id="eth">Tap a shot, then choose where the words go.</div><div class="er" id="etparts"></div><div class="er"><button data-m="l" aria-label="Left">◀</button><button data-m="u" aria-label="Up">▲</button><button data-m="d" aria-label="Down">▼</button><button data-m="r" aria-label="Right">▶</button><button data-m="-" aria-label="Smaller">−</button><button data-m="+" aria-label="Bigger">＋</button></div><div class="er"><button id="etall">Same for all shots</button><button id="etmg">Merge with previous</button></div><div class="er"><button id="etcv">Change video</button><button id="etzm">Zoom video</button></div>';document.body.appendChild(d);
  $('etparts').innerHTML=PARTS.map(p=>'<button data-p="'+p[0]+'">'+p[1]+'</button>').join('');
  $('etx').onclick=etClose;$('etcv').onclick=()=>{etClose();$('vf').click()};$('etzm').onclick=()=>{etClose();openVA()};
@@ -1444,8 +1477,8 @@ function wfDraw(){if($('ce').hidden||!DUR)return;const c1=$('wf');if(!c1.clientW
  const nb=Math.max(10,Math.floor(w/(4*dpr))),bw=w/nb,xs=(CS-VS)/VW*w,xe=(CE-VS)/VW*w;
  for(let i=0;i<nb;i++){const t0=VS+i/nb*VW,t1=VS+(i+1)/nb*VW;if(t0>=DUR)break;const v=peakAt(t0,t1),bh=Math.max(3*dpr,v*h*.8),bx=i*bw,mid=bx+bw/2,inn=mid>=xs&&mid<=xe;
   x.fillStyle=inn?'#f3eefc':'rgba(243,238,252,.28)';x.fillRect(bx+bw*.2,(h-bh)/2,bw*.6,bh)}
- x.fillStyle='rgba(255,79,163,.18)';x.fillRect(xs,0,xe-xs,h);x.strokeStyle='#ff4fa3';x.lineWidth=2*dpr;x.strokeRect(xs,x.lineWidth/2,xe-xs,h-x.lineWidth);
- const hw=14*dpr;x.fillStyle='#ff4fa3';x.fillRect(xs-1,0,hw,h);x.fillRect(xe-hw+1,0,hw,h);x.fillStyle='#fff';
+ x.fillStyle='rgba(90,180,240,.18)';x.fillRect(xs,0,xe-xs,h);x.strokeStyle='#5ab4f0';x.lineWidth=2*dpr;x.strokeRect(xs,x.lineWidth/2,xe-xs,h-x.lineWidth);
+ const hw=14*dpr;x.fillStyle='#5ab4f0';x.fillRect(xs-1,0,hw,h);x.fillRect(xe-hw+1,0,hw,h);x.fillStyle='#fff';
  [4,8].forEach(o=>{x.fillRect(xs+o*dpr,h*.34,2*dpr,h*.32);x.fillRect(xe-hw+(o+1)*dpr,h*.34,2*dpr,h*.32)});
  const px=(au.currentTime-VS)/VW*w;if(px>=0&&px<=w){x.fillStyle='#fff';x.fillRect(px-1.5*dpr,0,3*dpr,h)}
  if(!$('wo').hidden){const o=$('wo');if(!o.clientWidth)return;const[ow,oh,od]=sizeCv(o),y=o.getContext('2d');y.clearRect(0,0,ow,oh);const n2=Math.max(10,Math.floor(ow/(2*od))),b2=ow/n2;
@@ -1482,12 +1515,12 @@ function wm(){if(PRO)return;c.save();c.globalAlpha=.6;c.textAlign='right';c.text
 frame();
 function loadAudio(f,note){curFile=f;if(!cvUser){try{SFT.reset()}catch(_){}}try{id3Cover(f)}catch(_){}if(!note)curVid=false;RNG=null;DUR=0;$('ce').hidden=true;au.onloadedmetadata=()=>initClip(au.duration);loadWave(f);msg.textContent='Loading '+f.name+'...';au.src=URL.createObjectURL(f);setup();ac.resume();au.play().catch(()=>{});msg.textContent=f.name;if(note)msg.textContent=note}
 $('f').onchange=e=>{const f=e.target.files[0];if(!f)return;loadAudio(f)};
-$('vf').onchange=e=>{const f=e.target.files[0];if(!f)return;const v=$('bgv');VOK=false;vidFile=f;VZ=1;VPX=0;VPY=0;const vm=MODE==='video';if(vm){L=[];RNG=null;S=[];EVK='';$('lyt').value=''}const noSongBefore=vm||!curFile||curVid;if(vm||!curFile||curVid)loadAudio(f,"Using your video's sound. Tap \"Write lyrics\" then \"Auto captions\" to get the words."),curVid=true;
+$('vf').onchange=e=>{const f=e.target.files[0];if(!f)return;const v=$('bgv');VOK=false;vidFile=f;VZ=1;VPX=0;VPY=0;const vm=MODE==='video';if(vm){L=[];RNG=null;S=[];EVK='';$('lyt').value=''}const noSongBefore=vm||!curFile||curVid;if(vm||!curFile||curVid)loadAudio(f,"Using your video's sound. Open \"Captions\" and tap \"Auto captions\" to get the words."),curVid=true;
  if(SJ!=10&&noSongBefore&&!L.length&&$('acauto')&&$('acauto').checked){$('sj').value='4';SJ=4;try{$('cs').style.display='none'}catch(_){}AUTOCAP=true}
 
  v.muted=true;v.defaultMuted=true;v.playsInline=true;v.loop=true;v.removeAttribute('src');v.src=URL.createObjectURL(f);v.load();
  v.play().catch(()=>{});$('vx').hidden=false;msg.textContent='Loading video...';
- v.onloadeddata=()=>{VOK=true;$('vadj').hidden=false;etBtn();if(SJ!=10)openVA();else{SH=[];SHK='';etClose();shotScan()}if(SJ!=10&&isFinite(v.duration)&&v.duration>1&&DUR&&v.duration<CE-CS-.5){CE=CS+v.duration;clipUI();msg.textContent='Your clip was shortened to '+Math.round(v.duration)+'s to match your video. Drag the pink edges to change it.';return}msg.textContent=curVid?"Using your video's sound. Tap \"Write lyrics\" then \"Auto captions\" to get the words.":'Video added at the bottom, behind the bars.'};
+ v.onloadeddata=()=>{VOK=true;$('vadj').hidden=false;etBtn();if(SJ!=10)openVA();else{SH=[];SHK='';etClose();shotScan()}if(SJ!=10&&isFinite(v.duration)&&v.duration>1&&DUR&&v.duration<CE-CS-.5){CE=CS+v.duration;clipUI();msg.textContent='Your clip was shortened to '+Math.round(v.duration)+'s to match your video. Drag the pink edges to change it.';return}msg.textContent=curVid?"Using your video's sound. Open \"Captions\" and tap \"Auto captions\" to get the words.":'Video added at the bottom, behind the bars.'};
  v.onerror=()=>{bug('video_load',(v.error?v.error.code:'?')+' '+(f.type||'')+' '+Math.round(f.size/1048576)+'MB');msg.textContent="This video can't be played here. Try an MP4 (H.264) file, ideally 1080p or smaller."};
  setTimeout(()=>{if(v.src&&!VOK&&!v.error)msg.textContent='The video is not showing yet. Tap the screen once to start it, or try an MP4 (H.264) file.'},4000)};
 cv.addEventListener('click',()=>{const v=$('bgv');if(v.src&&v.paused)v.play().catch(()=>{})});
@@ -1558,7 +1591,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v35';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v36';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1567,18 +1600,18 @@ const hm=s=>{s=Math.max(0,s|0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60
 (()=>{const st=document.createElement('style');st.textContent=
 '#cbar{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:40;display:flex;gap:8px;align-items:center}#cbar[hidden]{display:none}'+
 '#cbar button{flex:none;width:auto;margin:0;cursor:pointer;font:800 13px system-ui,sans-serif;border-radius:18px;display:inline-flex;align-items:center;gap:7px}'+
-'#cbc{padding:4px 12px 4px 4px;background:rgba(20,6,42,.85);color:#ffe6a0;border:1px solid #d9a93c;box-shadow:0 2px 8px rgba(0,0,0,.35)}'+
+'#cbc{padding:4px 12px 4px 4px;background:rgba(17,19,21,.88);color:#ffe6a0;border:1px solid #d9a93c;box-shadow:0 2px 8px rgba(0,0,0,.35)}'+
 '.coin{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font:900 12px Georgia,serif;color:#7a5200;background:radial-gradient(circle at 35% 30%,#fff6c9 0,#ffd968 30%,#e0a526 65%,#9c6a0c 100%);box-shadow:inset 0 0 0 2px rgba(255,236,170,.75),inset 0 -2px 3px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.4)}'+
 '.coin.big{width:64px;height:64px;font-size:30px;margin:0 auto 10px;display:grid}'+
-'#cbp{padding:7px 13px;color:#fff;border:0;background:linear-gradient(135deg,#ff4fa3,#a64dff);letter-spacing:.06em;box-shadow:0 2px 10px rgba(166,77,255,.45)}'+
+'#cbp{padding:7px 13px;color:#fff;border:0;background:#5ab4f0;letter-spacing:.06em;box-shadow:0 2px 10px rgba(90,180,240,.35)}'+
 '#cbp.on{background:linear-gradient(135deg,#ffe08a,#e0a526);color:#3a2600}'+
-'#pmo{position:fixed;inset:0;z-index:100;background:rgba(5,2,12,.72);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}#pmo[hidden]{display:none}'+
-'#pmc{width:100%;max-width:360px;background:#1a1030;border:1px solid #4a2a7a;border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.6);color:#f3eefc}'+
+'#pmo{position:fixed;inset:0;z-index:100;background:rgba(5,6,8,.72);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}#pmo[hidden]{display:none}'+
+'#pmc{width:100%;max-width:360px;background:#1c1f24;border:1px solid #30343b;border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.6);color:#e8eaed}'+
 '#pmc h3{margin:0 0 8px;font-size:20px}#pmc p{margin:0 0 14px;opacity:.85;line-height:1.5;font-size:14px}#pmc ul{text-align:left;margin:0 0 16px;padding-left:20px;line-height:1.8;font-size:14px}'+
-'#pmc button{display:block;width:100%;margin:8px 0 0;padding:13px;border-radius:14px;font:700 15px system-ui,sans-serif;cursor:pointer;border:1px solid #4a2a7a;background:#120a24;color:#f3eefc}'+
-'#pmc button.pri{border:0;background:linear-gradient(90deg,#ff4fa3,#a64dff);color:#fff}#pmc button:disabled{opacity:.5}'+
-'#pmc input{width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border-radius:12px;border:1px solid #4a2a7a;background:#0b0714;color:#fff;font:600 15px ui-monospace,monospace;text-align:center;letter-spacing:.05em}'+
-'#pmc .code{font:800 18px ui-monospace,monospace;letter-spacing:.08em;background:#0b0714;border:1px dashed #d9a93c;color:#ffe6a0;border-radius:12px;padding:12px;margin:4px 0 6px;user-select:all}'+
+'#pmc button{display:block;width:100%;margin:8px 0 0;padding:13px;border-radius:14px;font:700 15px system-ui,sans-serif;cursor:pointer;border:1px solid #30343b;background:#16181c;color:#e8eaed}'+
+'#pmc button.pri{border:0;background:#5ab4f0;color:#fff}#pmc button:disabled{opacity:.5}'+
+'#pmc input{width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border-radius:12px;border:1px solid #30343b;background:#111315;color:#fff;font:600 15px ui-monospace,monospace;text-align:center;letter-spacing:.05em}'+
+'#pmc .code{font:800 18px ui-monospace,monospace;letter-spacing:.08em;background:#111315;border:1px dashed #d9a93c;color:#ffe6a0;border-radius:12px;padding:12px;margin:4px 0 6px;user-select:all}'+
 '#pmc .sm{font-size:12px;opacity:.65;margin-top:10px}#pmc .err{color:#ff8fa8;font-size:13px;min-height:18px;margin:6px 0 0}';
 document.head.appendChild(st);
 const bar=document.createElement('div');bar.id='cbar';bar.hidden=true;bar.innerHTML='<button id="cbc" title="AI coins"><span class="coin">B</span><span id="cbn">3</span></button><button id="cbp">PRO</button>';document.body.appendChild(bar);
@@ -1660,7 +1693,7 @@ function applyLook(li,ci,e,k,mood){const lk=LOOKS[li]||LOOKS[0],ar=/[؀-ۿ]/.tes
  [['tr','frame'],['tf','font'],['tz','size'],['tx','fx'],['ta','anim'],['tc','col']].forEach(q=>{try{$(q[0]).value=TS[q[1]]}catch(_){}});
  EMJ=L.map((ln,i)=>{const v=e&&e[i];if(Number.isInteger(v)&&v>=0&&v<EML.length)return EML[v][0];if(v===-1)return '';return emojiFor(ln)});
  KEY=L.map((ln,i)=>{const v=k&&k[i],n=ln.split(/\s+/).filter(Boolean).length;return Number.isInteger(v)&&v>=0&&v<n?v:-1});
- if(mood!==''&&/^Captions ready/.test(msg.textContent))msg.textContent+=' Style picked by AI: '+lk.n+(mood?' ('+String(mood).slice(0,30)+')':'')+'. You can change it in Text style.'}
+ if(mood!==''&&/^Captions ready/.test(msg.textContent))msg.textContent+=' Style picked by AI: '+lk.n+(mood?' ('+String(mood).slice(0,30)+')':'')+'. You can change it in the Text tab.'}
 async function aiStyle(text){const lines=L.slice(0,80).map(x=>x.slice(0,80));
  try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),40000);
   const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job:AIJOB,text:text.slice(0,1500),lines:lines,looks:LOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
@@ -1696,7 +1729,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   if(!lines.length&&res.text&&res.text.trim()){lines=[{t:res.text.trim().slice(0,60),s:0,e:Math.max(2,(to-from))}]}
   if(!lines.length){msg.textContent='No speech was found in this clip.';return}
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
-  L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');$('lyp').hidden=false;
+  L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');tabGo('ly');
   setup();ac.resume();au.currentTime=from;au.play().catch(()=>{});{const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
   CAPR={f:f,a:from,b:to};
   msg.textContent=(CAPLONG?'Only the first 10 minutes get captions. ':'')+'Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';
@@ -1706,7 +1739,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
  finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent=song?'🎤 Auto lyrics (from song)':'Auto captions (from speech)'}};
 /* ===== Add video chooser + Clipping (Pro): the AI picks the best moments of a video and writes a hook title for each ===== */
-(()=>{const st=document.createElement('style');st.textContent='#pmc{max-height:88vh;overflow:auto}#pmc .clp{text-align:left;margin:12px 0 0;padding:10px;border:1px solid #4a2a7a;border-radius:14px;background:#120a24}#pmc .clp input{text-align:left;font:700 15px system-ui,sans-serif;letter-spacing:0}#pmc .clp .sm{margin:0;opacity:.7}';document.head.appendChild(st)})();
+(()=>{const st=document.createElement('style');st.textContent='#pmc{max-height:88vh;overflow:auto}#pmc .clp{text-align:left;margin:12px 0 0;padding:10px;border:1px solid #30343b;border-radius:14px;background:#16181c}#pmc .clp input{text-align:left;font:700 15px system-ui,sans-serif;letter-spacing:0}#pmc .clp .sm{margin:0;opacity:.7}';document.head.appendChild(st)})();
 const clEsc=s=>String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 async function pickVideo(){const a=await modal('<h3>Add your video</h3><p>Where is your video?</p><button class="pri" data-a="phone">📱 From your phone</button><button data-a="yt" aria-disabled="true" style="opacity:.6">🔗 YouTube link <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button><button data-a="close">Cancel</button>');if(a==='phone')$('vf').click();else if(a==='yt')soonMsg('🔗 YouTube link')}
 function soonMsg(t){modal('<h3>'+t+' <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></h3><p>This feature is coming soon.</p><button data-a="ok">OK</button>')}
@@ -1760,7 +1793,7 @@ function ytDiag(head){const d=YTD||{},j=d.j||{},g=j.dbg||{},bv=$('bgv'),mb=x=>(x
   'Player: '+(bv.videoWidth?bv.videoWidth+'x'+bv.videoHeight:'no picture')+' · state '+bv.readyState+(bv.error?' · error '+bv.error.code:''),
   'Tried: '+((j.cands||[]).map(k=>(k.h||'?')+'p'+(k.sep?'+s':'')).join(', ')||'-')+(d.why&&d.why.length?' · fails: '+d.why.join('; '):''),
   'Videos from service:'].concat((g.videos||[]).map(x=>'  '+x),['Sounds from service:'],(g.audios||[]).map(x=>'  '+x));
- modal('<h3>YouTube check</h3><p class="sm" style="margin:0 0 8px">Take a screenshot of this and send it.</p><pre style="text-align:left;white-space:pre-wrap;word-break:break-all;font:11px/1.45 ui-monospace,monospace;background:#0b0714;border:1px solid #4a2a7a;border-radius:10px;padding:10px;margin:0;max-height:55vh;overflow:auto">'+clEsc(lines.join('\n'))+'</pre><button class="pri" data-a="ok">OK</button>')}
+ modal('<h3>YouTube check</h3><p class="sm" style="margin:0 0 8px">Take a screenshot of this and send it.</p><pre style="text-align:left;white-space:pre-wrap;word-break:break-all;font:11px/1.45 ui-monospace,monospace;background:#111315;border:1px solid #30343b;border-radius:10px;padding:10px;margin:0;max-height:55vh;overflow:auto">'+clEsc(lines.join('\n'))+'</pre><button class="pri" data-a="ok">OK</button>')}
 function ytAgain(){const go=document.querySelector('#pmc [data-a="_go"]');if(!go)return;go.onclick=()=>{const v=($('yti')||{}).value||'';ytLink(v)}}
 async function ytFetch(url,onP){const C=4<<20,sep=url.indexOf('?')>-1?'&':'?';
  // googlevideo sends big files fast only in parts, so ask 4 MB at a time
@@ -1871,9 +1904,9 @@ try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')==0)window
 })();
 var MODE=null;
 (()=>{const st=document.createElement('style');st.textContent='body.mv .row:has(#tr),body.mv #tx,body.mv #bm{display:none!important}';document.head.appendChild(st)})();
-function setMode(m){MODE=m;try{[...$('tc').options].forEach(o=>{o.textContent=o.textContent.replace(/^(Frame color|Color):/,m==='video'?'Frame color:':'Color:')})}catch(_){}const b=document.body;b.classList.remove('nomode','mm','mv');b.classList.add(m==='music'?'mm':'mv');
+function setMode(m){MODE=m;try{[...$('tc').options].forEach(o=>{o.textContent=o.textContent.replace(/^(Frame color|Color):/,m==='video'?'Frame color:':'Color:')})}catch(_){}const b=document.body;b.classList.remove('nomode','mm','mv');b.classList.add(m==='music'?'mm':'mv');tabGo(m==='video'?'ly':'sc');
  $('m1').classList.toggle('on',m==='music');$('m2').classList.toggle('on',m==='video');
- if(m==='video'){etClose();document.body.classList.remove('ed');SJ=4;try{$('cs').style.display='none'}catch(_){}$('lyp').hidden=false;$('tsp').hidden=true;msg.textContent=$('bgv').src?'Video mode. Change the words or style below, then download.':'Video captions: choose your video.'}
+ if(m==='video'){etClose();document.body.classList.remove('ed');SJ=4;try{$('cs').style.display='none'}catch(_){}tabGo('ly');msg.textContent=$('bgv').src?'Video mode. Change the words or style below, then download.':'Video captions: choose your video.'}
  else{if(SJ==4){SJ=EDIT?10:(+$('sj').value||0)}$('cs').style.display=SJ?'none':'';softUI();document.body.classList.toggle('ed',SJ==10);msg.textContent=curFile&&!curVid?msg.textContent:'Music video: choose a song, then a scene.'}}
 $('m1').onclick=async()=>{const sm='<span style="display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:3px">';
  const a=await modal('<h3>Musical video</h3><p>What do you want to make?</p><button class="pri" data-a="mu">🎵 Music'+sm+'Your song + an animated scene + lyrics</span></button><button data-a="ed">✂️ Edit ✨ PRO'+sm+'Your video in a frame + your song + lyrics</span></button>');
@@ -2540,6 +2573,23 @@ ac_.onclick=async()=>{const raw=(cd.value||'').trim(),v=raw.toUpperCase();
 (()=>{const m=document.getElementById('lg'),t=document.getElementById('lgt');
 function open(h){t.innerHTML=h;m.hidden=false;m.scrollTop=0}
 document.getElementById('lgx').onclick=()=>{m.hidden=true}})();
+/* v36: simple tabs (Scene / Text / Lyrics / More) and picture pickers */
+var TABCUR='sc';
+function tabGo(t){TABCUR=t;try{document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tpn').forEach(p=>p.classList.toggle('on',p.id==='tp-'+t));pkSync()}catch(_){}}
+function pkSync(){document.querySelectorAll('.pk').forEach(k=>{const v=k._src.value;k.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.v===v))})}
+(()=>{
+ document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{const t=b.dataset.t,p=$('tp-'+t);if(p&&p.classList.contains('on')){p.classList.remove('on');b.classList.remove('on');TABCUR='';return}tabGo(t)});
+ const IMG={sj:'sj',cbg:'cb',obg:'ob'};
+ document.querySelectorAll('select.pks').forEach(sel=>{const k=document.createElement('div');k.className='pk';k._src=sel;
+  [...sel.options].forEach(o=>{const b=document.createElement('button');b.type='button';b.dataset.v=o.value;
+   const im=document.createElement('img');im.loading='lazy';im.alt='';im.src='/img/ui/'+IMG[sel.id]+o.value+'.webp';
+   const sp=document.createElement('span');sp.textContent=o.textContent.replace(/^(Subject|Soft|Background):\s*/,'').replace(/\s*\(.*\)$/,'');
+   b.append(im,sp);b.onclick=()=>{sel.value=o.value;sel.dispatchEvent(new Event('change'));pkSync()};k.appendChild(b)});
+  sel.after(k)});
+ $('vbm').onclick=()=>pickVideo();
+ const hm=()=>{const on=MODE==='video'?!!$('bgv').getAttribute('src'):!!au.getAttribute('src');document.body.classList.toggle('hasmedia',on)};
+ setInterval(()=>{hm();if(TABCUR)pkSync()},700);
+ tabGo('sc')})();
 </script>
 </body>
 </html>
