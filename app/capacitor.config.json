@@ -1,0 +1,17 @@
+{
+  "appId": "io.github.beatreelapp.twa",
+  "appName": "BeatReel",
+  "webDir": "www",
+  "backgroundColor": "#111315",
+  "server": {
+    "hostname": "beatreelapp.github.io",
+    "androidScheme": "https",
+    "allowNavigation": ["checkout.stripe.com", "billing.stripe.com", "*.stripe.com"]
+  },
+  "android": {
+    "backgroundColor": "#111315",
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false
+  }
+}

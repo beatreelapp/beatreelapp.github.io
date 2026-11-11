@@ -1,0 +1,73 @@
+name: Build Android app
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", "index.html", ".github/workflows/build-apk.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+
+      - name: Copy the website into the app (works offline)
+        run: |
+          mkdir -p app/www
+          rsync -a --exclude /.git --exclude /.github --exclude /app --exclude /api \
+            --exclude /BeatReel.apk --exclude /diag.html --exclude /sw.js ./ app/www/
+          du -sh app/www
+
+      - name: Make the Android project
+        working-directory: app
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add android
+          node scripts/patch-android.mjs
+          npx cap sync android
+
+      - name: Build the test app (BeatReel Test, installs next to the old one)
+        working-directory: app/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Build the signed app (only when the keystore secret exists)
+        if: ${{ env.KS_B64 != '' }}
+        working-directory: app/android
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KS_KEYPASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/beatreel.keystore"
+          export KS_FILE="$RUNNER_TEMP/beatreel.keystore"
+          ./gradlew --no-daemon assembleRelease
+          rm -f "$KS_FILE"
+
+      - name: Publish the files (download links for the phone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/android/app/build/outputs/apk/debug/app-debug.apk BeatReel-test.apk
+          gh release view apk-test >/dev/null 2>&1 || gh release create apk-test --title "BeatReel test app" --notes "Test build. Installs next to the normal app." --prerelease
+          gh release upload apk-test BeatReel-test.apk --clobber
+          if [ -f app/android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/android/app/build/outputs/apk/release/app-release.apk BeatReel-app.apk
+            gh release view apk >/dev/null 2>&1 || gh release create apk --title "BeatReel Android app" --notes "Signed app."
+            gh release upload apk BeatReel-app.apk --clobber
+          fi

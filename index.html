@@ -1501,6 +1501,15 @@ async function pcm16k(file,from,to){const OC=window.OfflineAudioContext||window.
 const API_URL='https://beatreel-api.renardkatty8.workers.dev',LANGC={arabic:'ar',french:'fr',english:'en'};
 /* Anonymous usage counter: sends only an event name (no ids, no personal data). Only on the live site. */
 const LIVE=location.hostname==='beatreelapp.github.io';
+/* ===== Android app (Capacitor): save to gallery, share to BeatReel, notification ===== */
+const NAT=(()=>{try{return !!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())}catch(_){return false}})();
+const BRN=NAT?((Capacitor.Plugins&&Capacitor.Plugins.BeatReel)||(Capacitor.registerPlugin&&Capacitor.registerPlugin('BeatReel'))):null;
+if(NAT)document.documentElement.classList.add('native');
+const b64_=b=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=()=>no(r.error);r.readAsDataURL(b)});
+async function natSave(blob,name,onP){await BRN.fileStart();const P=3*1024*1024;for(let i=0;i<blob.size;i+=P){await BRN.fileAppend({data:await b64_(blob.slice(i,i+P))});if(onP)onP(Math.min(1,(i+P)/blob.size))}
+ const r=await BRN.fileSave({name,mime:blob.type||'video/mp4'});if(document.hidden){try{BRN.notifyDone({title:'BeatReel',body:'Your video is saved in the gallery (Movies/BeatReel).'})}catch(_){}}return r}
+async function dlBlob(blob,name){if(NAT&&BRN){await natSave(blob,name.replace(/(\.\w+)$/,'_'+Date.now()+'$1'));return 'gallery'}
+ const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);return 'download'}
 const BUGS=new Set();
 function bug(where,m){try{if(!LIVE||BUGS.size>=10)return;const k=where+'|'+String(m).slice(0,80);if(BUGS.has(k))return;BUGS.add(k);
  const ua=navigator.userAgent||'',dv=(/Android [\d.]+; ?([^;)]*)/.exec(ua)||[])[0]||(/iPhone|iPad|Windows|Mac OS X|Linux/.exec(ua)||[''])[0],cr=(/(Chrome|Firefox|Version)\/(\d+)/.exec(ua)||[]).slice(1).join(' ');
@@ -1511,12 +1520,12 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 (()=>{if(!LIVE)return;try{const d=new Date().toISOString().slice(0,10);if(localStorage.getItem('br_gfd')===d)return;
  fetch(API_URL+'/fonts').then(r=>r.ok?r.json():null).then(j=>{if(!j||typeof j!=='object')return;GFU=j;try{localStorage.setItem('br_gfu',JSON.stringify(j));localStorage.setItem('br_gfd',d)}catch(_){}gfMenus()}).catch(()=>{})}catch(_){}})();
 (()=>{if(!LIVE)return;const d=new Date().toISOString().slice(0,10),g=k=>{try{return localStorage.getItem(k)||''}catch(_){return''}},p=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
- const inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(location.search)||window.navigator.standalone===true;
+ const inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(location.search)||window.navigator.standalone===true||NAT;
  hit('visit');if(g('br_day')!==d){p('br_day',d);hit('dev')}if(!g('br_seen')){p('br_seen','1');hit('new')}if(inApp&&g('br_aday')!==d){p('br_aday',d);hit('app')}})();
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v39';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v40';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1778,7 +1787,7 @@ $('clb').onclick=async()=>{soonMsg('✂️ Clipping');return;
 const STORES={apk:'BeatReel.apk',uptodown:'',aptoide:'',appgallery:'',playstore:''};
 const ADS={top:''}; // paste ad HTML (e.g. an AdSense <ins> block) between the quotes; leave '' for no ad
 (function(){
- const q=location.search||'',inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(q)||window.navigator.standalone===true;
+ const q=location.search||'',inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(q)||window.navigator.standalone===true||NAT;
  if(inApp){document.body.classList.add('inapp');
   const go=()=>{const b=document.querySelector('#home .pill');if(b)b.click()};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(go,0));else setTimeout(go,0)}
@@ -1792,7 +1801,15 @@ const ADS={top:''}; // paste ad HTML (e.g. an AdSense <ins> block) between the q
   note.innerHTML=n?'On Android, your phone may ask you to allow installing from this source. On iPhone, open this page in Safari, tap Share, then Add to Home Screen.':'The Android app is coming soon. You can already use BeatReel in your browser, or add it to your home screen from the browser menu.'}
  const ad=document.getElementById('adtop');if(ad&&ADS.top){ad.innerHTML=ADS.top;ad.hidden=false}
 })();
-try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')==0)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}catch(_){}
+try{if(!NAT&&'serviceWorker' in navigator&&location.protocol.indexOf('http')==0)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}catch(_){}
+/* Android app: a song or video shared from another app ("Share" -> BeatReel) */
+if(NAT&&BRN){const onShared=async d=>{try{if(!d||d.error||!d.path){if(d&&d.error)bug('share',d.error);return}
+  msg.textContent='Opening the shared file...';const r=await fetch(Capacitor.convertFileSrc(d.path));const b=await r.blob();
+  const ty=d.mime||b.type||'',f=new File([b],d.name||'shared',{type:ty});const h=document.getElementById('home');if(h&&!h.classList.contains('off'))document.querySelector('#home .pill').click();
+  if(/^video\//.test(ty)||/\.(mp4|mov|webm|3gp|mkv)$/i.test(f.name)){setMode('video');$('vf').onchange({target:{files:[f],value:''}})}
+  else{EDIT=false;setMode('music');SJ=+$('sj').value||0;if(SJ==3&&drawSpace_reset)drawSpace_reset();$('cs').style.display=SJ?'none':'';sceneUI();$('f').onchange({target:{files:[f],value:''}})}
+  hit('share_in')}catch(e){bug('share',String(e&&e.message||e));msg.textContent='Could not open the shared file.'}};
+ try{BRN.addListener('shared',d=>setTimeout(()=>onShared(d),300))}catch(e){bug('share',String(e))}}
 
 /* Convert the recorded file to H.264 + AAC MP4 (what TikTok, CapCut and the gallery expect).
    Runs on the device with ffmpeg.wasm, downloaded the first time (about 30 MB). */
@@ -1822,8 +1839,8 @@ try{if('serviceWorker' in navigator&&location.protocol.indexOf('http')==0)window
    try{await ff.deleteFile(inn);await ff.deleteFile('out.mp4')}catch(_){}
    if(ob.size<20000)throw new Error('empty');
    if(!window.__FFTEST){b.textContent='Checking...';await new Promise((ok,no)=>{const v=document.createElement('video');v.muted=true;v.preload='metadata';const t=setTimeout(()=>no(new Error('the result cannot be played')),15000);v.onloadedmetadata=()=>{clearTimeout(t);(isFinite(v.duration)&&v.duration>0&&v.videoWidth>0)?ok():no(new Error('bad result'))};v.onerror=()=>{clearTimeout(t);no(new Error('the result cannot be played'))};v.src=URL.createObjectURL(ob)})}
-   const u=URL.createObjectURL(ob),a=document.createElement('a');a.href=u;a.download='beatreel_tiktok.mp4';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);
-   msg.textContent='Done. Saved as beatreel_tiktok.mp4. If TikTok does not show it, open it from the Files app and share it to TikTok.';b.hidden=true;
+   const gw=await dlBlob(ob,'beatreel_tiktok.mp4');
+   msg.textContent=gw==='gallery'?'Done. Saved in your gallery (Movies/BeatReel).':'Done. Saved as beatreel_tiktok.mp4. If TikTok does not show it, open it from the Files app and share it to TikTok.';b.hidden=true;
   }catch(e){msg.textContent='Could not convert on this device ('+((e&&e.message)||'error')+'). Check your internet and try again, or use a free online MP4 converter.'}
   b.disabled=false;b.textContent=old}
 })();
@@ -2450,11 +2467,11 @@ $('xc').onclick=()=>$('rec').click();
 au.onended=()=>{if(recording&&rc.state!=='inactive')rc.stop()};
 $('save').onclick=async()=>{
  try{let d=null;try{d=window.claude&&await claude.use('downloads')}catch(_){d=null}
-  if(d){await d.save({filename:'beatreel_video.'+ext,data:blob})}
-  else{const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='beatreel_video.'+ext;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000)}
+  let gal=false;if(d){await d.save({filename:'beatreel_video.'+ext,data:blob})}
+  else{if(NAT)msg.textContent='Saving to your gallery...';gal=(await dlBlob(blob,'beatreel_video.'+ext))==='gallery'}
   hit(SJ==4?'export_cap':'export_music');
-  msg.textContent=(LASTH264&&ext==='mp4'?'Saved to your phone as MP4'+(LASTENC?' (made in '+LASTSECS+' s, '+LASTENC+')':'')+'.':'Saved. This file may not open in TikTok or CapCut. Tap Convert for TikTok below.')+(WHY?' ['+WHY+']':'')+(SLOW?' Your phone was slow, so the video may stutter. Try Quality: Low (360p).':'');$('cvt').hidden=LASTH264&&ext==='mp4'}
- catch(e){msg.textContent=e&&e.code==='declined'?'Save cancelled.':'Could not save.'}};
+  msg.textContent=(LASTH264&&ext==='mp4'?(gal?'Saved in your gallery (Movies/BeatReel)':'Saved to your phone as MP4')+(LASTENC?' (made in '+LASTSECS+' s, '+LASTENC+')':'')+'.':'Saved. This file may not open in TikTok or CapCut. Tap Convert for TikTok below.')+(WHY?' ['+WHY+']':'')+(SLOW?' Your phone was slow, so the video may stutter. Try Quality: Low (360p).':'');$('cvt').hidden=LASTH264&&ext==='mp4'}
+ catch(e){msg.textContent=e&&e.code==='declined'?'Save cancelled.':(NAT&&/denied/.test(String(e&&e.message||e))?'Could not save: allow storage for BeatReel in your phone settings.':'Could not save.');if(NAT)bug('natsave',String(e&&e.message||e))}};
 
 try{const fl_=document.createElement('link');fl_.rel='stylesheet';fl_.href='https://fonts.googleapis.com/css2?family=Anton&family=Pacifico&family=Playfair+Display:ital,wght@1,400;1,700;1,900&family=Fredoka:wght@700&family=Bangers&family=Cinzel:wght@400&family=Inter:wght@300;500;800&family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@700&family=Press+Start+2P&family=Cairo:wght@400;600;700;900&family=Caveat:wght@700&family=Oswald:wght@700&display=swap';document.head.appendChild(fl_)}catch(e){}
 

@@ -1,0 +1,14 @@
+{
+  "name": "beatreel-android",
+  "private": true,
+  "version": "2.0.0",
+  "description": "BeatReel Android app (Capacitor). Built by .github/workflows/build-apk.yml",
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.0"
+  }
+}
