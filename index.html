@@ -124,6 +124,7 @@ select.pks{display:none}
 .pk img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#0d0f11}
 .pk span{padding:5px 3px 6px;line-height:1.2;text-align:center;min-height:2.4em;display:flex;align-items:center;justify-content:center}
 .pk button.on{border-color:#5ab4f0;color:#fff}
+.aiL{flex:none;align-self:center;font-size:14px;color:#9aa0a8;min-width:84px}
 #cbp{background:#e9c46a!important;color:#2a2416!important;box-shadow:none!important}
 </style>
 <style id="dlcss">#home .stb[hidden]{display:none!important}#home .stb{flex:none;width:auto;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:26px;background:#1c1f24;color:#e8eaed;border:1px solid #3a3e45;font:600 15px system-ui,sans-serif;text-decoration:none;cursor:pointer}#home .stb.hl{background:#5ab4f0;color:#06233a;border:0}#adtop{max-width:728px;margin:0 auto;padding:10px 16px;text-align:center;min-height:50px}body.inapp #getapp,body.inapp #adtop,body.inapp #hb{display:none!important}</style>
@@ -196,14 +197,13 @@ select.pks{display:none}
 <div class="row m-video"><button class="m" id="acb" type="button">Auto captions (from speech)</button></div>
 <div id="lyp">
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
-<div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
-<div class="row m-video"><button id="clb" type="button" aria-disabled="true" style="opacity:.6">✂️ Clipping <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button></div>
+<div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select></div>
 <div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
-<label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
 <div class="row"><button id="nlb" type="button">+ New line</button><button class="m-music" id="aut">Auto sync</button></div>
 <div class="row m-music"><button id="ear">Earlier 0.3s</button><button id="lat">Later 0.3s</button></div>
 <div class="row m-music"><button id="syn">Sync by tapping</button><button class="m" id="nxt" hidden>Next line</button></div>
 <p class="m-music">Auto sync finds where each phrase is sung from the pauses in the song. For exact timing use "Sync by tapping", then "Next line" when each line starts.</p>
+<div class="row m-video"><button id="clb" type="button" aria-disabled="true" style="opacity:.6">✂️ Clipping <span style="font-size:11px;font-weight:800;background:#e5383b;color:#fff;border-radius:8px;padding:2px 7px;margin-left:6px;vertical-align:middle">SOON</span></button></div>
 </div>
 </div>
 <div class="tpn m-both" id="tp-mo">
@@ -212,6 +212,9 @@ select.pks{display:none}
 <div class="row m-video"><label class="btn" id="mb" for="mf">Add music</label><button id="mx" type="button" hidden>Remove music</button></div>
 <div class="vrow m-video" id="vvr"><span>Video sound</span><input type="range" id="vv" min="0" max="100" value="100"><b id="vvp">100%</b></div>
 <div class="vrow m-video" id="mvr" hidden><span>Music volume</span><input type="range" id="mv" min="0" max="100" value="30"><b id="mvp">30%</b></div>
+<div class="gl">AI</div>
+<div class="row"><span class="aiL">Speech AI</span><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
+<label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
 <div class="gl">Video</div>
 <div class="row"><select id="bm"></select><select id="qs"></select></div>
 <div class="row" style="display:none"><select id="fm"><option value="mp4">Format: MP4 (TikTok, Instagram, gallery)</option><option value="webm">Format: WebM (not accepted by TikTok)</option></select></div>
@@ -1513,7 +1516,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v37';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v38';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
