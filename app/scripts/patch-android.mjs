@@ -92,4 +92,18 @@ for (const [d, s] of Object.entries(sizes)) {
   const round = await sharp('www/icon-maskable-512.png').resize(s, s).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
   fs.writeFileSync(`${dir}/ic_launcher_round.png`, round);
 }
+// 5. start screen: the BeatReel icon on the app's dark colour (replaces Capacitor's default splash picture)
+let gone = 0;
+for (const d of fs.readdirSync(res)) {
+  if (!d.startsWith('drawable')) continue;
+  for (const f of fs.readdirSync(`${res}/${d}`)) if (/^splash\.(png|9\.png|jpg|webp|xml)$/.test(f)) { fs.rmSync(`${res}/${d}/${f}`); gone++; }
+}
+fs.mkdirSync(`${res}/drawable`, { recursive: true });
+fs.writeFileSync(`${res}/drawable/splash.xml`,
+  '<?xml version="1.0" encoding="utf-8"?>\n<layer-list xmlns:android="http://schemas.android.com/apk/res/android">\n' +
+  '    <item><shape android:shape="rectangle"><solid android:color="#111315"/></shape></item>\n' +
+  '    <item android:gravity="center" android:width="112dp" android:height="112dp" android:drawable="@mipmap/ic_launcher"/>\n' +
+  '</layer-list>\n');
+console.log('splash: removed', gone, 'default pictures, icon splash written');
+
 console.log('patch ok, versionCode', 10 + run);
