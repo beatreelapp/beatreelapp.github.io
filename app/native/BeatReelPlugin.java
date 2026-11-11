@@ -210,6 +210,20 @@ public class BeatReelPlugin extends Plugin {
         while ((n = in.read(b)) > 0) os.write(b, 0, n);
     }
 
+    // ---- keep the screen on while a video is being made ----
+
+    @PluginMethod
+    public void keepOn(PluginCall call) {
+        final boolean on = Boolean.TRUE.equals(call.getBoolean("on", true));
+        getActivity().runOnUiThread(() -> {
+            try {
+                if (on) getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                else getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            } catch (Exception e) { }
+        });
+        call.resolve();
+    }
+
     // ---- notification ----
 
     @PluginMethod
