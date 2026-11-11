@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BeatReel · تجربة التعرف على الجسم</title>
+<style>
+body{margin:0;background:#111315;color:#e8eaed;font:15px system-ui,sans-serif;padding:14px}
+h1{font-size:18px;margin:0 0 8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+label.btn,button{background:#5ab4f0;color:#06233a;border:0;border-radius:12px;padding:12px 14px;font-weight:700;font-size:15px}
+button.sec{background:#1c1f24;color:#e8eaed;border:1px solid #30343b}
+input[type=file]{display:none}
+#st{background:#1c1f24;border:1px solid #30343b;border-radius:12px;padding:10px;min-height:20px;white-space:pre-line;line-height:1.6}
+canvas{width:100%;border-radius:12px;margin-top:10px;background:#000;display:block}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{padding:6px 10px;border-radius:20px;background:#1c1f24;border:1px solid #30343b;font-size:13px}
+.chip.on{border-color:#5ab4f0;color:#5ab4f0}
+video{display:none}
+</style>
+</head>
+<body>
+<h1>تجربة: ماذا يرى الذكاء في الصورة؟</h1>
+<div>اختر صورة أو فيديو فيه شخص. كل شيء يعمل على هاتفك، ولا يُرسل شيء لأي خادم.</div>
+<div class="row">
+  <label class="btn" for="fi">📷 اختر صورة أو فيديو</label>
+  <input id="fi" type="file" accept="image/*,video/*">
+  <button class="sec" id="tx">✍️ نص تجريبي: إيقاف</button>
+</div>
+<div id="st">جارٍ تحميل الذكاء…</div>
+<div class="chips" id="chips"></div>
+<canvas id="cv" width="720" height="1280"></canvas>
+<video id="v" playsinline muted loop></video>
+<script type="module">
+const VER = "0.10.14";
+const LIB = window.MP_LIB || `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}/vision_bundle.mjs`;
+const WASM = window.MP_WASM || `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}/wasm`;
+const FACE_M = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const POSE_M = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+const $ = (i) => document.getElementById(i), cv = $("cv"), g = cv.getContext("2d"), st = $("st"), v = $("v");
+let face = null, pose = null, mode = "IMAGE", src = null, raf = 0, showText = false, lastT = -1;
+const log = (t) => { st.textContent = t; };
+
+async function make(Cls, fs, model, extra, delegate) {
+  return Cls.createFromOptions(fs, { baseOptions: { modelAssetPath: model, delegate }, runningMode: "IMAGE", ...extra });
+}
+async function load() {
+  const t0 = performance.now();
+  try {
+    const mp = await import(LIB);
+    const fs = await mp.FilesetResolver.forVisionTasks(WASM);
+    let dg = "GPU";
+    try { face = await make(mp.FaceLandmarker, fs, FACE_M, { numFaces: 3 }, "GPU"); }
+    catch (_) { dg = "CPU"; face = await make(mp.FaceLandmarker, fs, FACE_M, { numFaces: 3 }, "CPU"); }
+    try { pose = await make(mp.PoseLandmarker, fs, POSE_M, { numPoses: 2 }, dg); }
+    catch (_) { pose = await make(mp.PoseLandmarker, fs, POSE_M, { numPoses: 2 }, "CPU"); dg += "/CPU"; }
+    log(`✅ الذكاء جاهز في ${((performance.now() - t0) / 1000).toFixed(1)} ث (${dg}). اختر صورة أو فيديو.`);
+  } catch (e) { log("❌ لم يتحمّل الذكاء: " + (e && e.message || e)); }
+}
+load();
+
+async function setMode(m) { if (mode === m) return; mode = m; await face.setOptions({ runningMode: m }); await pose.setOptions({ runningMode: m }); }
+
+$("fi").onchange = async (e) => {
+  const f = e.target.files[0]; if (!f || !face) return;
+  cancelAnimationFrame(raf); v.pause();
+  const url = URL.createObjectURL(f);
+  if (f.type.startsWith("video")) {
+    await setMode("VIDEO"); v.src = url; await v.play().catch(() => {}); src = v;
+    await new Promise((r) => (v.readyState >= 2 ? r() : (v.onloadeddata = r)));
+    fit(v.videoWidth, v.videoHeight); loop();
+  } else {
+    await setMode("IMAGE"); const im = new Image(); im.src = url; await im.decode(); src = im;
+    fit(im.naturalWidth, im.naturalHeight); once();
+  }
+};
+$("tx").onclick = () => { showText = !showText; $("tx").textContent = "✍️ نص تجريبي: " + (showText ? "تشغيل" : "إيقاف"); if (src && mode === "IMAGE") once(); };
+
+function fit(w, h) { const s = Math.min(720 / w, 1280 / h, 1); cv.width = Math.round(w * s); cv.height = Math.round(h * s); }
+
+function once() {
+  const t0 = performance.now(); const fr = face.detect(src), pr = pose.detect(src);
+  const ms = performance.now() - t0; draw(fr, pr); report(fr, pr, `الوقت: ${ms.toFixed(0)} ملّي ثانية للصورة`);
+}
+let n = 0, acc = 0;
+function loop() {
+  raf = requestAnimationFrame(loop);
+  if (v.currentTime === lastT) return; lastT = v.currentTime;
+  const t0 = performance.now(), ts = performance.now();
+  const fr = face.detectForVideo(v, ts), pr = pose.detectForVideo(v, ts);
+  acc += performance.now() - t0; n++;
+  draw(fr, pr);
+  if (n % 15 === 0) { report(fr, pr, `السرعة: ${(1000 / (acc / n)).toFixed(0)} صورة في الثانية (${(acc / n).toFixed(0)} ملّي ثانية لكل صورة)`); }
+}
+
+// ----- what we found -----
+const P = (l, i) => ({ x: l[i].x * cv.width, y: l[i].y * cv.height, vis: l[i].visibility ?? 1 });
+function box(l, idx) { let a = 1e9, b = 1e9, c = -1e9, d = -1e9; for (const i of idx) { const p = P(l, i); a = Math.min(a, p.x); b = Math.min(b, p.y); c = Math.max(c, p.x); d = Math.max(d, p.y); } return { x: a, y: b, w: c - a, h: d - b }; }
+const EYE_R = [33, 133, 159, 145, 160, 144, 158, 153, 246, 7], EYE_L = [263, 362, 386, 374, 387, 373, 385, 380, 466, 249];
+const OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+const LIPS = [61, 291, 0, 17, 13, 14, 37, 267, 84, 314];
+const BONES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28]];
+const C = { eye: "#5ab4f0", face: "#e9c46a", half: "#ff8fa3", body: "#7ee0b5", hand: "#ffb86b", foot: "#c3a6ff", mouth: "#ff6b6b" };
+
+function tag(b, color, text, pad = 6) {
+  g.strokeStyle = color; g.lineWidth = 3; g.setLineDash([]); g.strokeRect(b.x - pad, b.y - pad, b.w + pad * 2, b.h + pad * 2);
+  const fz = Math.max(14, Math.round(cv.width / 26)); g.font = `bold ${fz}px system-ui`; const w = g.measureText(text).width + 12;
+  g.fillStyle = color; g.fillRect(b.x - pad, b.y - pad - fz - 8, w, fz + 6); g.fillStyle = "#111"; g.textAlign = "left"; g.fillText(text, b.x - pad + 6, b.y - pad - 7);
+}
+function dot(p, color, r = 7) { g.fillStyle = color; g.beginPath(); g.arc(p.x, p.y, r, 0, 7); g.fill(); g.strokeStyle = "#111"; g.lineWidth = 2; g.stroke(); }
+function arcText(cx, cy, r, a0, a1, text, size) {
+  g.save(); g.font = `900 ${size}px Impact, 'Arial Black', sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+  const chars = [...text], step = (a1 - a0) / Math.max(chars.length - 1, 1);
+  chars.forEach((ch, i) => { const a = a0 + step * i; g.save(); g.translate(cx + r * Math.cos(a), cy + r * Math.sin(a)); g.rotate(a + Math.PI / 2);
+    g.lineWidth = size / 6; g.strokeStyle = "#000"; g.strokeText(ch, 0, 0); g.fillStyle = "#fff"; g.fillText(ch, 0, 0); g.restore(); });
+  g.restore();
+}
+
+function draw(fr, pr) {
+  g.drawImage(src, 0, 0, cv.width, cv.height);
+  g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, 0, cv.width, cv.height);
+  for (const l of (pr && pr.landmarks) || []) {
+    g.strokeStyle = C.body; g.lineWidth = 4; g.globalAlpha = .8;
+    for (const [a, b] of BONES) { const p = P(l, a), q = P(l, b); if (p.vis > .5 && q.vis > .5) { g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(q.x, q.y); g.stroke(); } }
+    g.globalAlpha = 1;
+    [11, 12].forEach((i) => { const p = P(l, i); if (p.vis > .5) dot(p, C.body); });
+    [15, 16].forEach((i) => { const p = P(l, i); if (p.vis > .5) { dot(p, C.hand, 10); g.fillStyle = C.hand; g.font = `bold ${Math.max(13, Math.round(cv.width / 30))}px system-ui`; g.fillText("يد", p.x + 12, p.y); } });
+    [27, 28].forEach((i) => { const p = P(l, i); if (p.vis > .5) { dot(p, C.foot, 10); g.fillStyle = C.foot; g.font = `bold ${Math.max(13, Math.round(cv.width / 30))}px system-ui`; g.fillText("رجل", p.x + 12, p.y); } });
+  }
+  for (const l of (fr && fr.faceLandmarks) || []) {
+    g.fillStyle = "rgba(255,255,255,.55)"; for (let i = 0; i < l.length; i += 3) { const p = P(l, i); g.fillRect(p.x - 1, p.y - 1, 2, 2); }
+    const fb = box(l, OVAL); tag(fb, C.face, "الوجه", 4);
+    const er = box(l, EYE_R), el = box(l, EYE_L);
+    tag({ x: Math.min(er.x, el.x), y: Math.min(er.y, el.y), w: Math.max(er.x + er.w, el.x + el.w) - Math.min(er.x, el.x), h: Math.max(er.h, el.h) }, C.eye, "العينان", 8);
+    tag(box(l, LIPS), C.mouth, "الفم", 4);
+    const top = P(l, 10), chin = P(l, 152);
+    g.strokeStyle = C.half; g.lineWidth = 3; g.setLineDash([10, 8]); g.beginPath(); g.moveTo(top.x, top.y - 20); g.lineTo(chin.x, chin.y + 20); g.stroke(); g.setLineDash([]);
+    g.fillStyle = C.half; g.font = `bold ${Math.max(13, Math.round(cv.width / 30))}px system-ui`; g.fillText("نصف الوجه", chin.x + 8, chin.y + 34);
+    if (showText) {
+      const eyesY = (P(l, 159).y + P(l, 386).y) / 2, cx = (P(l, 33).x + P(l, 263).x) / 2, fw = fb.w;
+      g.save(); g.font = `900 ${Math.round(fw * .2)}px Impact, 'Arial Black', sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+      g.lineWidth = fw * .03; g.strokeStyle = "#000"; g.strokeText("LOOK AT ME", cx, eyesY); g.fillStyle = "#fff"; g.fillText("LOOK AT ME", cx, eyesY); g.restore();
+      arcText(cx, (top.y + chin.y) / 2, fb.h * .68, Math.PI * 1.15, Math.PI * 1.85, "AROUND MY HEAD", Math.round(fw * .12));
+    }
+  }
+  if (showText) for (const l of (pr && pr.landmarks) || []) {
+    const h = P(l, 16).y < P(l, 15).y ? P(l, 16) : P(l, 15);
+    if (h.vis > .5) arcText(h.x, h.y, cv.width * .09, -Math.PI * .9, -Math.PI * .1, "HANDS UP", Math.round(cv.width * .035));
+  }
+}
+
+function report(fr, pr, speed) {
+  const nf = ((fr && fr.faceLandmarks) || []).length, np = ((pr && pr.landmarks) || []).length;
+  const seen = (i) => ((pr && pr.landmarks) || []).some((l) => (l[i].visibility ?? 1) > .5);
+  const parts = [];
+  if (nf) parts.push("الوجه", "العينان", "الفم", "نصف الوجه");
+  if (np) { if (seen(11) || seen(12)) parts.push("الكتفان"); if (seen(15) || seen(16)) parts.push("اليدان"); if (seen(23) || seen(24)) parts.push("الخصر"); if (seen(27) || seen(28)) parts.push("الرجلان"); }
+  $("chips").innerHTML = ["الوجه", "العينان", "الفم", "نصف الوجه", "الكتفان", "اليدان", "الخصر", "الرجلان"].map((p) => `<span class="chip${parts.includes(p) ? " on" : ""}">${parts.includes(p) ? "✓ " : ""}${p}</span>`).join("");
+  log(`وجوه: ${nf} · أشخاص: ${np}\n${speed}`);
+}
+</script>
+</body>
+</html>
