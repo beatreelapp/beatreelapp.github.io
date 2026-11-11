@@ -1028,12 +1028,71 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  catch(e){why+=' '+((e&&e.message)||e);out=[Object.assign({s:0,e:1e9},shotDef())]}
  finally{try{v.playbackRate=1;v.loop=wasLoop}catch(_){}SHBUSY=false}
  if(why.trim())try{bug('shots',why.trim())}catch(_){}
- if($('bgv').src!==key)return;SH=out;SHK=key;SHSEL=0;try{v.currentTime=0;if(!ETOPEN)v.play().catch(()=>{})}catch(_){}
- if(SJ==10){msg.textContent=SH.length>1?'Found '+SH.length+' shots ✓ Tap "✏️ Edit text" to choose where the words go in each one.':'Ready ✓ Tap "✏️ Edit text" to choose where the words go.';
+ if($('bgv').src!==key)return;SH=out;SHK=key;SHSEL=0;
+ if(SJ==10){SHBUSY=true;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key)return;shotAuto()}
+ try{v.currentTime=0;if(!ETOPEN)v.play().catch(()=>{})}catch(_){}
+ if(SJ==10){const na=SH.filter(q=>q.auto).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+SH.length+' shots':'')+'. Tap "✏️ Edit text" to change.':SH.length>1?'Found '+SH.length+' shots ✓ Tap "✏️ Edit text" to choose where the words go in each one.':'Ready ✓ Tap "✏️ Edit text" to choose where the words go.';
   if(SHAUTO!==key){SHAUTO=key;etOpen()}}
  etUI()}
+/* ---- body finder (Edit): MediaPipe pose + face run ON THE PHONE (nothing is uploaded), one picture every ~0.4 s.
+   Each shot then gets a place picked automatically (head, eyes, hand, feet) and the words follow the person as he moves. ---- */
+var TRK=[],TRKK='',MPV=null;const MP_CDN='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',MP_M='https://storage.googleapis.com/mediapipe-models/';
+const FIDX=[33,133,263,362,10,152,234,454];/* face points kept: right eye ends, left eye ends, top, chin, cheeks */
+function mpLoad(){if(MPV)return MPV;MPV=(async()=>{const mp=await import(window.MP_LIB||MP_CDN+'/vision_bundle.mjs');const fs=await mp.FilesetResolver.forVisionTasks(MP_CDN+'/wasm');
+ const mk=async(C,m,x)=>{try{return await C.createFromOptions(fs,{baseOptions:{modelAssetPath:MP_M+m,delegate:'GPU'},runningMode:'IMAGE',...x})}catch(_){return C.createFromOptions(fs,{baseOptions:{modelAssetPath:MP_M+m,delegate:'CPU'},runningMode:'IMAGE',...x})}};
+ const pose=await mk(mp.PoseLandmarker,'pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',{numPoses:1});
+ let face=null;try{face=await mk(mp.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1})}catch(e){try{bug('body','face '+((e&&e.message)||e))}catch(_){}}
+ return{pose:pose,face:face}})();MPV.catch(()=>{MPV=null});return MPV}
+async function bodyScan(key){const v=$('bgv');if(TRKK===key&&TRK.length)return;TRK=[];TRKK='';const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0)||!v.videoWidth)return;
+ let M;try{msg.textContent='Loading the body finder…';M=await mpLoad()}catch(e){try{bug('body','load '+((e&&e.message)||e))}catch(_){}return}
+ const sc=document.createElement('canvas'),k=Math.min(1,512/Math.max(v.videoWidth,v.videoHeight));sc.width=Math.max(16,Math.round(v.videoWidth*k));sc.height=Math.max(16,Math.round(v.videoHeight*k));const x=sc.getContext('2d');
+ const step=dur>90?.8:dur>45?.6:.4,out=[];let errs=0;v.pause();
+ for(let t=.05;t<dur;t+=step){if($('bgv').src!==key||SJ!=10)return;await seekTo(v,Math.min(dur-.05,t));x.drawImage(v,0,0,sc.width,sc.height);let p=null,f=null;
+  try{const r=M.pose.detect(sc),l=r&&r.landmarks&&r.landmarks[0];if(l)p=l.map(q=>[q.x,q.y,q.visibility==null?1:q.visibility])}catch(e){if(!errs++)try{bug('body','pose '+((e&&e.message)||e))}catch(_){}}
+  if(M.face)try{const r=M.face.detect(sc),l=r&&r.faceLandmarks&&r.faceLandmarks[0];if(l)f=FIDX.map(i=>[l[i].x,l[i].y])}catch(_){}
+  out.push({t:t,p:p,f:f});msg.textContent='Finding the person in your video… '+Math.min(99,Math.round(t/dur*100))+'%';await new Promise(r=>setTimeout(r,0))}
+ TRK=out;TRKK=key}
+/* video picture (0..1) -> Edit frame (0..1), same maths as vidDraw */
+function v2f(nx,ny){const v=$('bgv');if(!v.videoWidth)return[nx,ny];const g=vidGeom(v,OF.w,OF.h),ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;return[(ox+nx*g.dw)/OF.w,(oy+ny*g.dh)/OF.h]}
+/* one picture -> head, eyes, hand, feet in frame units (null when not seen) */
+function trkFeat(z){if(!z||(!z.p&&!z.f))return null;const P=z.p,ok=i=>P&&P[i][2]>.5,F=(a)=>v2f(a[0],a[1]),D=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]),M=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+ const o={};
+ if(z.f){const q=z.f.map(F),er=M(q[0],q[1]),el=M(q[2],q[3]),fw=D(q[6],q[7]);o.x=(q[4][0]+q[5][0])/2;o.y=(q[4][1]+q[5][1])/2;o.r=Math.max(fw,D(q[4],q[5])*.8)*.62;
+  o.ex=(er[0]+el[0])/2;o.ey=(er[1]+el[1])/2;o.ea=Math.atan2(el[1]-er[1],el[0]-er[0]);if(o.ea>Math.PI/2)o.ea-=Math.PI;if(o.ea<-Math.PI/2)o.ea+=Math.PI;o.ew=fw}
+ else if(ok(0)){const n=F(P[0]);let hw=0;if(ok(7)&&ok(8))hw=D(F(P[7]),F(P[8]));else if(ok(11)&&ok(12))hw=D(F(P[11]),F(P[12]))*.45;else hw=.12;
+  o.x=n[0];o.y=n[1]-hw*.25;o.r=hw*.75;if(ok(2)&&ok(5)){const a=F(P[2]),b=F(P[5]),l=a[0]>b[0]?b:a,r=a[0]>b[0]?a:b;o.ex=(a[0]+b[0])/2;o.ey=(a[1]+b[1])/2;o.ea=Math.atan2(r[1]-l[1],r[0]-l[0]);o.ew=hw*1.1}}
+ if(P){const hs=[[15,19,13],[16,20,14]].filter(h=>ok(h[0])).map(h=>{const w=F(P[h[0]]),ix=P[h[1]][2]>.3?F(P[h[1]]):w,el=ok(h[2])?F(P[h[2]]):null;return{c:M(w,ix),r:el?D(w,el)*.5:.07}});
+  if(hs.length){const h=hs.sort((a,b)=>a.c[1]-b.c[1])[0];if(h.c[0]>-.05&&h.c[0]<1.05&&h.c[1]>-.05&&h.c[1]<1.05){o.hx=h.c[0];o.hy=h.c[1];o.hr=Math.max(.06,Math.min(.2,h.r));
+   const sh=ok(11)&&ok(12)?(F(P[11])[1]+F(P[12])[1])/2:(o.y!=null?o.y+o.r*2:1);o.up=o.hy<sh}}
+  if(ok(27)&&ok(28)){const a=F(P[27]),b=F(P[28]),m=M(a,b);if(m[1]<.97&&m[1]>.3){o.fx=m[0];o.fy=m[1];o.fw=Math.max(.18,D(a,b))}}}
+ return(o.x!=null||o.hx!=null||o.fx!=null)?o:null}
+/* where the person is at time t inside shot q (between two pictures the points slide smoothly) */
+function trkAt(q,t){if(!TRK.length||TRKK!==$('bgv').src)return null;let a=null,b=null;for(const z of TRK){if(z.t<q.s-.01||z.t>=q.e)continue;if(z.t<=t)a=z;else{b=z;break}}
+ const fa=trkFeat(a),fb=trkFeat(b);if(!fa&&!fb)return null;if(!fa||!fb)return fa||fb;const u=cl01((t-a.t)/Math.max(.01,b.t-a.t)),o={};
+ for(const g of[['x','y','r'],['ex','ey','ea','ew'],['hx','hy','hr'],['fx','fy','fw']]){const A=fa[g[0]]!=null,B=fb[g[0]]!=null;
+  if(A&&B)g.forEach(k=>o[k]=fa[k]+(fb[k]-fa[k])*u);else{const w=A&&(u<.5||!B)?fa:B&&(u>=.5||!A)?fb:null;if(w)g.forEach(k=>o[k]=w[k])}}
+ o.up=u<.5?fa.up:fb.up;return o}
+/* the shot as it should be drawn now: tracked position + the user's arrow/size changes */
+function shotLive(q){if(!q||!q.trk)return q;const o=trkAt(q,$('bgv').currentTime||0);if(!o)return q;const dx=q.x-q.bx,dy=q.y-q.by,kr=q.r/Math.max(.01,q.br),L=Object.assign({},q);
+ if(o.x!=null){L.x=o.x+dx;L.y=o.y+dy;L.r=Math.max(.04,o.r*kr)}if(o.ex!=null){L.ex=o.ex+dx;L.ey=o.ey+dy;L.ea=o.ea;L.ew=o.ew*kr}if(o.hx!=null){L.hx=o.hx+dx;L.hy=o.hy+dy;L.hr=o.hr*kr}if(o.fx!=null){L.fx=o.fx+dx;L.fy=o.fy+dy;L.fw=o.fw*kr}return L}
+/* pick a place for every shot from what was seen (and not the same place twice in a row when there is a choice) */
+function shotAuto(){if(!TRK.length)return;let prev='';const med=a=>{const b=a.slice().sort((x,y)=>x-y);return b[b.length>>1]};
+ SH.forEach(q=>{const fe=TRK.filter(z=>z.t>=q.s&&z.t<q.e).map(trkFeat).filter(Boolean);q.has={};if(!fe.length){q.trk=false;return}
+  const fr=k=>fe.filter(f=>f[k]!=null).length/fe.length,hd=fe.filter(f=>f.x!=null);q.has={eyes:fr('ex')>=.5,hand:fr('hx')>=.5,feet:fr('fx')>=.5};
+  if(hd.length){q.x=q.bx=med(hd.map(f=>f.x));q.y=q.by=med(hd.map(f=>f.y));q.r=q.br=Math.max(.05,Math.min(.3,med(hd.map(f=>f.r))))}
+  else{const h=fe.find(f=>f.hx!=null)||fe.find(f=>f.fx!=null);q.x=q.bx=h.hx!=null?h.hx:h.fx;q.y=q.by=h.hx!=null?h.hy:h.fy;q.r=q.br=.12}
+  q.trk=true;q.auto=true;const up=fe.filter(f=>f.up).length/fe.length,c=[];
+  if(q.has.hand&&up>=.5)c.push('hand');if(q.has.eyes&&q.r>=.15)c.push('eyes');if(q.has.feet&&!q.has.eyes)c.push('feet');
+  if(hd.length)c.push(q.y-q.r<.16?'both':'head','both');else c.push('edge');
+  q.part=c.find(x=>x!==prev)||c[0];prev=q.part})}
 /* ---- text paths around the person ---- */
-function orbitQ(sh,fit){const hx=OF.x+sh.x*OF.w,hy=OF.y+sh.y*OF.h,R=Math.max(sh.r*OF.w+18,Math.min(sh.r*OF.w+44,hy-OF.y+20)),D=Math.max(60,OF.y+OF.h+30-hy),P=[];let mid=-1;
+function orbitQ(sh,fit){let p0=fit||sh.part;if((p0==='eyes'&&sh.ex==null)||(p0==='hand'&&sh.hx==null)||(p0==='feet'&&sh.fx==null))p0='both';
+ if(p0==='eyes'||p0==='hand'||p0==='feet'){const P=[];
+  if(p0==='eyes'){const cx=OF.x+sh.ex*OF.w,cy=OF.y+sh.ey*OF.h,a=Math.max(-.5,Math.min(.5,sh.ea||0)),hl=Math.max(150,Math.min(300,sh.ew*OF.w*.9));for(let k=0;k<=24;k++){const d=-hl+2*hl*k/24;P.push([cx+Math.cos(a)*d,cy+Math.sin(a)*d])}}
+  else if(p0==='hand'){const cx=OF.x+sh.hx*OF.w,cy=OF.y+sh.hy*OF.h,R=Math.max(95,Math.min(175,sh.hr*OF.w+60));for(let k=0;k<=48;k++){const a=Math.PI*(.72+1.56*k/48);P.push([cx+Math.cos(a)*R,cy+Math.sin(a)*R])}}
+  else{const cx=OF.x+sh.fx*OF.w,hw=Math.max(170,Math.min(290,sh.fw*OF.w*.9)),cy=Math.min(OF.y+sh.fy*OF.h+26,OF.y+OF.h-70);for(let k=0;k<=36;k++){const u=-1+2*k/36;P.push([cx+u*hw,cy+42*(1-u*u)])}}
+  const C=[0];for(let k=1;k<P.length;k++)C.push(C[k-1]+Math.hypot(P[k][0]-P[k-1][0],P[k][1]-P[k-1][1]));return{P:P,C:C,len:C[C.length-1],mid:C[C.length-1]/2}}
+ fit=p0;const hx=OF.x+sh.x*OF.w,hy=OF.y+sh.y*OF.h,R=Math.max(sh.r*OF.w+18,Math.min(sh.r*OF.w+44,hy-OF.y+20)),D=Math.max(60,OF.y+OF.h+30-hy),P=[];let mid=-1;
  const side=(sg,k)=>{const d=D*k/24;return[hx+sg*(R+.3*d),hy+d]},arc=(a0,a1,n)=>{for(let k=0;k<=n;k++){const a=Math.PI*(a0+(a1-a0)*k/n);P.push([hx+Math.cos(a)*R,hy+Math.sin(a)*R])}};
  const p=fit||sh.part;
  if(p==='head'){arc(1,2,48)}
@@ -1061,7 +1120,7 @@ function ofLoad(F){if(!F||!F.u)return Promise.resolve();if(OFP[F.id])return OFP[
  el.onchange=()=>{OFI=+el.value;try{localStorage.setItem('br_ofo',OFI)}catch(_){}const F=OFS[OFI];if(F.u){ofLoad(F);gfHit(F)}}})();
 function orbitDraw(ch,sh,t,out){const OF_=OFS[OFI]||OFS[0],on=!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif';
  let Q=orbitQ(sh),fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)),gap,wd,tot;
- for(;;){c.font=fs+'px '+ff;gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(sh.part==='head'||sh.part==='left'||sh.part==='right'){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
+ for(;;){c.font=fs+'px '+ff;gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(sh.part==='head'||sh.part==='left'||sh.part==='right'||sh.part==='hand'){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
  let d=Q.mid-tot/2;d=Math.max(0,Math.min(Q.len-tot,d));c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
  for(let k=0;k<ch.length;k++){const w=wd[k],m=d+w/2;d+=w+gap;if(ch[k][0]===' ')continue;const u=t==null?1:(t-ch[k][1])/.15;if(u<=0)continue;
   const p=orbitAt(Q,m),sc=1+.55*(1-eOut(cl01(u)));c.save();c.translate(p[0],p[1]);c.rotate(p[2]);c.scale(sc,sc);c.globalAlpha=Math.min(1,u*3)*out;
@@ -1070,38 +1129,38 @@ function orbitDraw(ch,sh,t,out){const OF_=OFS[OFI]||OFS[0],on=!!(OF_.u&&OF_.ok),
   else{c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(4,fs*.14);c.strokeStyle='#000';c.strokeText(ch[k][0],0,0);
   c.shadowColor='rgba(0,0,0,0)';c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}c.restore()}
  c.restore()}
-function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return true;if(/[؀-ۿ]/.test(L[i]))return false;const sh=shotNow();if(sh.part==='straight')return false;
+function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return true;if(/[؀-ۿ]/.test(L[i]))return false;const sh=shotLive(shotNow());if(sh.part==='straight')return false;
  const t=au.currentTime,wt=wordTimes(i,ws),se=lineSE(i),n=ws.length;let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
  const te=Math.min(nextS,Math.max(se.e,wt[n-1][1]+.8));if(t>te+.05)return true;
  const ch=[];ws.forEach((w,k)=>{w=w.toUpperCase();const a=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-a));for(let j=0;j<w.length;j++)ch.push([w[j],a+d*j/w.length]);if(k<n-1)ch.push([' ',a+d])});
  orbitDraw(ch,sh,t,cl01((te-t)/.25));return true}
 /* while Edit text is open and paused, show a whole line so the place can be judged */
-function orbitShow(){const sh=shotNow();let s=(L.find(x=>x&&!/[؀-ۿ]/.test(x))||'YOUR LYRICS HERE').toUpperCase();if(sh.part==='straight'){c.save();c.textAlign='center';c.font='44px "Anton",Impact,sans-serif';c.lineWidth=6;c.strokeStyle='#000';c.lineJoin='round';c.textBaseline='middle';c.font='40px "Anton",Impact,sans-serif';let z=s.slice(0,34);while(c.measureText(z).width>OF.w-60&&z.length>4)z=z.slice(0,-2);c.strokeText(z,W/2,OF.y+OF.h/2);c.fillStyle='#fff';c.fillText(z,W/2,OF.y+OF.h/2);c.restore();return}
+function orbitShow(){const sh=shotLive(shotNow());let s=(L.find(x=>x&&!/[؀-ۿ]/.test(x))||'YOUR LYRICS HERE').toUpperCase();if(sh.part==='straight'){c.save();c.textAlign='center';c.font='44px "Anton",Impact,sans-serif';c.lineWidth=6;c.strokeStyle='#000';c.lineJoin='round';c.textBaseline='middle';c.font='40px "Anton",Impact,sans-serif';let z=s.slice(0,34);while(c.measureText(z).width>OF.w-60&&z.length>4)z=z.slice(0,-2);c.strokeText(z,W/2,OF.y+OF.h/2);c.fillStyle='#fff';c.fillText(z,W/2,OF.y+OF.h/2);c.restore();return}
  orbitDraw([...s].map(x=>[x,0]),sh,null,1)}
 /* ---- Edit text panel ---- */
-const PARTS=[['head','⌒ Head'],['left','◜ Left'],['right','◝ Right'],['both','∩ Both sides'],['edge','▭ Frame edge'],['straight','▬ Normal text']];
+const PARTS=[['eyes','👀 Eyes'],['hand','✋ Hand'],['feet','👣 Feet'],['head','⌒ Head'],['left','◜ Left'],['right','◝ Right'],['both','∩ Both sides'],['edge','▭ Frame edge'],['straight','▬ Normal text']];
 function etBuild(){if($('etp'))return;const st=document.createElement('style');st.textContent='#etp{position:fixed;left:0;right:0;bottom:0;z-index:90;max-height:66vh;overflow:auto;background:#16181c;border-top:1px solid #30343b;border-radius:18px 18px 0 0;padding:10px 12px 18px;box-shadow:0 -12px 30px rgba(0,0,0,.55);color:#e8eaed;font:14px system-ui,sans-serif}#etp[hidden]{display:none}#etp .eh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#etp .eh b{font-size:16px}#etp button{width:auto;flex:0 0 auto;padding:9px 12px;border-radius:12px;border:1px solid #30343b;background:#22262c;color:#e8eaed;font:600 13px system-ui,sans-serif;cursor:pointer}#etp button.on{background:#5ab4f0;border:0}#etp .er{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}#etv{display:block;margin:0 auto;width:min(48vw,180px);height:auto;border-radius:10px;background:#000}#etc{display:flex;gap:8px;overflow-x:auto;padding:8px 2px 4px}#etc .sc{flex:0 0 auto;width:96px;text-align:center;font-size:11px;opacity:.85}#etc canvas{width:96px;height:96px;border-radius:8px;display:block;outline-offset:2px}#etc .sc.on canvas{outline:2px solid #5ab4f0}#etp .hint{font-size:12px;opacity:.7;text-align:center;margin-top:6px}';document.head.appendChild(st);
  const d=document.createElement('div');d.id='etp';d.hidden=true;d.innerHTML='<div class="eh"><b>✏️ Edit text</b><button id="etx" class="on">Done ✓</button></div><canvas id="etv" width="340" height="395"></canvas><div id="etc"></div><div class="hint" id="eth">Tap a shot, then choose where the words go.</div><div class="er" id="etparts"></div><div class="er"><button data-m="l" aria-label="Left">◀</button><button data-m="u" aria-label="Up">▲</button><button data-m="d" aria-label="Down">▼</button><button data-m="r" aria-label="Right">▶</button><button data-m="-" aria-label="Smaller">−</button><button data-m="+" aria-label="Bigger">＋</button></div><div class="er"><button id="etall">Same for all shots</button><button id="etmg">Merge with previous</button></div><div class="er"><button id="etcv">Change video</button><button id="etzm">Zoom video</button></div>';document.body.appendChild(d);
  $('etparts').innerHTML=PARTS.map(p=>'<button data-p="'+p[0]+'">'+p[1]+'</button>').join('');
  $('etx').onclick=etClose;$('etcv').onclick=()=>{etClose();$('vf').click()};$('etzm').onclick=()=>{etClose();openVA()};
  $('etparts').onclick=e=>{const b=e.target.closest('[data-p]');if(!b||!SH[SHSEL])return;SH[SHSEL].part=b.getAttribute('data-p');etUI()};
  d.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const q=SH[SHSEL];if(!q)return;const m=b.getAttribute('data-m');if(m==='l')q.x-=.03;if(m==='r')q.x+=.03;if(m==='u')q.y-=.03;if(m==='d')q.y+=.03;if(m==='-')q.r-=.015;if(m==='+')q.r+=.015;q.x=cl01(q.x);q.y=Math.max(.05,Math.min(.95,q.y));q.r=Math.max(.05,Math.min(.3,q.r));etUI()});
- $('etall').onclick=()=>{const q=SH[SHSEL];if(!q)return;SH.forEach(o=>{o.part=q.part;o.x=q.x;o.y=q.y;o.r=q.r});etUI();msg.textContent='Same place used for all shots ✓'};
+ $('etall').onclick=()=>{const q=SH[SHSEL];if(!q)return;SH.forEach(o=>{o.part=q.part;if(q.trk&&o.trk){o.x=o.bx+(q.x-q.bx);o.y=o.by+(q.y-q.by);o.r=o.br*(q.r/Math.max(.01,q.br))}else{o.x=q.x;o.y=q.y;o.r=q.r}});etUI();msg.textContent='Same place used for all shots ✓'};
  $('etmg').onclick=()=>{if(SHSEL<1)return;const a=SH[SHSEL-1],b=SH[SHSEL];a.e=b.e;SH.splice(SHSEL,1);SHSEL--;etPick(SHSEL)}}
 function etDots(q){return[['head',q.x*96,q.y*96-q.r*96-9],['left',q.x*96-q.r*96-13,q.y*96+q.r*110],['right',q.x*96+q.r*96+13,q.y*96+q.r*110]]}
 function etUI(){if(!$('etp'))return;const box=$('etc');box.innerHTML='';
  SH.forEach((q,k)=>{const w=document.createElement('div');w.className='sc'+(k===SHSEL?' on':'');const cv2=document.createElement('canvas');cv2.width=cv2.height=96;const x=cv2.getContext('2d');if(q.th)x.drawImage(q.th,0,0,96,96);else{x.fillStyle='#222';x.fillRect(0,0,96,96)}
   if(q.part!=='edge'&&q.part!=='straight')etDots(q).forEach(([p,bx,by])=>{const on=q.part===p||(q.part==='both'&&p!=='head');x.beginPath();x.arc(bx,by,7,0,7);x.fillStyle=on?'#ffd24d':'rgba(255,255,255,.85)';x.fill();x.lineWidth=2;x.strokeStyle='#000';x.stroke()});
   cv2.onclick=e=>{const r=cv2.getBoundingClientRect(),mx=(e.clientX-r.left)/r.width*96,my=(e.clientY-r.top)/r.height*96;if(k===SHSEL&&q.part!=='edge'&&q.part!=='straight'){for(const [p,bx,by] of etDots(q))if(Math.hypot(mx-bx,my-by)<14){q.part=p;break}}etPick(k)};
-  const lb=document.createElement('div');const e_=Math.min(q.e,$('bgv').duration||q.e);lb.textContent='Shot '+(k+1)+' · '+q.s.toFixed(1)+'–'+e_.toFixed(1)+'s';w.appendChild(cv2);w.appendChild(lb);box.appendChild(w)});
- const q=SH[SHSEL];$('etparts').querySelectorAll('[data-p]').forEach(b=>b.classList.toggle('on',!!q&&b.getAttribute('data-p')===q.part));$('etmg').disabled=SHSEL<1;
+  const lb=document.createElement('div');const e_=Math.min(q.e,$('bgv').duration||q.e);lb.textContent='Shot '+(k+1)+' · '+q.s.toFixed(1)+'–'+e_.toFixed(1)+'s'+(q.trk?' · ✨':'');w.appendChild(cv2);w.appendChild(lb);box.appendChild(w)});
+ const q=SH[SHSEL];$('etparts').querySelectorAll('[data-p]').forEach(b=>{const p=b.getAttribute('data-p');b.classList.toggle('on',!!q&&p===q.part);if(p==='eyes'||p==='hand'||p==='feet')b.style.display=q&&q.has&&q.has[p]?'':'none'});$('etmg').disabled=SHSEL<1;
  $('eth').textContent=SH.length>1?'Your video has '+SH.length+' shots. Tap one, then choose where the words go.':'Choose where the words go.'}
 function etPick(k){SHSEL=k;const q=SH[k],bv=$('bgv');if(q){au.pause();bv.pause();try{bv.currentTime=Math.min((bv.duration||1)-.05,q.mt!=null?q.mt:(q.s+Math.min(q.e,bv.duration||q.e))/2)}catch(_){}}etUI()}
 function etLoop(){if(!ETOPEN)return;requestAnimationFrame(etLoop);const v=$('etv');if(!v)return;const x=v.getContext('2d'),k=cv.width/W,sx=(OF.x-40)*k,sy=(OF.y-110)*k,sw=(OF.w+80)*k,sh=(OF.h+190)*k;x.fillStyle='#000';x.fillRect(0,0,v.width,v.height);try{x.drawImage(cv,sx,sy,sw,sh,0,0,v.width,v.height)}catch(_){}}
 function etOpen(){if(SJ!=10)return;etBuild();if(!$('bgv').src){$('vf').click();return}if(!SH.length)SH=[Object.assign({s:0,e:1e9},shotDef())];ETOPEN=true;$('etp').hidden=false;etPick(Math.min(SHSEL,SH.length-1));etLoop()}
 function etClose(){ETOPEN=false;if($('etp'))$('etp').hidden=true}
 function etBtn(){try{const on=SJ==10&&!!$('bgv').src;$('etb').style.display=on?'':'none';$('vb2').style.display='none';$('vadd').style.display=SJ==10&&!on?'':'none'}catch(_){}}
-function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN){const q=shotNow();if(q.part!=='edge'&&q.part!=='straight'){c.save();c.globalAlpha=.9;c.setLineDash([10,8]);c.lineWidth=4;c.strokeStyle='#ffd24d';c.beginPath();c.arc(OF.x+q.x*OF.w,OF.y+q.y*OF.h,q.r*OF.w,0,7);c.stroke();c.restore()}}const t=ttl.value.trim().toUpperCase(),sn=songName(),lt=!!(OBGS[OBG]||[])[1];c.save();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle=lt?'#15181d':'#fff';
+function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN){const q=shotLive(shotNow());if(q.part!=='edge'&&q.part!=='straight'){const m=q.part==='eyes'&&q.ex!=null?[q.ex,q.ey,q.ew*.6]:q.part==='hand'&&q.hx!=null?[q.hx,q.hy,q.hr]:q.part==='feet'&&q.fx!=null?[q.fx,q.fy,q.fw*.5]:[q.x,q.y,q.r];c.save();c.globalAlpha=.9;c.setLineDash([10,8]);c.lineWidth=4;c.strokeStyle='#ffd24d';c.beginPath();c.arc(OF.x+m[0]*OF.w,OF.y+m[1]*OF.h,m[2]*OF.w,0,7);c.stroke();c.restore()}}const t=ttl.value.trim().toUpperCase(),sn=songName(),lt=!!(OBGS[OBG]||[])[1];c.save();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle=lt?'#15181d':'#fff';
  if(t){let fs=78;do{c.font=fs+'px "Anton",Impact,sans-serif';fs-=4}while(c.measureText(t).width>W-80&&fs>34);c.fillText(t,W/2,sn?OF.y-74:OF.y-36)}
  if(sn){c.font='500 26px system-ui,sans-serif';c.fillStyle=lt?'rgba(20,24,29,.6)':'rgba(255,255,255,.6)';let x=sn;while(c.measureText(x).width>W-100&&x.length>4)x=x.slice(0,-2);c.fillText(x===sn?x:x+'…',W/2,OF.y-30)}
  c.restore()}
@@ -1525,7 +1584,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v41';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v42';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
