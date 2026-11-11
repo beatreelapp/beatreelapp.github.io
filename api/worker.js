@@ -26,7 +26,7 @@ const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 
 const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
 const SITE = "https://beatreelapp.github.io";
 const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
-const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok"];
+const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok", "tpl_1", "tpl_2"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 // Google Fonts the app offers; picks are counted as "f_<id>" so the menu can show the most used first
 const FONT_IDS = ["dirt", "glitch", "wet", "bang", "mono", "shade", "mark", "audio", "anton", "bebas", "mont", "pop", "archivo", "russo", "lilita", "right", "nsil", "nmint", "spice", "oshade", "fold", "tint", "ramp", "kaln"];
