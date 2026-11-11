@@ -181,6 +181,34 @@ function groqToCf(g, vad) {
   return { text, segments, word_count: segments.reduce((t, s) => t + s.words.length, 0), transcription_info: { language: code, language_probability: code ? sure : 0, duration: +g.duration || 0 }, src: "groq" };
 }
 
+// Text AI: Groq first (gpt-oss-120b, stronger, free plan, same GROQ_API_KEY), Cloudflare Llama 3.3 as backup.
+// Always answers in the Cloudflare shape {response: "..."} so style/look/clips stay unchanged.
+const GROQ_LLM = "openai/gpt-oss-120b";
+async function llm(env, p) {
+  if (env.GROQ_API_KEY) {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 15000);
+    try {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST", signal: ctl.signal,
+        headers: { Authorization: "Bearer " + env.GROQ_API_KEY, "Content-Type": "application/json" },
+        // gpt-oss thinks before answering: keep thinking short and leave room for it in the token limit
+        body: JSON.stringify({ model: GROQ_LLM, messages: p.messages, temperature: p.temperature, max_completion_tokens: (p.max_tokens || 400) + 2000, reasoning_effort: "low", include_reasoning: false }),
+      });
+      if (r.ok) {
+        const j = await r.json(), t = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+        if (typeof t === "string" && /\{[\s\S]*\}/.test(t)) { await count(env, "st_groq", ""); return { response: t, src: "groq" }; }
+      } else if (r.status !== 429) {
+        const m = "llm " + r.status + " " + (await r.text().catch(() => "")).slice(0, 120);
+        await stub(env).err("groq-server", "groq-llm", m, "api", "server").catch(() => {});
+      }
+    } catch (_) {} finally { clearTimeout(to); }
+  }
+  const out = await env.AI.run(STYLE_MODEL, p);
+  await count(env, "st_cf", "");
+  if (out && typeof out === "object") out.src = "cf";
+  return out;
+}
+
 async function style(env, { text, options }) {
   if (typeof text !== "string" || !text.trim()) throw bad("text required");
   if (!options || typeof options !== "object") throw bad("options required");
@@ -198,7 +226,7 @@ async function style(env, { text, options }) {
     "Answer with JSON only, no other text, in exactly this shape: " +
     '{"mood":"one or two words","font":0,"col":0,"size":0,"anim":0,"fx":0,"frame":0}. Each number is an index from the menu.';
   const user = "Style menu (index=name):\n" + menu + "\n\nSpoken words:\n" + text.slice(0, 1500);
-  const out = await env.AI.run(STYLE_MODEL, {
+  const out = await llm(env, {
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -251,7 +279,7 @@ async function look(env, body) {
     "\n\nEmojis:\n" + emojis.map((v, i) => i + "=" + v).join(", ") +
     "\n\nLines (" + N + "):\n" + lines.map((v, i) => i + ": " + v).join("\n") +
     "\n\nFull text:\n" + text;
-  const out = await env.AI.run(STYLE_MODEL, {
+  const out = await llm(env, {
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -291,7 +319,7 @@ async function clips(env, body) {
     'Answer with JSON only, no other text, exactly this shape: {"clips":[{"a":0,"b":7,"title":"..."}]} where a is the first line and b the last line of the clip.';
   const user = "Video length: " + Math.round(total) + " s, " + N + " lines.\n\n" +
     ls.map((x, i) => i + " [" + x.s.toFixed(1) + "-" + x.e.toFixed(1) + "] " + x.t).join("\n");
-  const out = await env.AI.run(STYLE_MODEL, {
+  const out = await llm(env, {
     messages: [{ role: "system", content: system }, { role: "user", content: user }],
     max_tokens: 500,
     temperature: 0.3,
@@ -368,6 +396,8 @@ const LABELS = [
   ["ai_tr", "طلبات تفريغ الصوت"],
   ["tr_groq", "  ↳ منها عبر Groq"],
   ["tr_cf", "  ↳ منها عبر Cloudflare (احتياط)"],
+  ["st_groq", "ذكاء الستايل/القص عبر Groq"],
+  ["st_cf", "ذكاء الستايل/القص عبر Cloudflare (احتياط)"],
   ["pro_new", "اشتراكات Pro جديدة"],
 ];
 
