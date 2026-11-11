@@ -897,7 +897,7 @@ function frameBody(){
  if(!OFFX&&vSync()&&bv.src&&!bv.error){
   if(au.paused){if(!bv.paused)bv.pause();if(Math.abs(bv.currentTime-au.currentTime)>.1&&!bv.seeking){try{bv.currentTime=au.currentTime}catch(_){}}}
   else{if(bv.paused&&performance.now()-VT>400){VT=performance.now();bv.play().catch(()=>{})}if(Math.abs(bv.currentTime-au.currentTime)>.25&&!bv.seeking){vHold(bv);try{bv.currentTime=au.currentTime+.05}catch(_){}}}}
- else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
+ else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&!SHBUSY&&!(ETOPEN&&SJ==10)&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
  const vHeld=SJ==4&&!!VHOLD&&VHT>0&&performance.now()-VHT<3000;
  if(bv.src&&bv.readyState>=2&&bv.videoWidth&&!(vHeld&&bv.seeking)){const R=vidRect();
   if(SJ==4){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,VR.r);vBorder()}
@@ -1000,19 +1000,20 @@ var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOP
 function shotDef(){return{part:'both',x:OH.x,y:OH.y,r:OH.r}}
 function shotNow(){const bv=$('bgv');if(!SH.length)return shotDef();const t=bv.currentTime||0;for(const q of SH)if(t>=q.s&&t<q.e)return q;return SH[SH.length-1]}
 function coverDraw(x,v,S){const vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;const g=vidGeom(v,OF.w,OF.h),k=S/OF.w;const ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;x.drawImage(v,ox*k,oy*k,g.dw*k,g.dh*k)}
-async function shotScan(){const bv=$('bgv');if(!bv.src||SHBUSY)return;if(SHK===bv.src&&SH.length)return;SHBUSY=true;const key=bv.src;
- const v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.playsInline=true;v.preload='auto';v.style.cssText='position:absolute;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';document.body.appendChild(v);v.src=key;
- let out=null;
- try{await new Promise((res,rej)=>{v.onloadeddata=res;v.onerror=()=>rej(new Error('video'));setTimeout(()=>rej(new Error('timeout')),20000)});
-  const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0))throw new Error('duration');
+async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.src&&SH.length)return;SHBUSY=true;const key=v.src;
+ /* the preview video itself is used (phones like the P20 cannot decode two videos at once) */
+ let out=null,why='';const wasLoop=v.loop;
+ try{if(!(v.readyState>=2))await new Promise((res,rej)=>{const ok=()=>{v.removeEventListener('loadeddata',ok);res()};v.addEventListener('loadeddata',ok);setTimeout(()=>rej(new Error('load timeout')),20000)});
+  const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0))throw new Error('duration '+v.duration);
   const sm=document.createElement('canvas');sm.width=sm.height=32;const x=sm.getContext('2d',{willReadFrequently:true}),S=[];
   const grab=t=>{x.drawImage(v,0,0,32,32);const d=x.getImageData(0,0,32,32).data,h=new Float32Array(48);let br=0;for(let i=0;i<d.length;i+=4){h[d[i]>>4]++;h[16+(d[i+1]>>4)]++;h[32+(d[i+2]>>4)]++;br+=d[i]+d[i+1]+d[i+2]}S.push({t:t,h:h,br:br/(1024*765)})};
   const pc=t=>{if(SJ==10)msg.textContent='Finding the shots in your video… '+Math.min(99,Math.round(t/dur*100))+'%'};
-  if('requestVideoFrameCallback' in v){await new Promise(res=>{let last=-1,fin=false;const end=()=>{if(!fin){fin=true;try{v.pause()}catch(_){}res()}};
-    const cb=(now,md)=>{if(fin)return;const t=md.mediaTime;if(t-last>=.095){last=t;grab(t);pc(t)}if(t>=dur-.06||v.ended){end();return}v.requestVideoFrameCallback(cb)};
-    v.requestVideoFrameCallback(cb);v.onended=end;setTimeout(end,(dur/2+15)*1000);v.playbackRate=4;v.play().catch(end)})}
-  if(S.length<dur*4){S.length=0;for(let t=.05;t<dur;t+=.1){await seekTo(v,t);grab(t);pc(t)}}
-  /* cuts: a big jump in colours compared with the last normal picture; flashes and black frames are ignored */
+  v.pause();v.loop=false;await seekTo(v,0);
+  if('requestVideoFrameCallback' in v){await new Promise(res=>{let last=-1,fin=false;const end=()=>{if(!fin){fin=true;try{v.pause()}catch(_){}v.removeEventListener('ended',end);res()}};
+    const cb=(now,md)=>{if(fin)return;const t=md.mediaTime;if(t-last>=.095){last=t;try{grab(t)}catch(e){why=String(e)}pc(t)}if(t>=dur-.06||v.ended){end();return}v.requestVideoFrameCallback(cb)};
+    v.requestVideoFrameCallback(cb);v.addEventListener('ended',end);setTimeout(end,(dur/2+15)*1000);v.playbackRate=3;v.play().catch(e=>{why='play '+e;end()})})}
+  v.playbackRate=1;
+  if(S.length<dur*3){why+=' rvfc '+S.length;S.length=0;for(let t=.05;t<dur;t+=.1){await seekTo(v,t);grab(t);pc(t)}}
   const cuts=[0];let prev=null,hist=[];
   for(const q of S){if(q.br>.92||q.br<.025)continue;if(prev){let d=0;for(let i=0;i<48;i++)d+=Math.abs(q.h[i]-prev.h[i]);d/=6144;const avg=hist.length?hist.reduce((a,b)=>a+b,0)/hist.length:0;
     if(d>.25&&d>avg*2.5&&q.t-cuts[cuts.length-1]>.15)cuts.push((q.t+prev.t)/2);if(d<=.25){hist.push(d);if(hist.length>5)hist.shift()}}prev=q}
@@ -1020,11 +1021,13 @@ async function shotScan(){const bv=$('bgv');if(!bv.src||SHBUSY)return;if(SHK===b
   for(let k=sh.length-1;k>0;k--)if(Math.min(sh[k].e,dur)-sh[k].s<.5){sh[k-1].e=sh[k].e;sh.splice(k,1)}
   if(sh.length>1&&sh[0].e-sh[0].s<.5){sh[1].s=0;sh.shift()}
   while(sh.length>12){let m=1;for(let k=1;k<sh.length;k++)if(Math.min(sh[k].e,dur)-sh[k].s<Math.min(sh[m].e,dur)-sh[m].s)m=k;sh[m-1].e=sh[m].e;sh.splice(m,1)}
-  for(const q of sh){Object.assign(q,shotDef());const th=document.createElement('canvas');th.width=th.height=160;const tx=th.getContext('2d');tx.fillStyle='#000';tx.fillRect(0,0,160,160);const mid=(q.s+Math.min(q.e,dur))/2;let bt=mid,bd=1e9;for(const z of S)if(z.t>=q.s&&z.t<Math.min(q.e,dur)&&z.br<=.92&&z.br>=.025&&Math.abs(z.t-mid)<bd){bd=Math.abs(z.t-mid);bt=z.t}q.mt=bt;await seekTo(v,Math.min(dur-.05,bt));coverDraw(tx,v,160);q.th=th}
+  for(const q of sh){Object.assign(q,shotDef());const th=document.createElement('canvas');th.width=th.height=160;const tx=th.getContext('2d');tx.fillStyle='#000';tx.fillRect(0,0,160,160);
+   const mid=(q.s+Math.min(q.e,dur))/2;let bt=mid,bd=1e9;for(const z of S)if(z.t>=q.s&&z.t<Math.min(q.e,dur)&&z.br<=.92&&z.br>=.025&&Math.abs(z.t-mid)<bd){bd=Math.abs(z.t-mid);bt=z.t}q.mt=bt;await seekTo(v,Math.min(dur-.05,bt));coverDraw(tx,v,160);q.th=th}
   out=sh}
- catch(e){out=[Object.assign({s:0,e:1e9},shotDef())]}
- finally{try{v.removeAttribute('src');v.load();v.remove()}catch(_){}SHBUSY=false}
- if($('bgv').src!==key)return;SH=out;SHK=key;SHSEL=0;
+ catch(e){why+=' '+((e&&e.message)||e);out=[Object.assign({s:0,e:1e9},shotDef())]}
+ finally{try{v.playbackRate=1;v.loop=wasLoop}catch(_){}SHBUSY=false}
+ if(why.trim())try{bug('shots',why.trim())}catch(_){}
+ if($('bgv').src!==key)return;SH=out;SHK=key;SHSEL=0;try{v.currentTime=0;if(!ETOPEN)v.play().catch(()=>{})}catch(_){}
  if(SJ==10){msg.textContent=SH.length>1?'Found '+SH.length+' shots ✓ Tap "✏️ Edit text" to choose where the words go in each one.':'Ready ✓ Tap "✏️ Edit text" to choose where the words go.';
   if(SHAUTO!==key){SHAUTO=key;etOpen()}}
  etUI()}
@@ -1491,7 +1494,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v32';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v33';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
