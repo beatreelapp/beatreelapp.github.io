@@ -1,0 +1,24 @@
+name: lab-assets
+# Manual: copies MediaPipe (Apache 2.0) files to the branch lab-assets so tests can run them offline.
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set -e
+          mkdir out && cd out
+          npm pack @mediapipe/tasks-vision@0.10.14
+          tar xzf mediapipe-tasks-vision-0.10.14.tgz && mv package tasks-vision && rm *.tgz
+          M=https://storage.googleapis.com/mediapipe-models
+          curl -fsSL -o pose_lite.task $M/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task
+          curl -fsSL -o pose_full.task $M/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task
+          curl -fsSL -o face.task $M/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+          curl -fsSL -o face_det.tflite $M/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite
+          ls -la . tasks-vision/wasm
+          git init -q && git checkout -q -b lab-assets
+          git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add -A && git commit -qm "MediaPipe test assets (Apache 2.0)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" lab-assets
