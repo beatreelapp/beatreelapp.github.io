@@ -23,7 +23,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK (already on the runner)
+        run: echo "ANDROID_HOME=$ANDROID_HOME  ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
       - name: Copy the website into the app (works offline)
         run: |
