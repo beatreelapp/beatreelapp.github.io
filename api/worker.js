@@ -27,6 +27,8 @@ const SITE = "https://beatreelapp.github.io";
 const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
 const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok"];
 const ALLOWED = ["https://beatreelapp.github.io"];
+// Google Fonts the app offers; picks are counted as "f_<id>" so the menu can show the most used first
+const FONT_IDS = ["dirt", "glitch", "wet", "bang", "mono", "shade", "mark", "audio", "anton", "bebas", "mont", "pop", "archivo", "russo", "lilita", "right"];
 const STYLE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const STYLE_KEYS = ["font", "col", "size", "anim", "fx", "frame"];
 
@@ -42,6 +44,11 @@ export default {
     const url = new URL(req.url);
     const route = url.pathname;
     if (route === "/ytget" && req.method === "GET") return ytProxy(req, url, cors, origin);
+    if (route === "/fonts" && req.method === "GET") {
+      const out = {};
+      try { (await stub(env).all()).forEach((r) => { if (String(r.ev).startsWith("f_") && FONT_IDS.includes(r.ev.slice(2))) out[r.ev.slice(2)] = r.n; }); } catch (_) {}
+      return Response.json(out, { headers: { ...cors, "Cache-Control": "public, max-age=3600" } });
+    }
     if (route === "/stats" && req.method === "GET") return statsPage(env, url.searchParams.get("k") || "");
     if (route === "/err" && req.method === "POST") {
       if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
@@ -54,7 +61,7 @@ export default {
     if (route === "/hit" && req.method === "POST") {
       if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
       const ev = (await req.text()).trim().slice(0, 20);
-      if (EVENTS.includes(ev)) {
+      if (EVENTS.includes(ev) || (ev.startsWith("f_") && FONT_IDS.includes(ev.slice(2)))) {
         const cc = ev === "dev" && req.cf && /^[A-Z]{2}$/.test(req.cf.country || "") ? req.cf.country : "";
         ctx.waitUntil(count(env, ev, cc));
       }

@@ -203,7 +203,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="card" style="padding:20px"><h4 style="margin:0 0 10px">Free</h4><p style="margin:0;opacity:.8;line-height:1.7">All scenes<br>Auto-synced lyrics<br>Text styles<br>540p and 720p<br>Clips up to 30 seconds<br>BeatReel watermark</p></div>
 <div class="card" style="padding:20px;border-color:#ff4fa3"><h4 style="margin:0 0 10px;color:#ff7ac8">Pro <span style="font-size:13px;font-weight:700;color:#fff;opacity:.85">€4.99/month</span></h4><p style="margin:0;opacity:.9;line-height:1.7">Everything in Free<br>No watermark<br>Full HD 1080p<br>Clips longer than 30 seconds<br>Unlimited AI captions and lyrics<br>Cancel anytime</p></div></div></section>
 <section class="final"><h3>Ready to make yours?</h3><p>Free to try. No account needed.</p><button data-go>Start creating</button></section>
-<footer><div style="margin-bottom:12px"><a href="/privacy.html" id="lg1" style="color:#ff7ac8">Privacy</a> &nbsp;&middot;&nbsp; <a href="/terms.html" id="lg2" style="color:#ff7ac8">Terms</a> &nbsp;&middot;&nbsp; <a href="mailto:beatreel.app@gmail.com" style="color:#ff7ac8">Contact</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#ff7ac8" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a></div><div style="margin-bottom:12px"><a href="/lyric-video-maker/" style="color:#ff7ac8">Lyric video maker</a> &nbsp;&middot;&nbsp; <a href="/song-to-music-video/" style="color:#ff7ac8">Song to music video</a> &nbsp;&middot;&nbsp; <a href="/auto-captions/" style="color:#ff7ac8">Auto captions</a> &nbsp;&middot;&nbsp; <a href="/fr/clip-video-musique/" style="color:#ff7ac8">Français</a> &nbsp;&middot;&nbsp; <a href="/ar/music-video/" style="color:#ff7ac8">العربية</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your videos are made on your device. Only the Auto (AI) features send audio to our server, which does not keep it.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
+<footer><div style="margin-bottom:12px"><a href="/privacy.html" id="lg1" style="color:#ff7ac8">Privacy</a> &nbsp;&middot;&nbsp; <a href="/terms.html" id="lg2" style="color:#ff7ac8">Terms</a> &nbsp;&middot;&nbsp; <a href="mailto:beatreel.app@gmail.com" style="color:#ff7ac8">Contact</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#ff7ac8" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a> &nbsp;&middot;&nbsp; <a href="https://fonts.google.com/" style="color:#ff7ac8" rel="noopener">Fonts: Google Fonts (SIL OFL / Apache 2.0)</a></div><div style="margin-bottom:12px"><a href="/lyric-video-maker/" style="color:#ff7ac8">Lyric video maker</a> &nbsp;&middot;&nbsp; <a href="/song-to-music-video/" style="color:#ff7ac8">Song to music video</a> &nbsp;&middot;&nbsp; <a href="/auto-captions/" style="color:#ff7ac8">Auto captions</a> &nbsp;&middot;&nbsp; <a href="/fr/clip-video-musique/" style="color:#ff7ac8">Français</a> &nbsp;&middot;&nbsp; <a href="/ar/music-video/" style="color:#ff7ac8">العربية</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your videos are made on your device. Only the Auto (AI) features send audio to our server, which does not keep it.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
 </div>
 
 <button id="hb" hidden>&larr; Home</button>
@@ -236,6 +236,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div id="tsp" hidden>
 <div class="row m-music"><select id="tsy"></select></div>
 <div class="row m-music"><select id="tan"></select></div>
+<div class="row m-music"><select id="tfo"></select></div>
 <div class="row m-video"><select id="tf"></select><select id="tc"></select></div>
 <div class="row"><select id="tz"></select><select id="tp"></select></div>
 <div class="row m-video"><select id="ta"></select><select id="tx"></select></div>
@@ -431,6 +432,37 @@ const FONTS=[
  {n:'Retro arcade',f:z=>z+'px "Press Start 2P",monospace',k:.55},
  {n:'Condensed',f:z=>'700 '+z+'px "Oswald","Arial Narrow",sans-serif',k:1.15},
  {n:'Arabic (Cairo)',f:z=>'700 '+z+'px "Cairo",system-ui,sans-serif',k:1}];
+// Free Google Fonts (SIL OFL / Apache 2.0), loaded only when picked. g: A artistic (music), R readable (music + captions).
+// Arabic letters fall back to Cairo inside the same font string.
+const GF=[
+ {id:'dirt',n:'Rubik Dirt',q:'Rubik+Dirt',fam:'Rubik Dirt',w:400,k:.95,g:'A'},
+ {id:'glitch',n:'Rubik Glitch',q:'Rubik+Glitch',fam:'Rubik Glitch',w:400,k:.95,g:'A'},
+ {id:'wet',n:'Rubik Wet Paint',q:'Rubik+Wet+Paint',fam:'Rubik Wet Paint',w:400,k:.95,g:'A'},
+ {id:'bang',n:'Bangers',q:'Bangers',fam:'Bangers',w:400,k:1.15,g:'A'},
+ {id:'mono',n:'Monoton',q:'Monoton',fam:'Monoton',w:400,k:.8,g:'A'},
+ {id:'shade',n:'Bungee Shade',q:'Bungee+Shade',fam:'Bungee Shade',w:400,k:.8,g:'A'},
+ {id:'mark',n:'Permanent Marker',q:'Permanent+Marker',fam:'Permanent Marker',w:400,k:1,g:'A'},
+ {id:'audio',n:'Audiowide',q:'Audiowide',fam:'Audiowide',w:400,k:.9,g:'A'},
+ {id:'anton',n:'Anton',q:'Anton',fam:'Anton',w:400,k:1.1,g:'R'},
+ {id:'bebas',n:'Bebas Neue',q:'Bebas+Neue',fam:'Bebas Neue',w:400,k:1.2,g:'R'},
+ {id:'mont',n:'Montserrat Black',q:'Montserrat:wght@900',fam:'Montserrat',w:900,k:.85,g:'R'},
+ {id:'pop',n:'Poppins ExtraBold',q:'Poppins:wght@800',fam:'Poppins',w:800,k:.88,g:'R'},
+ {id:'archivo',n:'Archivo Black',q:'Archivo+Black',fam:'Archivo Black',w:400,k:.85,g:'R'},
+ {id:'russo',n:'Russo One',q:'Russo+One',fam:'Russo One',w:400,k:.9,g:'R'},
+ {id:'lilita',n:'Lilita One',q:'Lilita+One',fam:'Lilita One',w:400,k:1,g:'R'},
+ {id:'right',n:'Righteous',q:'Righteous',fam:'Righteous',w:400,k:.95,g:'R'}];
+const gfCss=(F,z)=>F.w+' '+z+'px "'+F.fam+'","Cairo",Impact,sans-serif';
+const GFL={};
+function gfLoad(F){if(!F)return Promise.resolve();if(GFL[F.id])return GFL[F.id];
+ GFL[F.id]=new Promise(res=>{try{if(!(F.id==='anton'||F.id==='bang')){const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family='+F.q+'&display=swap';document.head.appendChild(l);l.onerror=()=>res()}
+  const go=()=>document.fonts.load(gfCss(F,40),'AaBb09').then(()=>res(),()=>res());setTimeout(go,60);setTimeout(()=>res(),8000)}catch(_){res()}});
+ GFL[F.id].then(()=>{try{if(!document.fonts.check(gfCss(F,40),'Aa'))delete GFL[F.id]}catch(_){}});return GFL[F.id]}
+// wait (max 6 s) for the fonts in use before export so every frame uses the right font
+function gfReady(){const a=[];try{if(MS.font)a.push(gfLoad(GF[MS.font-1]));const T=FONTS[TS.font];if(T&&T.gf)a.push(gfLoad(T.gf))}catch(_){}
+ return Promise.race([Promise.all(a),new Promise(r=>setTimeout(r,6000))])}
+GF.filter(F=>F.g==='R'&&F.id!=='anton').forEach(F=>FONTS.push({n:F.n,f:z=>gfCss(F,z),k:F.k*.9,gf:F}));
+// most used fonts first (anonymous counts from the server, refreshed once a day)
+let GFU={};try{GFU=JSON.parse(localStorage.getItem('br_gfu')||'{}')||{}}catch(_){}
 const COLS=[['White','#ffffff'],['Yellow','#ffe14d'],['Pink','#ff5fa8'],['Cyan','#4de8ff'],['Green','#6dff8a'],['Orange','#ff9a3d'],['Red','#ff4d4d'],['Scene color','theme'],['Gold','#ffc933'],['Purple','#b46bff'],['Sky blue','#6ec8ff'],['Gradient','grad'],['Rainbow','rain']];
 const SIZES=[['Small',36],['Medium',46],['Large',60],['Extra large',76],['Huge',96]];
 const FRAMES=['Auto','None','Dark box','White box','Color box','Glass','Neon outline','Marker','Sticker','Word box (CapCut)','Dark pill + color word','Bold highlight'];
@@ -573,8 +605,9 @@ function musicLyr(i){
  let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
  const lastS=wt[n-1][0],lastE=wt[n-1][1],te=Math.min(nextS,Math.max(se.e,lastE+.8)),exitAt=Math.max(lastS+.35,te-.4);
  if(t>te+.05)return;
- const base=[.75,1,1.2,1.4,1.6][TS.size]||1;let size=112*base*(rtl?(S_.ka||1):S_.k);if(SJ==10)size*=.55;
- const fontOf=(k,sz)=>{if(S_.edit){const big=k===0;return(rtl?(big?AFB:AFS):(big?S_.f:'italic 400 PXpx "Playfair Display",serif')).replace('PX',Math.round(sz*(big?1.15:.55)))}return(rtl?S_.fa:S_.f).replace('PX',Math.round(sz))};
+ const GFo=!rtl&&MS.font?GF[MS.font-1]:null;
+ const base=[.75,1,1.2,1.4,1.6][TS.size]||1;let size=112*base*(rtl?(S_.ka||1):GFo?GFo.k:S_.k);if(SJ==10)size*=.55;
+ const fontOf=(k,sz)=>{if(GFo&&(!S_.edit||k===0))return gfCss(GFo,Math.round(sz*(S_.edit?1.15:1)));if(S_.edit){const big=k===0;return(rtl?(big?AFB:AFS):(big?S_.f:'italic 400 PXpx "Playfair Display",serif')).replace('PX',Math.round(sz*(big?1.15:.55)))}return(rtl?S_.fa:S_.f).replace('PX',Math.round(sz))};
  const maxW=SJ==10?OF.w-60:W-80;let rows,wd,sp;
  for(let tries=0;tries<8;tries++){c.save();c.letterSpacing=(S_.ls&&!rtl?S_.ls*size/64:0)+'px';wd=words.map((w,k)=>{c.font=fontOf(k,size);return c.measureText(w).width});c.font=fontOf(1,size);sp=c.measureText(' ').width*1.15;c.restore();
   rows=[];let cur=[],cw=0;words.forEach((w,k)=>{const add=(cur.length?sp:0)+wd[k];if(cur.length&&cw+add>maxW){rows.push({ix:cur,w:cw});cur=[];cw=0}cw+=(cur.length?sp:0)+wd[k];cur.push(k)});if(cur.length)rows.push({ix:cur,w:cw});
@@ -650,7 +683,17 @@ const fill=(id,arr,key,lab)=>{const el=$(id);arr.forEach((v,i)=>{const o=documen
  LSTY.forEach((st,i)=>{let g=G[st.g];if(!g){g=G[st.g]=document.createElement('optgroup');g.label=st.g;sy.appendChild(g)}const q=document.createElement('option');q.value=i;q.textContent='Style: '+st.n;g.appendChild(q)});
  sy.value=-1;sy.onchange=()=>{MS.sty=+sy.value;if(MS.sty<0)MLK=''};
  const an=$('tan');LANIM.forEach((x,i)=>{const q=document.createElement('option');q.value=i;q.textContent='Animation: '+x[1];an.appendChild(q)});an.value=0;an.onchange=()=>{MS.anim=+an.value}})();
-fill('tf',FONTS,'font','Font');fill('tc',COLS,'col','Color');fill('tz',SIZES,'size','Size');fill('ta',ANIMS,'anim','Animation');fill('tx',['None','Shadow','Glow','Outline','Neon'],'fx','Effect');fill('tp',POSS,'pos','Position');fill('tr',FRAMES,'frame','Frame');
+fill('tf',FONTS,'font','Font');
+function gfMenus(){const by=(a,b)=>(GFU[b.id]||0)-(GFU[a.id]||0);
+ const fo=$('tfo');fo.innerHTML='';let o=document.createElement('option');o.value=0;o.textContent='Font: Style default';fo.appendChild(o);
+ [['A','Artistic fonts'],['R','Readable fonts']].forEach(g=>{const og=document.createElement('optgroup');og.label=g[1];GF.filter(F=>F.g===g[0]).sort(by).forEach(F=>{const q=document.createElement('option');q.value=GF.indexOf(F)+1;q.textContent='Font: '+F.n;og.appendChild(q)});fo.appendChild(og)});
+ fo.value=MS.font||0;
+ const tf=$('tf'),ex=[...tf.options].filter(x=>FONTS[+x.value]&&FONTS[+x.value].gf);ex.sort((a,b)=>by(FONTS[+a.value].gf,FONTS[+b.value].gf)).forEach(x=>tf.appendChild(x));tf.value=TS.font}
+const gfHit=F=>{try{const d=new Date().toISOString().slice(0,10),k='br_fh_'+F.id;if(localStorage.getItem(k)!==d){localStorage.setItem(k,d);typeof hit==='function'&&hit('f_'+F.id)}}catch(_){}};
+(()=>{try{MS.font=Math.max(0,Math.min(GF.length,+(localStorage.getItem('br_mfont')||0)||0))}catch(_){MS.font=0}
+ gfMenus();if(MS.font)gfLoad(GF[MS.font-1]);
+ $('tfo').onchange=()=>{MS.font=+$('tfo').value;try{localStorage.setItem('br_mfont',MS.font)}catch(_){}const F=GF[MS.font-1];if(F){gfLoad(F);gfHit(F)}};
+ $('tf').addEventListener('change',()=>{const F=FONTS[TS.font]&&FONTS[TS.font].gf;if(F){gfLoad(F);gfHit(F)}})})();fill('tc',COLS,'col','Color');fill('tz',SIZES,'size','Size');fill('ta',ANIMS,'anim','Animation');fill('tx',['None','Shadow','Glow','Outline','Neon'],'fx','Effect');fill('tp',POSS,'pos','Position');fill('tr',FRAMES,'frame','Frame');
 (()=>{const q=$('qs');['High (720p)','Medium (540p, smoother)','Low (360p, smoothest)','Full HD (1080p, Pro)'].forEach((n,i)=>{const o=document.createElement('option');o.value=i;o.textContent='Quality: '+n;q.appendChild(o)});q.onchange=()=>{if(isRec){q.value=QI;return}if(+q.value===3&&!PRO){q.value=QI;msg.textContent='1080p is a Pro feature. Enter your activation code to unlock it.';return}setQ(+q.value)};setQ(1)})();
 (()=>{const el=$('bm');BOOM.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent='Beat zoom: '+v[0];el.appendChild(o)});el.value=BI;el.onchange=()=>{BI=+el.value}})();
 $('tsb').onclick=()=>{const o=$('tsp').hidden;$('tsp').hidden=!o;if(o){$('lyp').hidden=true;$('tsp').scrollIntoView({block:'nearest',behavior:'smooth'})}};
@@ -1488,13 +1531,15 @@ function bug(where,m){try{if(!LIVE||BUGS.size>=10)return;const k=where+'|'+Strin
 addEventListener('error',e=>{const m=e&&e.message||'';if(!m||/Script error|ResizeObserver/i.test(m))return;bug('js',m+' @'+String(e.filename||'').split('/').pop()+':'+e.lineno)});
 addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const m=String(r&&r.message||r||'');if(!m||/AbortError|NotAllowedError|play\(\)/i.test(m))return;bug('promise',m)});
 const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,keepalive:true,mode:'no-cors'}).catch(()=>{})}catch(_){}};
+(()=>{if(!LIVE)return;try{const d=new Date().toISOString().slice(0,10);if(localStorage.getItem('br_gfd')===d)return;
+ fetch(API_URL+'/fonts').then(r=>r.ok?r.json():null).then(j=>{if(!j||typeof j!=='object')return;GFU=j;try{localStorage.setItem('br_gfu',JSON.stringify(j));localStorage.setItem('br_gfd',d)}catch(_){}gfMenus()}).catch(()=>{})}catch(_){}})();
 (()=>{if(!LIVE)return;const d=new Date().toISOString().slice(0,10),g=k=>{try{return localStorage.getItem(k)||''}catch(_){return''}},p=(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}};
  const inApp=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||(document.referrer||'').indexOf('android-app://')==0||/[?&]source=(pwa|twa)/.test(location.search)||window.navigator.standalone===true;
  hit('visit');if(g('br_day')!==d){p('br_day',d);hit('dev')}if(!g('br_seen')){p('br_seen','1');hit('new')}if(inApp&&g('br_aday')!==d){p('br_aday',d);hit('app')}})();
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v33';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v34';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2313,6 +2358,7 @@ async function offlineExport(){
  const bv=$('bgv'),hasV=!!(bv.src),vWas=hasV&&!bv.paused;
  const ui_=(pc,txt)=>{$('xp').textContent=pc+'%';$('xr').style.strokeDashoffset=276.46*(1-pc/100);msg.textContent=txt};
  try{
+  ui_(0,'Loading fonts…');await gfReady();
   parse();
   const dur0=Math.max(.5,CE-CS),N=Math.max(1,Math.floor(dur0*FPS)),dur=N/FPS,nS=Math.floor(dur*SR);
   recording=isRec=true;OFFRUN=true;OFFCAN=false;CAN=false;$('save').hidden=true;$('xo').classList.add('on');$('rec').textContent='Cancel';
