@@ -16,6 +16,7 @@
 //                                       free: 1 try per device ever, max 2 min; Pro: 5 a day, max 10 min; whole app: ~32 links a month (free plan = 100 units, 3 per link)
 //   GET  /ytget?u=URL                 -> streams a googlevideo.com file with CORS (only if the phone cannot fetch it directly)
 //   POST /err     {w, m, v, ua}       -> stores an app problem (where, message, app version, phone/browser), last 60 kept, shown on /stats
+//   GET  /count                                            -> {videos} total saved videos (public, for the home page)
 //   GET  /stats?k=KEY                                          -> private usage page (only the SHA-256 of the key is stored here)
 import { DurableObject } from "cloudflare:workers";
 const STATS_KEY_SHA256 = "3cfa6b59a11a89f3a83c08f056b077129a9cf05e77458de92e556dfc8b23c3a7";
@@ -48,6 +49,11 @@ export default {
       const out = {};
       try { (await stub(env).all()).forEach((r) => { if (String(r.ev).startsWith("f_") && FONT_IDS.includes(r.ev.slice(2))) out[r.ev.slice(2)] = r.n; }); } catch (_) {}
       return Response.json(out, { headers: { ...cors, "Cache-Control": "public, max-age=3600" } });
+    }
+    if (route === "/count" && req.method === "GET") {
+      let v = 0;
+      try { (await stub(env).all()).forEach((r) => { if (r.ev === "export_music" || r.ev === "export_cap") v += r.n; }); } catch (_) {}
+      return Response.json({ videos: v }, { headers: { ...cors, "Cache-Control": "public, max-age=3600" } });
     }
     if (route === "/stats" && req.method === "GET") return statsPage(env, url.searchParams.get("k") || "");
     if (route === "/err" && req.method === "POST") {
