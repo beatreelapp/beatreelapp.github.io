@@ -900,7 +900,8 @@ function frameBody(){
   else{if(bv.paused&&performance.now()-VT>400){VT=performance.now();bv.play().catch(()=>{})}if(Math.abs(bv.currentTime-au.currentTime)>.25&&!bv.seeking){vHold(bv);try{bv.currentTime=au.currentTime+.05}catch(_){}}}}
  else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&!SHBUSY&&!(ETOPEN&&SJ==10)&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
  const vHeld=SJ==4&&!!VHOLD&&VHT>0&&performance.now()-VHT<3000;
- if(bv.src&&bv.readyState>=2&&bv.videoWidth&&!(vHeld&&bv.seeking)){const R=vidRect();
+ if(SJ==10&&SCV&&bv.src)scanDraw();
+ else if(bv.src&&bv.readyState>=2&&bv.videoWidth&&!(vHeld&&bv.seeking)){const R=vidRect();
   if(SJ==4){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,VR.r);vBorder()}
   else if(SJ==10)vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,.01);
   else vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,.28)}
@@ -1006,9 +1007,10 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  let out=null,why='';const wasLoop=v.loop;
  try{if(!(v.readyState>=2))await new Promise((res,rej)=>{const ok=()=>{v.removeEventListener('loadeddata',ok);res()};v.addEventListener('loadeddata',ok);setTimeout(()=>rej(new Error('load timeout')),20000)});
   const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0))throw new Error('duration '+v.duration);
+  if(SJ==10){scanVeil(v);SCP=0;SCL='Finding the shots…'}
   const sm=document.createElement('canvas');sm.width=sm.height=32;const x=sm.getContext('2d',{willReadFrequently:true}),S=[];
   const grab=t=>{x.drawImage(v,0,0,32,32);const d=x.getImageData(0,0,32,32).data,h=new Float32Array(48);let br=0;for(let i=0;i<d.length;i+=4){h[d[i]>>4]++;h[16+(d[i+1]>>4)]++;h[32+(d[i+2]>>4)]++;br+=d[i]+d[i+1]+d[i+2]}S.push({t:t,h:h,br:br/(1024*765)})};
-  const pc=t=>{if(SJ==10)msg.textContent='Finding the shots in your video… '+Math.min(99,Math.round(t/dur*100))+'%'};
+  const pc=t=>{SCP=Math.min(.99,t/dur)*.3;if(SJ==10)msg.textContent='Finding the shots in your video… '+Math.min(99,Math.round(t/dur*100))+'%'};
   v.pause();v.loop=false;await seekTo(v,0);
   if('requestVideoFrameCallback' in v){await new Promise(res=>{let last=-1,fin=false;const end=()=>{if(!fin){fin=true;try{v.pause()}catch(_){}v.removeEventListener('ended',end);res()}};
     const cb=(now,md)=>{if(fin)return;const t=md.mediaTime;if(t-last>=.095){last=t;try{grab(t)}catch(e){why=String(e)}pc(t)}if(t>=dur-.06||v.ended){end();return}v.requestVideoFrameCallback(cb)};
@@ -1028,12 +1030,22 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  catch(e){why+=' '+((e&&e.message)||e);out=[Object.assign({s:0,e:1e9},shotDef())]}
  finally{try{v.playbackRate=1;v.loop=wasLoop}catch(_){}SHBUSY=false}
  if(why.trim())try{bug('shots',why.trim())}catch(_){}
- if($('bgv').src!==key)return;SH=out;SHK=key;SHSEL=0;
- if(SJ==10){SHBUSY=true;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key)return;shotAuto()}
+ if($('bgv').src!==key){SCV=null;return}SH=out;SHK=key;SHSEL=0;
+ if(SJ==10){SHBUSY=true;SCL='Finding the person…';SCP=.3;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key){SCV=null;return}shotAuto()}
+ SCV=null;
  try{v.currentTime=0;if(!ETOPEN)v.play().catch(()=>{})}catch(_){}
  if(SJ==10){const na=SH.filter(q=>q.auto).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+SH.length+' shots':'')+'. Tap "✏️ Edit text" to change.':SH.length>1?'Found '+SH.length+' shots ✓ Tap "✏️ Edit text" to choose where the words go in each one.':'Ready ✓ Tap "✏️ Edit text" to choose where the words go.';
   if(SHAUTO!==key){SHAUTO=key;etOpen()}}
  etUI()}
+/* ---- while the video is analysed (shots + body), the jumping picture is hidden under a still, blurred frame with a white spinner ---- */
+var SCV=null,SCP=0,SCL='';
+function scanVeil(v){try{const sm=document.createElement('canvas');sm.width=sm.height=96;coverDraw(sm.getContext('2d'),v,96);const b=document.createElement('canvas');b.width=OF.w;b.height=OF.h;const x=b.getContext('2d');
+ x.filter='blur(10px)';x.drawImage(sm,-20,-20,OF.w+40,OF.h+40);x.filter='none';x.fillStyle='rgba(255,255,255,.22)';x.fillRect(0,0,OF.w,OF.h);x.fillStyle='rgba(10,14,20,.25)';x.fillRect(0,0,OF.w,OF.h);SCV=b}catch(_){SCV=document.createElement('canvas')}}
+function scanDraw(){const R=vidRect(),t=performance.now()/1000;c.save();c.beginPath();c.rect(R.rx,R.ry,R.rw,R.rh);c.clip();if(SCV.width>1)c.drawImage(SCV,R.rx,R.ry,R.rw,R.rh);else{c.fillStyle='#2a3038';c.fillRect(R.rx,R.ry,R.rw,R.rh)}
+ const cx=R.rx+R.rw/2,cy=R.ry+R.rh/2-20,r=46;c.lineCap='round';c.lineWidth=9;c.strokeStyle='rgba(255,255,255,.25)';c.beginPath();c.arc(cx,cy,r,0,7);c.stroke();
+ const a=t*5.2,sw=Math.PI*(.55+.35*Math.sin(t*2.4));c.strokeStyle='#fff';c.shadowColor='rgba(255,255,255,.7)';c.shadowBlur=14;c.beginPath();c.arc(cx,cy,r,a,a+sw);c.stroke();c.shadowBlur=0;
+ c.fillStyle='#fff';c.textAlign='center';c.textBaseline='middle';c.font='700 26px system-ui,sans-serif';c.fillText(Math.round(SCP*100)+'%',cx,cy);
+ c.font='600 24px system-ui,sans-serif';c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=8;c.fillText(SCL,cx,cy+r+44);c.restore()}
 /* ---- body finder (Edit): MediaPipe pose + face run ON THE PHONE (nothing is uploaded), one picture every ~0.4 s.
    Each shot then gets a place picked automatically (head, eyes, hand, feet) and the words follow the person as he moves. ---- */
 var TRK=[],TRKK='',MPV=null;const MP_CDN='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',MP_M='https://storage.googleapis.com/mediapipe-models/';
@@ -1044,13 +1056,13 @@ function mpLoad(){if(MPV)return MPV;MPV=(async()=>{const mp=await import(window.
  let face=null;try{face=await mk(mp.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1})}catch(e){try{bug('body','face '+((e&&e.message)||e))}catch(_){}}
  return{pose:pose,face:face}})();MPV.catch(()=>{MPV=null});return MPV}
 async function bodyScan(key){const v=$('bgv');if(TRKK===key&&TRK.length)return;TRK=[];TRKK='';const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0)||!v.videoWidth)return;
- let M;try{msg.textContent='Loading the body finder…';M=await mpLoad()}catch(e){try{bug('body','load '+((e&&e.message)||e))}catch(_){}return}
+ let M;try{msg.textContent='Loading the body finder…';SCL='Loading the body finder…';M=await mpLoad();SCL='Finding the person…'}catch(e){try{bug('body','load '+((e&&e.message)||e))}catch(_){}return}
  const sc=document.createElement('canvas'),k=Math.min(1,512/Math.max(v.videoWidth,v.videoHeight));sc.width=Math.max(16,Math.round(v.videoWidth*k));sc.height=Math.max(16,Math.round(v.videoHeight*k));const x=sc.getContext('2d');
  const step=dur>90?.8:dur>45?.6:.4,out=[];let errs=0;v.pause();
  for(let t=.05;t<dur;t+=step){if($('bgv').src!==key||SJ!=10)return;await seekTo(v,Math.min(dur-.05,t));x.drawImage(v,0,0,sc.width,sc.height);let p=null,f=null;
   try{const r=M.pose.detect(sc),l=r&&r.landmarks&&r.landmarks[0];if(l)p=l.map(q=>[q.x,q.y,q.visibility==null?1:q.visibility])}catch(e){if(!errs++)try{bug('body','pose '+((e&&e.message)||e))}catch(_){}}
   if(M.face)try{const r=M.face.detect(sc),l=r&&r.faceLandmarks&&r.faceLandmarks[0];if(l)f=FIDX.map(i=>[l[i].x,l[i].y])}catch(_){}
-  out.push({t:t,p:p,f:f});msg.textContent='Finding the person in your video… '+Math.min(99,Math.round(t/dur*100))+'%';await new Promise(r=>setTimeout(r,0))}
+  out.push({t:t,p:p,f:f});SCP=.3+.7*Math.min(.99,t/dur);msg.textContent='Finding the person in your video… '+Math.min(99,Math.round(t/dur*100))+'%';await new Promise(r=>setTimeout(r,0))}
  TRK=out;TRKK=key}
 /* video picture (0..1) -> Edit frame (0..1), same maths as vidDraw */
 function v2f(nx,ny){const v=$('bgv');if(!v.videoWidth)return[nx,ny];const g=vidGeom(v,OF.w,OF.h),ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;return[(ox+nx*g.dw)/OF.w,(oy+ny*g.dh)/OF.h]}
@@ -1584,7 +1596,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v42';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v43';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
