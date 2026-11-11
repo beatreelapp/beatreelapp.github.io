@@ -1,6 +1,6 @@
 // BeatReel API (Cloudflare Worker). No secrets here: Workers AI is reached through the "AI" binding. Deployed by GitHub Actions (api/ folder).
 // Routes:
-//   POST /transcribe  {audio: base64 WAV, language?}         -> Whisper large-v3-turbo result (text, segments, words)
+//   POST /transcribe  {audio: base64 WAV, language?}         -> Whisper result (text, segments, words): Groq whisper-large-v3 first (secret GROQ_API_KEY, free plan), Cloudflare large-v3-turbo as backup
 //   POST /style       {text, lines, looks, colors, emojis}       -> {mood, look, color, e:[emoji index per line], k:[keyword index per line]}
 //                     (old shape {text, options} still works)
 //   POST /clips      {job, lines:[[start,end,text],...]}        -> {clips:[{a,b,title}]}  Pro only: best moments (line a to b) + hook title
@@ -96,6 +96,8 @@ export default {
       if (route === "/clips") return CLIPS_ON ? Response.json(await clips(env, body), { headers: cors }) : Response.json({ error: "soon" }, { status: 503, headers: cors });
       if (route === "/transcribe") {
         const out = await transcribe(env, body);
+        ctx.waitUntil(count(env, out && out.src === "groq" ? "tr_groq" : "tr_cf", ""));
+        if (body._groqErr && !/^groq 429/.test(body._groqErr)) ctx.waitUntil(stub(env).err("groq-server", "groq", body._groqErr, "api", "server").catch(() => {}));
         if (body.job) ctx.waitUntil(Promise.resolve().then(() => bank(env).worked(body.job)).catch(() => {}));
         return Response.json(out, { headers: cors });
       }
@@ -114,13 +116,69 @@ function bad(message) {
   return e;
 }
 
-async function transcribe(env, { audio, language, vad, prompt }) {
+async function transcribe(env, body) {
+  const { audio } = body;
   if (typeof audio !== "string" || !audio) throw bad("audio (base64) required");
+  // Server 1: Groq (Whisper large-v3, the full model, free plan). Server 2 (backup): Cloudflare Workers AI.
+  if (env.GROQ_API_KEY) {
+    try { return await groqASR(env, body); } catch (e) { body._groqErr = String((e && e.message) || e).slice(0, 120); }
+  }
+  return cfASR(env, body);
+}
+
+async function cfASR(env, { audio, language, vad, prompt }) {
   // vad=false for songs: the voice filter tends to drop singing over music
   const input = { audio, task: "transcribe", vad_filter: vad !== false };
   if (language) input.language = language;
   if (typeof prompt === "string" && prompt.trim()) input.initial_prompt = prompt.slice(0, 200);
-  return env.AI.run("@cf/openai/whisper-large-v3-turbo", input);
+  const out = await env.AI.run("@cf/openai/whisper-large-v3-turbo", input);
+  if (out && typeof out === "object") out.src = "cf";
+  return out;
+}
+
+// Whisper language names (Groq answers "french") -> codes ("fr") so the app can lock the language like before
+const LANG_CODES = { english: "en", french: "fr", arabic: "ar", spanish: "es", german: "de", italian: "it", portuguese: "pt", dutch: "nl", turkish: "tr", russian: "ru", japanese: "ja", korean: "ko", chinese: "zh", hindi: "hi", urdu: "ur", persian: "fa", indonesian: "id", malay: "ms", polish: "pl", ukrainian: "uk", swedish: "sv", norwegian: "no", danish: "da", finnish: "fi", greek: "el", czech: "cs", romanian: "ro", hungarian: "hu", hebrew: "he", vietnamese: "vi", thai: "th", bengali: "bn", tamil: "ta", swahili: "sw", tagalog: "tl", catalan: "ca", serbian: "sr", croatian: "hr", bulgarian: "bg", slovak: "sk", azerbaijani: "az", kazakh: "kk", uzbek: "uz", amharic: "am", somali: "so", hausa: "ha", yoruba: "yo", punjabi: "pa", marathi: "mr", gujarati: "gu", telugu: "te", kannada: "kn", malayalam: "ml", nepali: "ne", sinhala: "si", albanian: "sq", bosnian: "bs", macedonian: "mk", slovenian: "sl", lithuanian: "lt", latvian: "lv", estonian: "et", georgian: "ka", armenian: "hy", afrikaans: "af", welsh: "cy", irish: "ga", icelandic: "is", galician: "gl", basque: "eu", pashto: "ps", kurdish: "ku" };
+
+async function groqASR(env, { audio, language, vad, prompt }) {
+  const bin = atob(audio), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const fd = new FormData();
+  fd.append("file", new Blob([u8], { type: "audio/wav" }), "part.wav");
+  fd.append("model", "whisper-large-v3");
+  fd.append("response_format", "verbose_json");
+  fd.append("timestamp_granularities[]", "word");
+  fd.append("timestamp_granularities[]", "segment");
+  fd.append("temperature", "0");
+  if (language) fd.append("language", String(language).slice(0, 5));
+  if (typeof prompt === "string" && prompt.trim()) fd.append("prompt", prompt.slice(0, 200));
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 40000);
+  let r;
+  try {
+    r = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", { method: "POST", headers: { Authorization: "Bearer " + env.GROQ_API_KEY }, body: fd, signal: ctl.signal });
+  } finally { clearTimeout(to); }
+  if (!r.ok) throw new Error("groq " + r.status + " " + (await r.text().catch(() => "")).slice(0, 80));
+  return groqToCf(await r.json(), vad !== false);
+}
+
+// Make Groq's answer look exactly like the Cloudflare one the app already reads (segments with words, transcription_info)
+function groqToCf(g, vad) {
+  const segsIn = Array.isArray(g.segments) ? g.segments : [];
+  // Without Cloudflare's voice filter, drop parts that are silence/noise (stops "Thank you." style ghost text). Songs (vad=false) keep everything.
+  const keep = segsIn.filter((s) => !(vad && (+s.no_speech_prob || 0) > 0.6 && (+s.avg_logprob || 0) < -1));
+  const words = (Array.isArray(g.words) ? g.words : []).map((w) => ({ word: String(w.word || ""), start: +w.start || 0, end: +w.end || +w.start || 0 }));
+  const segments = keep.map((s) => {
+    const a = +s.start || 0, b = +s.end || a;
+    return { start: a, end: b, text: String(s.text || ""), words: words.filter((w) => { const m = (w.start + w.end) / 2; return m >= a - 0.05 && m < b + 0.05; }) };
+  });
+  // a word sits in one part only
+  const used = new Set();
+  for (const s of segments) s.words = s.words.filter((w) => (used.has(w) ? false : (used.add(w), true)));
+  const text = segments.map((s) => s.text.trim()).filter(Boolean).join(" ");
+  const lname = String(g.language || "").toLowerCase(), code = LANG_CODES[lname] || (lname.length <= 3 ? lname : "");
+  // Groq gives no language confidence: count it as sure only when there is clear speech (>= 3 words, low "no speech" chance)
+  const nsp = keep.length ? keep.reduce((t, s) => t + (+s.no_speech_prob || 0), 0) / keep.length : 1;
+  const sure = text.split(/\s+/).filter(Boolean).length >= 3 && nsp < 0.4 ? 0.9 : 0.5;
+  return { text, segments, word_count: segments.reduce((t, s) => t + s.words.length, 0), transcription_info: { language: code, language_probability: code ? sure : 0, duration: +g.duration || 0 }, src: "groq" };
 }
 
 async function style(env, { text, options }) {
@@ -308,6 +366,8 @@ const LABELS = [
   ["apk", "ضغطات تحميل APK"],
   ["ai_style", "استعمال الذكاء (ستايل)"],
   ["ai_tr", "طلبات تفريغ الصوت"],
+  ["tr_groq", "  ↳ منها عبر Groq"],
+  ["tr_cf", "  ↳ منها عبر Cloudflare (احتياط)"],
   ["pro_new", "اشتراكات Pro جديدة"],
 ];
 
