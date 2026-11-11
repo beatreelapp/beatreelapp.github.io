@@ -28,7 +28,7 @@ const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/r
 const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 // Google Fonts the app offers; picks are counted as "f_<id>" so the menu can show the most used first
-const FONT_IDS = ["dirt", "glitch", "wet", "bang", "mono", "shade", "mark", "audio", "anton", "bebas", "mont", "pop", "archivo", "russo", "lilita", "right"];
+const FONT_IDS = ["dirt", "glitch", "wet", "bang", "mono", "shade", "mark", "audio", "anton", "bebas", "mont", "pop", "archivo", "russo", "lilita", "right", "nsil", "nmint", "spice", "oshade", "fold", "tint", "ramp", "kaln"];
 const STYLE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const STYLE_KEYS = ["font", "col", "size", "anim", "fx", "frame"];
 

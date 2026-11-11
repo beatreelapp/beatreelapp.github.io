@@ -222,7 +222,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div class="row" style="align-items:center"><button id="cp" class="cpb">Play</button><div id="ct"></div><button id="cr" class="cpb">Reset</button></div>
 <p id="cn"></p><p style="margin:4px 4px 0;font-size:12px;opacity:.5">Tip: drag the wave to scroll, drag the pink box to move it, drag its edges to resize it, tap to listen from there.</p>
 </div>
-<div class="gl m-music m-noedit">Scene</div><div class="gl m-edonly">✂️ Edit ✨ PRO</div><div class="row m-edonly"><select id="obg"></select><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div>
+<div class="gl m-music m-noedit">Scene</div><div class="gl m-edonly">✂️ Edit ✨ PRO</div><div class="row m-edonly"><select id="obg"></select><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div><div class="row m-edonly"><select id="ofo"></select></div>
 <div class="row m-music m-noedit"><select id="sj"><option value="0">Subject: Car</option><option value="1">Subject: Vinyl in space</option><option value="2">Subject: Concert</option><option value="3">Subject: Space runner</option><optgroup label="Soft (calm, no bars)"><option value="5">Soft: Aurora</option><option value="6">Soft: Blurred cover</option><option value="7">Soft: Bokeh lights</option><option value="8">Soft: Frosted glass</option><option value="9">Soft: Ink in water</option></optgroup></select></div>
 <div class="row m-music m-noedit" id="cvr" style="display:none"><button class="m" id="cvb" type="button">Choose cover image (optional)</button></div>
 <div class="row m-music m-noedit"><select id="th"></select><select id="cs"></select></div>
@@ -458,7 +458,7 @@ function gfLoad(F){if(!F)return Promise.resolve();if(GFL[F.id])return GFL[F.id];
   const go=()=>document.fonts.load(gfCss(F,40),'AaBb09').then(()=>res(),()=>res());setTimeout(go,60);setTimeout(()=>res(),8000)}catch(_){res()}});
  GFL[F.id].then(()=>{try{if(!document.fonts.check(gfCss(F,40),'Aa'))delete GFL[F.id]}catch(_){}});return GFL[F.id]}
 // wait (max 6 s) for the fonts in use before export so every frame uses the right font
-function gfReady(){const a=[];try{if(MS.font)a.push(gfLoad(GF[MS.font-1]));const T=FONTS[TS.font];if(T&&T.gf)a.push(gfLoad(T.gf))}catch(_){}
+function gfReady(){const a=[];try{if(MS.font)a.push(gfLoad(GF[MS.font-1]));const T=FONTS[TS.font];if(T&&T.gf)a.push(gfLoad(T.gf));if(SJ==10&&typeof OFS!=='undefined'&&OFI)a.push(ofLoad(OFS[OFI]))}catch(_){}
  return Promise.race([Promise.all(a),new Promise(r=>setTimeout(r,6000))])}
 GF.filter(F=>F.g==='R'&&F.id!=='anton').forEach(F=>FONTS.push({n:F.n,f:z=>gfCss(F,z),k:F.k*.9,gf:F}));
 // most used fonts first (anonymous counts from the server, refreshed once a day)
@@ -1085,13 +1085,32 @@ function orbitQ(sh,fit){const hx=OF.x+sh.x*OF.w,hy=OF.y+sh.y*OF.h,R=Math.max(sh.
  else{for(let k=24;k>0;k--)P.push(side(-1,k));arc(1,2,48);for(let k=1;k<=24;k++)P.push(side(1,k));mid=48}
  const C=[0];for(let k=1;k<P.length;k++)C.push(C[k-1]+Math.hypot(P[k][0]-P[k-1][0],P[k][1]-P[k-1][1]));const len=C[C.length-1];return{P:P,C:C,len:len,mid:mid>=0?C[mid]:len/2}}
 function orbitAt(Q,d){const C=Q.C,P=Q.P;d=Math.max(0,Math.min(Q.len-.01,d));let lo=1,hi=C.length-1;while(lo<hi){const m=(lo+hi)>>1;if(C[m]<d)lo=m+1;else hi=m}const a=P[lo-1],b=P[lo],f=(d-C[lo-1])/Math.max(1e-6,C[lo]-C[lo-1]);return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,Math.atan2(b[1]-a[1],b[0]-a[0])]}
-function orbitDraw(ch,sh,t,out){let Q=orbitQ(sh),fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)),gap,wd,tot;
- for(;;){c.font=fs+'px "Anton",Impact,sans-serif';gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(sh.part==='head'||sh.part==='left'||sh.part==='right'){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
+/* curved text fonts (Edit): free Google color/3D fonts, recoloured and stored in /fonts (SIL OFL, licences next to them) */
+const OFS=[{id:'anton',n:'Anton white'},
+ {id:'nsil',n:'Silver 3D (Nabla)',u:'nabla-silver',col:1,k:1},
+ {id:'nmint',n:'Ice mint 3D (Nabla)',u:'nabla-mint',col:1,k:1},
+ {id:'spice',n:'Cherry (Bungee Spice)',u:'spice-cherry',col:1,k:1},
+ {id:'oshade',n:'Lime 3D (Bungee Shade)',u:'bungee-shade',fill:'#d7ff3a',st:'#2c3a10',k:1},
+ {id:'fold',n:'Ice blue fold (Foldit)',u:'foldit-ice',col:1,k:1},
+ {id:'tint',n:'Coral (Bungee Tint)',u:'tint-coral',col:1,k:1},
+ {id:'ramp',n:'Pearl 3D (Rampart One)',u:'rampart',fill:'#ffffff',st:'#4d6b80',k:1},
+ {id:'kaln',n:'Pearl glaze (Kalnia)',u:'kalnia-pearl',col:1,k:1}];
+let OFI=0;const OFP={};
+function ofLoad(F){if(!F||!F.u)return Promise.resolve();if(OFP[F.id])return OFP[F.id];
+ OFP[F.id]=(async()=>{try{const f=new FontFace('BRO '+F.id,'url(/fonts/'+F.u+'.woff)');await f.load();document.fonts.add(f);F.ok=1}catch(e){delete OFP[F.id];try{bug('font',F.id+' '+(e&&e.message||e))}catch(_){}}})();return OFP[F.id]}
+(()=>{const el=$('ofo');OFS.forEach((F,i)=>{const o=document.createElement('option');o.value=i;o.textContent='Curved text: '+F.n;el.appendChild(o)});
+ try{OFI=Math.max(0,Math.min(OFS.length-1,+(localStorage.getItem('br_ofo')||0)||0))}catch(_){OFI=0}el.value=OFI;if(OFI)ofLoad(OFS[OFI]);
+ el.onchange=()=>{OFI=+el.value;try{localStorage.setItem('br_ofo',OFI)}catch(_){}const F=OFS[OFI];if(F.u){ofLoad(F);gfHit(F)}}})();
+function orbitDraw(ch,sh,t,out){const OF_=OFS[OFI]||OFS[0],on=!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif';
+ let Q=orbitQ(sh),fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)),gap,wd,tot;
+ for(;;){c.font=fs+'px '+ff;gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(sh.part==='head'||sh.part==='left'||sh.part==='right'){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
  let d=Q.mid-tot/2;d=Math.max(0,Math.min(Q.len-tot,d));c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
  for(let k=0;k<ch.length;k++){const w=wd[k],m=d+w/2;d+=w+gap;if(ch[k][0]===' ')continue;const u=t==null?1:(t-ch[k][1])/.15;if(u<=0)continue;
   const p=orbitAt(Q,m),sc=1+.55*(1-eOut(cl01(u)));c.save();c.translate(p[0],p[1]);c.rotate(p[2]);c.scale(sc,sc);c.globalAlpha=Math.min(1,u*3)*out;
-  c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(4,fs*.14);c.strokeStyle='#000';c.strokeText(ch[k][0],0,0);
-  c.shadowColor='rgba(0,0,0,0)';c.fillStyle='#fff';c.fillText(ch[k][0],0,0);c.restore()}
+  if(on&&OF_.col){c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=10;c.shadowOffsetY=3;c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}
+  else if(on&&OF_.fill){c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(2,fs*.07);c.strokeStyle=OF_.st;c.strokeText(ch[k][0],0,0);c.shadowColor='rgba(0,0,0,0)';c.fillStyle=OF_.fill;c.fillText(ch[k][0],0,0)}
+  else{c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(4,fs*.14);c.strokeStyle='#000';c.strokeText(ch[k][0],0,0);
+  c.shadowColor='rgba(0,0,0,0)';c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}c.restore()}
  c.restore()}
 function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return true;if(/[؀-ۿ]/.test(L[i]))return false;const sh=shotNow();if(sh.part==='straight')return false;
  const t=au.currentTime,wt=wordTimes(i,ws),se=lineSE(i),n=ws.length;let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
@@ -1539,7 +1558,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v34';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v35';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
