@@ -902,6 +902,7 @@ function frameBody(){
  else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&!SHBUSY&&!(ETOPEN&&SJ==10)&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
  tplPreview(bv);
  const vHeld=SJ==4&&!!VHOLD&&VHT>0&&performance.now()-VHT<3000;
+ if(SJ==10&&!OFFX)vWatch(bv);
  if(SJ==10&&SCV&&bv.src)scanDraw();
  else if(bv.src&&bv.readyState>=2&&bv.videoWidth&&!(vHeld&&bv.seeking)){const R=vidRect();
   if(SJ==4){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,VR.r);vBorder()}
@@ -1096,6 +1097,12 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  if(SJ==10){const na=SH.filter(q=>q.auto).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+SH.length+' shots':'')+'. Tap "✏️ Edit text" to change.':SH.length>1?'Found '+SH.length+' shots ✓ Tap "✏️ Edit text" to choose where the words go in each one.':'Ready ✓ Tap "✏️ Edit text" to choose where the words go.';
   if(SHAUTO!==key){SHAUTO=key;etOpen()}}
  etUI()}
+/* ---- Edit: some phones (P20) lose the video picture after heavy seeking; reload it at the same time instead of showing a black square ---- */
+var VWB=0,VWL=0,VWN=0;
+function vWatch(v){if(!v.src||SHBUSY||!VOK){VWB=0;return}const now=performance.now(),bad=!!v.error||(v.readyState<2&&!v.seeking);if(!bad){VWB=0;return}if(!VWB){VWB=now;return}
+ if(now-VWB<1500||now-VWL<6000||VWN>=5)return;VWL=now;VWB=0;VWN++;const t=isFinite(v.currentTime)?v.currentTime:0,src=v.src;
+ try{bug('vid_dead',(v.error?'err '+v.error.code:'rs '+v.readyState+' ns '+v.networkState)+' t '+t.toFixed(1)+' '+v.videoWidth+'x'+v.videoHeight+' n'+VWN)}catch(_){}
+ try{v.onloadeddata=null;v.removeAttribute('src');v.load();v.src=src;v.load();v.addEventListener('loadeddata',()=>{try{v.currentTime=t}catch(_){}if(!ETOPEN)v.play().catch(()=>{})},{once:true})}catch(_){}}
 /* ---- while the video is analysed (shots + body), the jumping picture is hidden under a still, blurred frame with a white spinner ---- */
 var SCV=null,SCP=0,SCL='';
 function scanVeil(v){try{const sm=document.createElement('canvas');sm.width=sm.height=96;coverDraw(sm.getContext('2d'),v,96);const b=document.createElement('canvas');b.width=OF.w;b.height=OF.h;const x=b.getContext('2d');
@@ -1115,14 +1122,15 @@ function mpLoad(){if(MPV)return MPV;MPV=(async()=>{const mp=await import(window.
  let face=null;try{face=await mk(mp.FaceLandmarker,'face_landmarker/face_landmarker/float16/1/face_landmarker.task',{numFaces:1})}catch(e){try{bug('body','face '+((e&&e.message)||e))}catch(_){}}
  return{pose:pose,face:face}})();MPV.catch(()=>{MPV=null});return MPV}
 async function bodyScan(key){const v=$('bgv');if(TRKK===key&&TRK.length)return;TRK=[];TRKK='';const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0)||!v.videoWidth)return;
- let M;try{msg.textContent='Loading the body finder…';SCL='Loading the body finder…';M=await mpLoad();SCL='Finding the person…'}catch(e){try{bug('body','load '+((e&&e.message)||e))}catch(_){}return}
+ let M;try{msg.textContent='Loading the body finder…';SCL='Loading the body finder…';M=await Promise.race([mpLoad(),new Promise((_,j)=>setTimeout(()=>j(new Error('timeout 30s')),30000))]);SCL='Finding the person…'}catch(e){try{bug('body','load '+((e&&e.message)||e))}catch(_){}return}
  const sc=document.createElement('canvas'),k=Math.min(1,512/Math.max(v.videoWidth,v.videoHeight));sc.width=Math.max(16,Math.round(v.videoWidth*k));sc.height=Math.max(16,Math.round(v.videoHeight*k));const x=sc.getContext('2d');
  const step=dur>90?.8:dur>45?.6:.4,out=[];let errs=0;v.pause();
  for(let t=.05;t<dur;t+=step){if($('bgv').src!==key||SJ!=10)return;await seekTo(v,Math.min(dur-.05,t));x.drawImage(v,0,0,sc.width,sc.height);let p=null,f=null;
   try{const r=M.pose.detect(sc),l=r&&r.landmarks&&r.landmarks[0];if(l)p=l.map(q=>[q.x,q.y,q.visibility==null?1:q.visibility])}catch(e){if(!errs++)try{bug('body','pose '+((e&&e.message)||e))}catch(_){}}
   if(M.face)try{const r=M.face.detect(sc),l=r&&r.faceLandmarks&&r.faceLandmarks[0];if(l)f=FIDX.map(i=>[l[i].x,l[i].y])}catch(_){}
   out.push({t:t,p:p,f:f});SCP=.3+.7*Math.min(.99,t/dur);msg.textContent='Finding the person in your video… '+Math.min(99,Math.round(t/dur*100))+'%';await new Promise(r=>setTimeout(r,0))}
- TRK=out;TRKK=key}
+ TRK=out;TRKK=key;mpFree()}
+function mpFree(){const P=MPV;MPV=null;if(P)P.then(M=>{try{M.pose&&M.pose.close()}catch(_){}try{M.face&&M.face.close()}catch(_){}}).catch(()=>{})}
 /* video picture (0..1) -> Edit frame (0..1), same maths as vidDraw */
 function v2f(nx,ny){const v=$('bgv');if(!v.videoWidth)return[nx,ny];const g=vidGeom(v,OF.w,OF.h),ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;return[(ox+nx*g.dw)/OF.w,(oy+ny*g.dh)/OF.h]}
 /* one picture -> head, eyes, hand, feet in frame units (null when not seen) */
@@ -1693,7 +1701,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v47';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v48';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
