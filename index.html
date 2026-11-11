@@ -163,6 +163,7 @@ select.pks{display:none}
 <div class="mcs"><button class="mcard" id="m1" type="button"><b>Musical video</b><span>Music scenes, or an Edit with your own video</span></button><button class="mcard" id="m2" type="button"><b>Video captions</b><span>Pick a video. Words and shapes appear automatically</span></button></div>
 <div id="cvw" style="position:relative"><canvas id="cv" width="720" height="1280"></canvas><label id="vadd" for="vf" style="display:none">＋ Add your video</label></div>
 <div class="row" id="mrow"><label class="btn m m-music" id="pick" for="f"><svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Choose song</label><label class="btn m m-music" id="vb2" for="vf" style="display:none">Add your video</label><button class="m m-video" id="vbm" type="button"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>Add your video</button><button class="m m-music" id="etb" type="button" style="display:none">✏️ Edit text</button><button id="rec" class="m-both"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download video</button></div>
+<div class="row" id="vchr" style="display:none"><label class="btn m" id="vch" for="vf" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:46px;background:#1c1f24;color:#e8eaed;border:1px solid #3a3e45">🔄 Change video</label></div>
 <div class="row"><button class="m" id="save" hidden>Save video</button><button id="cvt" class="m m-both" hidden>Convert for TikTok</button></div>
 <div id="tabs" class="m-both">
 <button type="button" data-t="sc"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4l-2 5M14 4l-2 5M20 4l-2 5"/></svg><span class="m-music m-noedit">Scene</span><span class="m-video">Background</span><span class="m-edonly">Background</span></button>
@@ -1267,7 +1268,7 @@ function etPick(k){SHSEL=k;const q=SH[k],bv=$('bgv');if(q){au.pause();bv.pause()
 function etLoop(){if(!ETOPEN)return;requestAnimationFrame(etLoop);const v=$('etv');if(!v)return;const x=v.getContext('2d'),k=cv.width/W,sx=(OF.x-40)*k,sy=(OF.y-110)*k,sw=(OF.w+80)*k,sh=(OF.h+190)*k;x.fillStyle='#000';x.fillRect(0,0,v.width,v.height);try{x.drawImage(cv,sx,sy,sw,sh,0,0,v.width,v.height)}catch(_){}}
 function etOpen(){if(SJ!=10)return;etBuild();if(!$('bgv').src){$('vf').click();return}if(!SH.length)SH=[Object.assign({s:0,e:1e9},shotDef())];ETOPEN=true;$('etp').hidden=false;etPick(Math.min(SHSEL,SH.length-1));etLoop()}
 function etClose(){ETOPEN=false;if($('etp'))$('etp').hidden=true}
-function etBtn(){try{const on=SJ==10&&!!$('bgv').src;$('etb').style.display=on?'':'none';$('vb2').style.display='none';$('vadd').style.display=SJ==10&&!on?'':'none'}catch(_){}}
+function etBtn(){try{const on=SJ==10&&!!$('bgv').src;$('etb').style.display=on?'':'none';$('vb2').style.display='none';$('vadd').style.display=SJ==10&&!on?'':'none';$('vchr').style.display=on?'':'none'}catch(_){}}
 function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN){const q=shotLive(shotNow());if(q.part!=='straight'&&q.f){const Q=shapeQ(q);c.save();c.globalAlpha=.85;c.setLineDash([10,8]);c.lineWidth=3;c.strokeStyle='#ffd24d';c.beginPath();Q.P.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.setLineDash([]);c.globalAlpha=1;c.beginPath();c.arc(Q.ax,Q.ay,17,0,7);c.fillStyle='#ffd24d';c.fill();c.lineWidth=4;c.strokeStyle='#111';c.stroke();c.restore()}}const t=ttl.value.trim().toUpperCase(),sn=songName(),lt=!!(OBGS[OBG]||[])[1];c.save();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle=lt?'#15181d':'#fff';
  if(t){let fs=78;do{c.font=fs+'px "Anton",Impact,sans-serif';fs-=4}while(c.measureText(t).width>W-80&&fs>34);c.fillText(t,W/2,sn?OF.y-74:OF.y-36)}
  if(sn){c.font='500 26px system-ui,sans-serif';c.fillStyle=lt?'rgba(20,24,29,.6)':'rgba(255,255,255,.6)';let x=sn;while(c.measureText(x).width>W-100&&x.length>4)x=x.slice(0,-2);c.fillText(x===sn?x:x+'…',W/2,OF.y-30)}
@@ -1617,7 +1618,7 @@ $('vf').onchange=e=>{const f=e.target.files[0];if(!f)return;const v=$('bgv');VOK
  setTimeout(()=>{if(v.src&&!VOK&&!v.error)msg.textContent='The video is not showing yet. Tap the screen once to start it, or try an MP4 (H.264) file.'},4000)};
 cv.addEventListener('click',()=>{const v=$('bgv');if(v.src&&v.paused)v.play().catch(()=>{})});
 
-$('etb').onclick=()=>etOpen();
+$('etb').onclick=()=>etOpen();$('vch').addEventListener('click',()=>{try{$('vf').value=''}catch(_){}});
 $('vx').onclick=()=>{$('vadj').hidden=true;SH=[];SHK='';etClose();setTimeout(etBtn,0);const v=$('bgv');v.pause();v.removeAttribute('src');v.load();$('vx').hidden=true;msg.textContent='Video removed.'};
 $('lyb').onclick=()=>{const o=$('lyp').hidden;$('lyp').hidden=!o;if(o){$('tsp').hidden=true;$('lyp').scrollIntoView({block:'nearest',behavior:'smooth'})}};
 try{const sv=localStorage.getItem('br_acauto');if(sv==='0')$('acauto').checked=false}catch(_){}$('acauto').onchange=()=>{try{localStorage.setItem('br_acauto',$('acauto').checked?'1':'0')}catch(_){}};
@@ -1692,7 +1693,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v46';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v47';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
