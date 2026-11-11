@@ -50,6 +50,7 @@ p{font-size:14px;opacity:.75;margin:10px 0 0}
 .mcard.on{border-color:#ff4fa3;background:linear-gradient(135deg,rgba(255,79,163,.22),rgba(166,77,255,.22))}
 body.nomode .m-music,body.nomode .m-video,body.nomode .m-both{display:none!important}
 body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
+#vadd{position:absolute;left:50%;top:48.4%;transform:translate(-50%,-50%);color:#fff;font:700 18px system-ui,sans-serif;letter-spacing:.3px;padding:14px 18px;cursor:pointer;text-shadow:0 2px 8px rgba(0,0,0,.6);white-space:nowrap;-webkit-tap-highlight-color:transparent}#vadd:active{opacity:.7}
 .m-edonly{display:none}body.ed .m-edonly{display:block}body.ed .row.m-edonly{display:flex}body.ed .m-noedit{display:none!important}
 .vrow{display:flex;gap:10px;align-items:center;margin-top:8px}.vrow span{font-size:14px;min-width:92px}.vrow input[type=range]{flex:1;width:auto;min-width:0;padding:0;border:0;background:none;accent-color:#ff4fa3}.vrow b{min-width:46px;text-align:right;font-size:14px;font-weight:600}
 #xo #xc{flex:none;width:auto;height:auto;min-height:0;flex-grow:0;align-self:center;background:#2a2140;color:#fff;border:0;border-radius:24px;padding:12px 28px;font-size:15px}
@@ -212,7 +213,7 @@ body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
 <div id="xo"><div id="xw"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#2a2140"/><circle id="xr" cx="50" cy="50" r="44" stroke="#ff4fa3" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/></svg><div id="xp">0%</div></div>
 <div id="xt">Creating your video</div><div id="xs">Keep this page open. It saves automatically when it reaches 100%.</div><button id="xc">Cancel</button></div>
 <div class="mcs"><button class="mcard" id="m1" type="button"><b>Musical video</b><span>Music scenes, or an Edit with your own video</span></button><button class="mcard" id="m2" type="button"><b>Video captions</b><span>Pick a video. Words and shapes appear automatically</span></button></div>
-<canvas id="cv" width="720" height="1280"></canvas>
+<div id="cvw" style="position:relative"><canvas id="cv" width="720" height="1280"></canvas><label id="vadd" for="vf" style="display:none">＋ Add your video</label></div>
 <div class="row"><label class="btn m m-music" id="pick" for="f">Choose song</label><label class="btn m m-music" id="vb2" for="vf" style="display:none">Add your video</label><button class="m m-music" id="etb" type="button" style="display:none">✏️ Edit text</button><button id="rec" class="m m-both">Download video</button></div>
 <div class="row"><button id="cvt" class="m m-both" hidden>Convert for TikTok</button></div>
 <div id="ce" hidden>
@@ -990,10 +991,10 @@ function drawOrbit(){const B=OBGS[OBG]||OBGS[0];c.fillStyle=B[1]?obRgb(B[1],1):'
  if(B[1]){const t=performance.now()/1000,L=W+H;if(!OBW){const p=((t*.16)%1.4-.2)*L;obSweep(p-340,300,B[2],.10);obSweep(p,280,[255,255,255],.85)}else{for(let i=0;i<3;i++){const p=((t*.07+i/3)%1.2-.1)*L;obSweep(p,240,[255,255,255],.7);obSweep(p-300,220,B[2],.08)}}
   c.save();c.shadowColor='rgba(0,0,0,.28)';c.shadowBlur=48;c.shadowOffsetY=20;c.fillStyle='#000';c.fillRect(OF.x,OF.y,OF.w,OF.h);c.restore()}
  const bv=$('bgv');
- if(!bv.src){c.fillStyle='#14181f';c.fillRect(OF.x,OF.y,OF.w,OF.h);c.save();c.textAlign='center';c.fillStyle='rgba(255,255,255,.6)';c.font='600 36px system-ui,sans-serif';c.fillText('Add your video',W/2,OF.y+OF.h/2);c.font='24px system-ui,sans-serif';c.fillStyle='rgba(255,255,255,.35)';c.fillText('Video and export → Add your video',W/2,OF.y+OF.h/2+46);c.restore()}
+ if(!bv.src){c.fillStyle='#14181f';c.fillRect(OF.x,OF.y,OF.w,OF.h)}
  else{c.fillStyle='#0b0d11';c.fillRect(OF.x,OF.y,OF.w,OF.h)}}
 function songName(){if(!curFile||curVid)return'';return curFile.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').replace(/\s*[\(\[][^\)\]]*(official|lyrics?|audio|video|visuali[sz]er|hd|4k)[^\)\]]*[\)\]]/ig,'').replace(/\s+/g,' ').trim()}
-function sceneUI(){document.body.classList.toggle('ed',SJ==10);etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap "✏️ Edit text" to place the words.':'Edit ✨ PRO: choose your song, then tap "Add your video".';softUI()}
+function sceneUI(){document.body.classList.toggle('ed',SJ==10);etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap "✏️ Edit text" to place the words.':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
 var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOPEN=false,SHAUTO='';
 /* ---- shots: the video is cut into shots where the picture changes at once; each shot keeps its own text place ---- */
 function shotDef(){return{part:'both',x:OH.x,y:OH.y,r:OH.r}}
@@ -1076,7 +1077,7 @@ function etPick(k){SHSEL=k;const q=SH[k],bv=$('bgv');if(q){au.pause();bv.pause()
 function etLoop(){if(!ETOPEN)return;requestAnimationFrame(etLoop);const v=$('etv');if(!v)return;const x=v.getContext('2d'),k=cv.width/W,sx=(OF.x-40)*k,sy=(OF.y-110)*k,sw=(OF.w+80)*k,sh=(OF.h+190)*k;x.fillStyle='#000';x.fillRect(0,0,v.width,v.height);try{x.drawImage(cv,sx,sy,sw,sh,0,0,v.width,v.height)}catch(_){}}
 function etOpen(){if(SJ!=10)return;etBuild();if(!$('bgv').src){$('vf').click();return}if(!SH.length)SH=[Object.assign({s:0,e:1e9},shotDef())];ETOPEN=true;$('etp').hidden=false;etPick(Math.min(SHSEL,SH.length-1));etLoop()}
 function etClose(){ETOPEN=false;if($('etp'))$('etp').hidden=true}
-function etBtn(){try{const on=SJ==10&&!!$('bgv').src;$('etb').style.display=on?'':'none';$('vb2').style.display=SJ==10&&!on?'':'none'}catch(_){}}
+function etBtn(){try{const on=SJ==10&&!!$('bgv').src;$('etb').style.display=on?'':'none';$('vb2').style.display='none';$('vadd').style.display=SJ==10&&!on?'':'none'}catch(_){}}
 function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN){const q=shotNow();if(q.part!=='edge'&&q.part!=='straight'){c.save();c.globalAlpha=.9;c.setLineDash([10,8]);c.lineWidth=4;c.strokeStyle='#ffd24d';c.beginPath();c.arc(OF.x+q.x*OF.w,OF.y+q.y*OF.h,q.r*OF.w,0,7);c.stroke();c.restore()}}const t=ttl.value.trim().toUpperCase(),sn=songName(),lt=!!(OBGS[OBG]||[])[1];c.save();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle=lt?'#15181d':'#fff';
  if(t){let fs=78;do{c.font=fs+'px "Anton",Impact,sans-serif';fs-=4}while(c.measureText(t).width>W-80&&fs>34);c.fillText(t,W/2,sn?OF.y-74:OF.y-36)}
  if(sn){c.font='500 26px system-ui,sans-serif';c.fillStyle=lt?'rgba(20,24,29,.6)':'rgba(255,255,255,.6)';let x=sn;while(c.measureText(x).width>W-100&&x.length>4)x=x.slice(0,-2);c.fillText(x===sn?x:x+'…',W/2,OF.y-30)}
@@ -1490,7 +1491,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v30';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v31';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
