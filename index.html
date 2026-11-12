@@ -216,6 +216,7 @@ select.pks{display:none}
 <div class="gl">AI</div>
 <div class="row"><span class="aiL">Speech AI</span><select id="acm"><option value="cloud" selected>Best (online AI)</option><option value="Xenova/whisper-tiny">Fast</option><option value="Xenova/whisper-base">Better (bigger download)</option></select></div>
 <label class="m-video" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="acauto" checked style="width:20px;height:20px;flex:none">Make captions automatically when I add a video (no song)</label>
+<label class="m-music m-noedit" style="display:flex;gap:10px;align-items:center;margin:8px 4px;font-size:14px;opacity:.85"><input type="checkbox" id="apon" checked style="width:20px;height:20px;flex:none">✨ Make the whole video for me when I choose a song (best part, lyrics, scene, style)</label>
 <div class="gl">Video</div>
 <div class="row"><select id="bm"></select><select id="qs"></select></div>
 <div class="row" style="display:none"><select id="fm"><option value="mp4">Format: MP4 (TikTok, Instagram, gallery)</option><option value="webm">Format: WebM (not accepted by TikTok)</option></select></div>
@@ -567,7 +568,7 @@ function musicLyr(i){
  const lastS=wt[n-1][0],lastE=wt[n-1][1],te=Math.min(nextS,Math.max(se.e,lastE+.8)),exitAt=Math.max(lastS+.35,te-.4);
  if(t>te+.05)return;
  const GFo=!rtl&&MS.font?GF[MS.font-1]:null;
- const base=[.75,1,1.2,1.4,1.6][TS.size]||1;let size=112*base*(rtl?(S_.ka||1):GFo?GFo.k:S_.k);if(SJ==10)size*=.55;
+ const base=[.75,1,1.2,1.4,1.6][TS.size]||1;let size=112*base*(rtl?(S_.ka||1):GFo?GFo.k:S_.k);if(SJ==10)size*=.55;else if(chorusLine(i))size*=1.2;
  const fontOf=(k,sz)=>{if(GFo&&(!S_.edit||k===0))return gfCss(GFo,Math.round(sz*(S_.edit?1.15:1)));if(S_.edit){const big=k===0;return(rtl?(big?AFB:AFS):(big?S_.f:'italic 400 PXpx "Playfair Display",serif')).replace('PX',Math.round(sz*(big?1.15:.55)))}return(rtl?S_.fa:S_.f).replace('PX',Math.round(sz))};
  const maxW=SJ==10?OF.w-60:W-80;let rows,wd,sp;
  for(let tries=0;tries<8;tries++){c.save();c.letterSpacing=(S_.ls&&!rtl?S_.ls*size/64:0)+'px';wd=words.map((w,k)=>{c.font=fontOf(k,size);return c.measureText(w).width});c.font=fontOf(1,size);sp=c.measureText(' ').width*1.15;c.restore();
@@ -1620,7 +1621,7 @@ async function hookPrep(ab,key){HOOK=null;const sr=ab.sampleRate,c0=ab.getChanne
  const ch=new Float32Array(N*12),en=new Float32Array(N),re=new Float32Array(M),im=new Float32Array(M),win=new Float32Array(M),pcb=new Int8Array(M/2);
  for(let i=0;i<M;i++)win[i]=.5-.5*Math.cos(2*Math.PI*i/M);for(let k=0;k<M/2;k++){const f=k*fs/M;pcb[k]=f<80||f>2000?-1:((Math.round(12*Math.log2(f/261.63))%12)+12)%12}
  for(let f=0;f<N;f++){const a=f*hop*ds;let e=0;for(let i=0;i<M;i++){const j=a+i*ds,v=(c0[j]+c1[j])*.5;re[i]=v*win[i];im[i]=0;e+=v*v}en[f]=Math.sqrt(e/M);hkFFT(re,im);
-  for(let k=1;k<M/2;k++){const p=pcb[k];if(p>=0)ch[f*12+p]+=Math.log(1+40*Math.hypot(re[k],im[k]))}
+  for(let k=1;k<M/2;k++){const p=pcb[k];if(p>=0)ch[f*12+p]+=re[k]*re[k]+im[k]*im[k]}for(let p=0;p<12;p++)ch[f*12+p]=Math.sqrt(ch[f*12+p])
   if(f%120===119){await new Promise(r=>setTimeout(r,0));if(CFK!==key)return}}
  const sm=new Float32Array(N*12);for(let f=0;f<N;f++){let n2=0;for(let p=0;p<12;p++){let v=0;for(let k=Math.max(0,f-2);k<=Math.min(N-1,f+2);k++)v+=ch[k*12+p];sm[f*12+p]=v;n2+=v*v}n2=Math.sqrt(n2)||1;for(let p=0;p<12;p++)sm[f*12+p]/=n2}
  HOOK={key:key,N:N,ch:sm,en:en,dt:.25}}
@@ -1637,13 +1638,43 @@ function hookUse(L,auto){if(!HOOK||HOOK.key!==CFK){msg.textContent='Still listen
  HKA=1;CS=r.s;CE=Math.min(DUR,CS+L);VW=Math.min(DUR,Math.max(60,(CE-CS)*1.4));VS=CS-(VW-(CE-CS))/2;clampVS();clipUI();au.pause();au.currentTime=CS;
  msg.textContent='✨ Best part picked: '+fmt(CS)+' – '+fmt(CE)+(auto?'. Tap Reset to start from the beginning.':'. Press Play to listen.');try{hit('hook')}catch(_){}}
 (()=>{const b=(id,L)=>{const e=$(id);if(e)e.onclick=()=>{if(!DUR)return;CUSER=1;hookUse(L)}};b('hk15',15);b('hk30',30)})();
+/* ===== Auto video (one tap): choose a song -> best part + mood scene + Auto lyrics + AI style + bigger chorus lines ===== */
+var APON=1;try{APON=localStorage.getItem('br_ap')==='0'?0:1}catch(_){}
+(()=>{const e=$('apon');if(!e)return;e.checked=!!APON;e.onchange=()=>{APON=e.checked?1:0;try{localStorage.setItem('br_ap',APON)}catch(_){}}})();
+function songMood(){const H=HOOK,bpm=BEAT&&BEAT.per>0?60/BEAT.per:110;let minor=false;
+ if(H){const m=new Float32Array(12);for(let f=0;f<H.N;f++)for(let p=0;p<12;p++)m[p]+=H.ch[f*12+p]*H.en[f];
+  const MA=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88],MI=[6.33,2.68,3.52,5.38,2.6,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+  const cor=(P,r)=>{let a=0,b=0,ab=0,aa=0,bb=0;for(let i=0;i<12;i++){a+=m[(i+r)%12];b+=P[i]}a/=12;b/=12;for(let i=0;i<12;i++){const x=m[(i+r)%12]-a,y=P[i]-b;ab+=x*y;aa+=x*x;bb+=y*y}return ab/Math.sqrt(aa*bb||1)};
+  let bM=-9,bm=-9;for(let r=0;r<12;r++){bM=Math.max(bM,cor(MA,r));bm=Math.max(bm,cor(MI,r))}minor=bm>bM}
+ const sp=bpm<95?'calm':bpm>=128?'fast':'mid',hs=[...(curFile&&curFile.name||'x')].reduce((a,ch)=>a+ch.charCodeAt(0),0)&1;let sc;
+ if(sp==='calm')sc=SFT.has()?6:minor?[9,5][hs]:[7,8][hs];else if(sp==='mid')sc=minor?1:0;else sc=minor?3:2;
+ return{sc:sc,bpm:Math.round(bpm),minor:minor,name:sp==='calm'?(minor?'calm, sad':'calm'):sp==='fast'?'energetic':(minor?'dark':'warm')}}
+function hookRanges(){const H=HOOK;if(!H)return[];if(H.rg)return H.rg;const N=H.N,Lf=Math.min(N-1,Math.round(15/H.dt)),r=hookPick(15);if(!r)return[];const s0=Math.round(r.s/H.dt),sim=new Float32Array(N);let pk=0;
+ for(let o=0;o+Lf<=N;o++){let v=0;for(let i=0;i<Lf&&s0+i<N;i++)for(let p=0;p<12;p++)v+=H.ch[(s0+i)*12+p]*H.ch[(o+i)*12+p];sim[o]=v/Lf;if(Math.abs(o-s0)>=Lf&&sim[o]>pk)pk=sim[o]}
+ const R=[[s0*H.dt,(s0+Lf)*H.dt]];if(pk>.75){let o=0;while(o+Lf<=N){if(Math.abs(o-s0)>=Lf&&sim[o]>=pk-.04){let b=o;for(let k=o;k<Math.min(N-Lf+1,o+Lf);k++)if(sim[k]>sim[b])b=k;R.push([b*H.dt,(b+Lf)*H.dt]);o=b+Lf}else o++}}
+ H.rg=R;return R}
+var CHC={k:'',s:null};
+function chorusLine(i){try{if(SJ==10||!HOOK||HOOK.key!==CFK||!RNG||!RNG[i]||L.length<3)return false;const k=HOOK.key.name+'|'+L.length+'|'+RNG.length;if(CHC.k!==k){const R=hookRanges(),st=new Set();RNG.forEach((g,j)=>{const m=(g.s+g.e)/2;if(R.some(r=>m>=r[0]&&m<=r[1]))st.add(j)});CHC={k:k,s:st.size<L.length?st:new Set()}}return CHC.s.has(i)}catch(_){return false}}
+async function autoPilot(f){if(!APON||curVid||EDIT||SJ==10||SJ==4||CFK!==f||acBusy)return;
+ msg.textContent='✨ Making your video: finding the beat and the mood…';try{await beatScan()}catch(_){}if(CFK!==f||SJ==10||SJ==4)return;
+ const md=songMood(),q=$('sj');q.value=md.sc;q.dispatchEvent(new Event('change'));try{pkSync()}catch(_){}
+ if(md.sc<5){const th=$('th'),hs=[...(f.name||'x')].reduce((x,ch)=>x+ch.charCodeAt(0),0)&1,tv=md.name==='energetic'?(md.minor?[5,9]:[3,9])[hs]:md.name==='warm'?[3,11][hs]:md.name==='dark'?[2,8][hs]:[2,8][hs];/* no purple themes */th.value=tv;th.dispatchEvent(new Event('change'))}
+ const sy=$('tsy');sy.value=-1;sy.dispatchEvent(new Event('change'));
+ const scn=(q.options[q.selectedIndex]&&q.options[q.selectedIndex].textContent||'').replace(/^Subject:\s*/,'');
+ const had=L.filter(x=>x&&x.trim()).length>1&&RNG,r0=RNG;
+ if(!had){msg.textContent='✨ Writing the lyrics (uses 1 AI coin)…';try{await $('acb').onclick()}catch(_){}}if(CFK!==f)return;
+ const ok=had||(RNG&&RNG!==r0);
+ if(ok)msg.textContent='✨ Your video is ready: '+(HKA?'best part '+fmt(CS)+'–'+fmt(CE)+', ':'')+md.name+' song → scene "'+scn+'", lyrics ✓, style picked by AI, chorus lines bigger. Press Play, then Download.';
+ else msg.textContent='✨ Scene "'+scn+'" ('+md.name+' song)'+(HKA?' and best part ':' ')+'ready. Lyrics: '+msg.textContent;
+ try{hit('auto')}catch(_){}}
 async function loadWave(file){PK=null;CFK=file;
  try{const buf=await file.arrayBuffer(),OC=window.OfflineAudioContext||window.webkitOfflineAudioContext,tmp=new OC(1,44100,44100);
   const ab=await new Promise((res,rej)=>{const p=tmp.decodeAudioData(buf,res,rej);if(p&&p.then)p.then(res,rej)});
   if(CFK!==file)return;const ch=ab.getChannelData(0),N=Math.min(8000,Math.max(60,Math.ceil(ab.duration*10))),step=ch.length/N,pk=new Float32Array(N);let mx=1e-6;
   for(let i=0;i<N;i++){let m=0;const a=Math.floor(i*step),b=Math.min(ch.length,Math.floor((i+1)*step)),k=Math.max(1,Math.floor((b-a)/100));for(let j=a;j<b;j+=k){const v=Math.abs(ch[j]);if(v>m)m=v}pk[i]=m;if(m>mx)mx=m}
   for(let i=0;i<N;i++)pk[i]=Math.pow(pk[i]/mx,.8);PKN=N;PK=pk;if(Math.abs(ab.duration-DUR)>.5||!DUR)initClip(ab.duration)
-  try{await hookPrep(ab,file);if(CFK===file&&!curVid&&!CUSER&&DUR>35&&CE-CS<DUR-1)hookUse(CE-CS,1)}catch(e){try{bug('hook',String((e&&e.message)||e))}catch(_){}}}
+  try{await hookPrep(ab,file);if(CFK===file&&!curVid&&!CUSER&&DUR>35&&CE-CS<DUR-1)hookUse(CE-CS,1)}catch(e){try{bug('hook',String((e&&e.message)||e))}catch(_){}}
+  try{autoPilot(file)}catch(_){}}
  catch(e){}}
 function sizeCv(c1){const dpr=window.devicePixelRatio||1,w=Math.round(c1.clientWidth*dpr),h=Math.round(c1.clientHeight*dpr);if(c1.width!==w||c1.height!==h){c1.width=w;c1.height=h}return[w,h,dpr]}
 function wfDraw(){if($('ce').hidden||!DUR)return;const c1=$('wf');if(!c1.clientWidth)return;const[w,h,dpr]=sizeCv(c1),x=c1.getContext('2d');x.clearRect(0,0,w,h);
@@ -1775,7 +1806,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v56';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v57';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
