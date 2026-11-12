@@ -1967,7 +1967,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v72';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v73';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2300,7 +2300,9 @@ function setMode(m){MODE=m;try{[...$('tc').options].forEach(o=>{o.textContent=o.
 $('m1').onclick=async()=>{const sm='<span style="display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:3px">';
  const a=await modal('<h3>Musical video</h3><p>What do you want to make?</p><button class="pri" data-a="mu">🎵 Music'+sm+'Your song + an animated scene + lyrics</span></button><button data-a="ed">✂️ Edit ✨ PRO'+sm+'Your video in a frame + your song + lyrics</span></button>');
  if(a!=='mu'&&a!=='ed')return;EDIT=a==='ed';setMode('music');if(EDIT)SJ=10;else{SJ=+$('sj').value||0;if(SJ==3&&drawSpace_reset)drawSpace_reset()}$('cs').style.display=SJ?'none':'';sceneUI();
- if(!curFile||curVid)$('f').click()};
+ if(!EDIT&&(!curFile||curVid))$('f').click();if(EDIT&&!(curFile&&!curVid)&&!$('bgv').src)msg.textContent='Edit: add your video and a song, in any order.'};
+/* Android start screen "Edit": open the editor empty, the user adds the video and the song in any order */
+function brEdit(){EDIT=true;setMode('music');SJ=10;$('cs').style.display='none';sceneUI();if(!(curFile&&!curVid)&&!$('bgv').src)msg.textContent='Edit: add your video and a song, in any order.'}
 $('m2').onclick=()=>{const had=MODE==='video';setMode('video');if(!had&&!$('bgv').src)pickVideo()};
 function setVol(){if(G1)G1.gain.value=$('vv').value/100;if(G2)G2.gain.value=$('mv').value/100;$('vvp').textContent=$('vv').value+'%';$('mvp').textContent=$('mv').value+'%'}
 $('vv').oninput=setVol;$('mv').oninput=setVol;
@@ -3121,8 +3123,8 @@ function edStyles(){const box=$('edst');if(!box)return;box.innerHTML='';const al
   box.appendChild(b)})}
 function edCur(){const q=SH[SHSEL];if(q&&!q.f)Object.assign(q,{f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5});return q}
 function edPanel(p){const pn=$('edpn');edRestore();edMove($('cvw'),$('eds'));pn.innerHTML='';const H_=h=>{const z=document.createElement('div');z.innerHTML=h;while(z.firstChild)pn.appendChild(z.firstChild)};
- if(p==='mu'){H_('<div class="r"><span style="flex:1;font:600 14px system-ui,sans-serif;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" id="edsn"></span><label class="btn" for="f" style="width:auto;flex:0 0 auto;margin:0;padding:8px 12px;border-radius:12px;background:#22262c;border:1px solid #30343b;font:600 13px system-ui,sans-serif;color:#e8eaed">Change song</label></div><div id="edce"></div><div class="r"><button id="edal">🎤 Auto lyrics (from song)</button></div>');
-  $('edsn').textContent=curFile&&!curVid?'♪ '+curFile.name:'♪ No song yet';edMove($('ce'),$('edce'));$('edal').onclick=()=>$('alb').click()}
+ if(p==='mu'){H_('<div class="r"><span style="flex:1;font:600 14px system-ui,sans-serif;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" id="edsn"></span><label class="btn" for="f" style="width:auto;flex:0 0 auto;margin:0;padding:8px 12px;border-radius:12px;background:#22262c;border:1px solid #30343b;font:600 13px system-ui,sans-serif;color:#e8eaed" id="edcs">Change song</label></div><div id="edce"></div><div class="r"><button id="edal">🎤 Auto lyrics (from song)</button></div>');
+  $('edsn').textContent=curFile&&!curVid?'♪ '+curFile.name:'♪ No song yet';$('edcs').textContent=curFile&&!curVid?'Change song':'＋ Add song';edMove($('ce'),$('edce'));$('edal').onclick=()=>$('alb').click()}
  else if(p==='tx'){H_('<div class="lb">STYLE</div><div id="edst"></div><div class="lb">SHAPE</div><div class="r" id="edsh"></div>'+
   '<div class="sl"><svg viewBox="0 0 30 20" style="width:26px;height:18px;stroke:#9aa3ad;fill:none;stroke-width:2.4"><path d="M3 17 Q15 -5 27 17"/></svg><input type="range" id="edk" min="-100" max="100" step="1"><svg viewBox="0 0 30 20" style="width:26px;height:18px;stroke:#9aa3ad;fill:none;stroke-width:2.4"><path d="M3 3 Q15 25 27 3"/></svg></div>'+
   '<div class="sl"><span>Size</span><input type="range" id="edz" min="35" max="300" step="1"></div><div class="sl"><span>Turn</span><input type="range" id="eda" min="-90" max="90" step="1"></div>'+
@@ -3172,7 +3174,7 @@ function edTL(){const tl=$('edtl');if(!tl)return;const ph=$('edph');tl.innerHTML
   cn.style.flexGrow=Math.max(.2,Math.min(q.e,d)-q.s);cn.onclick=()=>edPick(k);tl.insertBefore(cn,ph)});edUI();requestAnimationFrame(trButtons)}
 function edPick(k){SHSEL=k;const q=SH[k],bv=$('bgv');au.pause();if(q){const mt=q.mt!=null?q.mt:(q.s+Math.min(q.e,bv.duration||q.e))/2,t=(CS||0)+mt;if(t<CE)au.currentTime=t;else{try{bv.currentTime=mt}catch(_){}}}OBC.clear();edUI()}
 function edLoop(){requestAnimationFrame(edLoop);if(!EDON)return;const bv=$('bgv'),d=bv.duration,t=au.currentTime,cs=CS||0;
- const f=x=>{x=Math.max(0,x);return Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0')};$('edtm').textContent=f(t-cs)+' / '+f((CE||0)-cs);
+ const f=x=>{x=Math.max(0,x);return Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0')};$('edtm').textContent=f(t-cs)+' / '+f(CE>1e6?0:(CE||0)-cs);
  $('edpl').textContent=au.paused?'▶':'❚❚';{const m=$('edmsg'),tx=msg.textContent||'';if(m.textContent!==tx)m.textContent=tx}
  const ph=$('edph');if(ph){if(bv.src&&d>0){const vt=((TPL==2?tplVT(t):Math.max(0,t-cs))%d+d)%d;ph.style.display='';ph.style.left='calc('+(vt/d*100).toFixed(2)+'% - 1px)'}else ph.style.display='none'}
  if(!au.paused&&SH.length>1){const vt=bv.currentTime||0;for(let k=0;k<SH.length;k++)if(vt>=SH[k].s&&vt<SH[k].e){if(k!==SHSEL){SHSEL=k;edUI()}break}}}
@@ -3234,7 +3236,7 @@ etOpen=function(){if(SJ!=10)return;edOpen()};
 const etUI0=etUI;etUI=function(){etUI0();try{edTL()}catch(_){}};
 etPick=function(k){edPick(k)};
 const sceneUI0=sceneUI;sceneUI=function(){sceneUI0();if(SJ==10)edOpen();else edClose()};
-setInterval(()=>{if(SJ==10&&!EDON&&MODE!=='video')edOpen();if(SJ!=10&&EDON)edClose();if(EDON&&$('edsn'))$('edsn').textContent=curFile&&!curVid?'♪ '+curFile.name:'♪ No song yet';
+setInterval(()=>{if(SJ==10&&!EDON&&MODE!=='video')edOpen();if(SJ!=10&&EDON)edClose();if(EDON&&$('edsn'))$('edsn').textContent=curFile&&!curVid?'♪ '+curFile.name:'♪ No song yet';if(EDON&&$('edcs'))$('edcs').textContent=curFile&&!curVid?'Change song':'＋ Add song';
  if(EDON){const tl=$('edtl'),bv=$('bgv'),need=(SH.length?SH.length:(bv.src&&bv.duration>0?1:0)),have=tl?tl.querySelectorAll('canvas').length:0;if(need!==have||(!need&&tl&&!tl.querySelector('.add')))edTL()}},600);
 </script>
 

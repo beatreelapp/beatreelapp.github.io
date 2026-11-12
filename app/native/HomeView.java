@@ -162,7 +162,7 @@ public class HomeView extends FrameLayout {
         rp.topMargin = dp(10);
         col.addView(row, rp);
         row.addView(small("music", t("Music", "Musique", "موسيقى"), null, v -> host.pick("music")), cell(0));
-        row.addView(small("edit", "Edit", "PRO", v -> host.pick("edit")), cell(1));
+        row.addView(small("edit", "Edit", "PRO", v -> host.web("try{brEdit()}catch(e){}")), cell(1));
         row.addView(small("clip", "Clipping", "Soon", v -> host.soon(t("Clipping: coming soon", "Clipping : bientôt disponible", "Clipping: قريباً"))), cell(2));
 
         // your videos
