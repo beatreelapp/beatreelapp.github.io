@@ -1745,7 +1745,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v51';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v52';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2780,9 +2780,12 @@ function pkSync(){document.querySelectorAll('.pk').forEach(k=>{const v=k._src.va
 #edx .ext #edb{background:transparent;border:0;font-size:26px;line-height:1;padding:2px 10px}
 #edx .ext #edd{background:#5ab4f0;color:#06233a;border:0}
 #edtm{font:500 13px system-ui,sans-serif;color:#9aa3ad}
-#eds{flex:1 1 auto;min-height:0;display:flex;justify-content:center;align-items:stretch;padding:0 8px}
-#eds #cvw{height:100%;aspect-ratio:9/16;max-width:100%;position:relative}
-#eds #cv{width:100%;height:100%;aspect-ratio:auto;touch-action:none;border-radius:14px}
+#eds{flex:1 1 auto;min-height:0;display:flex;justify-content:center;align-items:center;padding:0 8px}
+#eds #cvw{flex:0 0 auto;position:relative;overflow:hidden;border-radius:14px;background:#0d0f11}
+#eds #cv{position:absolute;left:0;top:0;width:100%;height:auto;aspect-ratio:9/16;transform:translateY(-14.84375%);touch-action:none;border-radius:0}
+#eds #vadd{left:8.333%;top:16.667%;width:83.333%;height:76.923%}
+#edpn[hidden]{display:none}
+#edx #edpx{float:right;background:transparent;border:0;font-size:18px;padding:0 4px;color:#9aa3ad}
 #edx .exp{display:flex;align-items:center;gap:8px;padding:8px 10px 4px}
 #edpl{width:42px!important;height:42px;border-radius:50%!important;padding:0!important;font-size:16px!important;display:flex;align-items:center;justify-content:center}
 #edtl{position:relative;flex:1;height:44px;display:flex;gap:2px;overflow:hidden;border-radius:8px;background:#1a1d22}
@@ -2839,24 +2842,26 @@ function edSync(bv){if(!bv.src||SHBUSY||!VOK||bv.error||vaOn)return;const d=bv.d
  let df=bv.currentTime-tg;if(df>d/2)df-=d;else if(df<-d/2)df+=d;if(Math.abs(df)>.3&&!bv.seeking&&performance.now()-TPV>600){TPV=performance.now();try{bv.currentTime=tg}catch(_){}}}
 
 /* ================= Edit screen (like CapCut): big video, timeline, Music / Text / Frame ================= */
-var EDP='tx',EDON=false;const EDMV=[];
+var EDP=null,EDON=false,EDFIT=null;const EDMV=[];
 const EDI={mu:'<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
  fr:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 4v16"/></svg>'};
 const EDSHP=[['arc','Arc','<svg viewBox="0 0 30 20"><path d="M3 17 Q15 -5 27 17"/></svg>'],['line','Line','<svg viewBox="0 0 30 20"><path d="M3 10 H27"/></svg>'],
  ['smile','Under','<svg viewBox="0 0 30 20"><path d="M3 3 Q15 25 27 3"/></svg>'],['circle','Circle','<svg viewBox="0 0 30 20"><circle cx="15" cy="10" r="8"/></svg>'],
  ['low','Bottom','<svg viewBox="0 0 30 20"><rect x="2" y="2" width="26" height="16" rx="2" stroke-width="1.6"/><path d="M7 14 H23"/></svg>']];
-function edMove(el,dest){if(!el||!dest)return;const ph=document.createComment('ed');el.parentNode.insertBefore(ph,el);dest.appendChild(el);EDMV.push([el,ph])}
-function edRestore(){while(EDMV.length){const[el,ph]=EDMV.pop();try{ph.parentNode.replaceChild(el,ph)}catch(_){}}}
+function edMove(el,dest){if(!el||!dest)return;const ph=document.createComment('ed');el.parentNode.insertBefore(ph,el);dest.appendChild(el);EDMV.push([el,ph]);if(el.id==='cvw'&&EDFIT)setTimeout(EDFIT,0)}
+function edRestore(){while(EDMV.length){const[el,ph]=EDMV.pop();try{ph.parentNode.replaceChild(el,ph)}catch(_){}if(el.id==='cvw'){el.style.width='';el.style.height=''}}}
 function edBuild(){if($('edx'))return;const d=document.createElement('div');d.id='edx';d.hidden=true;
  d.innerHTML='<div class="ext"><button id="edb" aria-label="Back">‹</button><span id="edtm">0:00</span><button id="edd">Download</button></div>'+
- '<div id="eds"></div><div class="exp"><button id="edpl" aria-label="Play">▶</button><div id="edtl"><div id="edph"></div></div></div><div id="edmsg"></div><div id="edpn"></div>'+
+ '<div id="eds"></div><div class="exp"><button id="edpl" aria-label="Play">▶</button><div id="edtl"><div id="edph"></div></div></div><div id="edmsg"></div><div id="edpn" hidden></div>'+
  '<div id="edbar"><button data-p="mu">'+EDI.mu+'<span>Music</span></button><button data-p="tx"><b>A</b><span>Text</span></button><button data-p="fr">'+EDI.fr+'<span>Frame</span></button></div>';
  document.body.appendChild(d);
  $('edb').onclick=()=>edExit();$('edd').onclick=()=>{au.pause();$('rec').click()};
  $('edpl').onclick=()=>{if(!au.src){$('f').click();return}setup();ac.resume();if(au.paused){if(au.currentTime<CS||au.currentTime>=CE-.05)au.currentTime=CS;au.play().catch(()=>{})}else au.pause()};
  d.querySelectorAll('#edbar [data-p]').forEach(b=>b.onclick=()=>edShow(b.getAttribute('data-p')));
- edTouch();edLoop()}
-function edOpen(){edBuild();if(EDON)return;EDON=true;$('edx').hidden=false;edMove($('cvw'),$('eds'));edShow(EDP);document.body.style.overflow='hidden'}
+ edTouch();edLoop();
+ const fit=()=>{const st=$('eds'),cw=$('cvw');if(!st||!cw||cw.parentNode!==st)return;const w=st.clientWidth-16,h=st.clientHeight,k=780/720,ww=Math.max(60,Math.min(w,h/k));cw.style.width=Math.floor(ww)+'px';cw.style.height=Math.floor(ww*k)+'px'};
+ try{new ResizeObserver(fit).observe($('eds'))}catch(_){}setInterval(fit,500);EDFIT=fit}
+function edOpen(){edBuild();if(EDON)return;EDON=true;$('edx').hidden=false;edMove($('cvw'),$('eds'));edShow(EDP,1);document.body.style.overflow='hidden'}
 function edClose(){if(!EDON)return;EDON=false;ETOPEN=false;edRestore();$('edx').hidden=true;document.body.style.overflow=''}
 function edExit(){au.pause();edClose();EDIT=false;SJ=+$('sj').value||0;if(SJ==3&&typeof drawSpace_reset==='function')drawSpace_reset();$('cs').style.display=SJ?'none':'';sceneUI()}
 /* thumbnails of the styles: drawn once with the real style code on a spare canvas */
@@ -2907,7 +2912,8 @@ function edPanel(p){const pn=$('edpn');edRestore();edMove($('cvw'),$('eds'));pn.
   $('edw0').onclick=()=>{$('obw').value='0';$('obw').dispatchEvent(new Event('change'));edUI()};$('edw1').onclick=()=>{$('obw').value='1';$('obw').dispatchEvent(new Event('change'));edUI()};
   $('edcv').addEventListener('click',()=>{try{$('vf').value=''}catch(_){}});$('edzm').onclick=()=>{if($('bgv').src)openVA()}}
  edUI()}
-function edShow(p){EDP=p;ETOPEN=p==='tx'&&EDON;document.querySelectorAll('#edbar [data-p]').forEach(b=>b.classList.toggle('on',b.getAttribute('data-p')===p));edPanel(p);edTL()}
+function edShow(p,keep){if(!keep&&p&&p===EDP&&!$('edpn').hidden)p=null;EDP=p;ETOPEN=p==='tx'&&EDON;document.querySelectorAll('#edbar [data-p]').forEach(b=>b.classList.toggle('on',b.getAttribute('data-p')===p));
+ if(!p){edRestore();edMove($('cvw'),$('eds'));$('edpn').innerHTML='';$('edpn').hidden=true;edTL();return}$('edpn').hidden=false;edPanel(p);$('edpn').insertAdjacentHTML('afterbegin','<button id="edpx" aria-label="Close">✕</button>');$('edpx').onclick=()=>edShow(null);edTL()}
 function edUI(soft){if(!EDON)return;const q=SH[SHSEL];
  const sh=$('edsh');if(sh)sh.querySelectorAll('[data-s]').forEach(b=>{const s_=b.getAttribute('data-s');let on=false;if(q){if(q.part==='straight')on=s_==='low';else if(q.c)on=s_==='circle';else on=(s_==='arc'&&(q.k||0)<=-40)||(s_==='line'&&Math.abs(q.k||0)<40)||(s_==='smile'&&(q.k||0)>=40)}b.classList.toggle('on',on)});
  if(q&&$('edk')&&!soft)$('edk').value=q.k||0;if(q&&$('edz'))$('edz').value=Math.round((q.sz||1)*100);if(q&&$('eda'))$('eda').value=q.a||0;
@@ -2939,7 +2945,7 @@ function edTouch(){const v=cv,pts=new Map();let drag=null,pd=0,ps=1;
   else if(drag){const p=toC(e);q.dx=Math.max(-500,Math.min(500,drag.dx+p[0]-drag.x));q.dy=Math.max(-600,Math.min(600,drag.dy+p[1]-drag.y));OBC.clear()}e.preventDefault()});
  const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pd=0;if(!pts.size){drag=null;edUI()}};v.addEventListener('pointerup',up);v.addEventListener('pointercancel',up)}
 /* hooks into the existing code */
-etOpen=function(){if(SJ!=10)return;edOpen();edShow('tx')};
+etOpen=function(){if(SJ!=10)return;edOpen()};
 const etUI0=etUI;etUI=function(){etUI0();try{edTL()}catch(_){}};
 etPick=function(k){edPick(k)};
 const sceneUI0=sceneUI;sceneUI=function(){sceneUI0();if(SJ==10)edOpen();else edClose()};
