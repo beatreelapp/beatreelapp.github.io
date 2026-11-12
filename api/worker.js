@@ -661,7 +661,7 @@ const YT_ON = true, YT_PRO_ONLY = true, CLIPS_ON = false; // YouTube link: test 
 const ACTIVE = ["active", "trialing", "past_due"];
 
 async function subStatus(env, b, row, force) {
-  if (row.sub === "owner") return "active";
+  if (/^owner/.test(row.sub || "")) return "active";
   // refresh from Stripe at most every 6 hours (or when forced)
   if (!force && row.checked > LIVE_SINCE && Date.now() - row.checked < 6 * 3600e3) return row.status;
   try {
@@ -829,7 +829,7 @@ async function account(env, route, body, req) {
     if (!row) return { status: 404, body: { error: "bad_code" } };
     const st = await subStatus(env, b, row, true);
     if (!ACTIVE.includes(st)) return { status: 402, body: { error: "not_active" } };
-    const r = await b.link(code, did, row.sub === "owner" ? 20 : MAX_DEVICES);
+    const r = await b.link(code, did, /^owner/.test(row.sub || "") ? 20 : MAX_DEVICES);
     if (!r.ok) return { status: 409, body: { error: "device_limit" } };
     return { body: { pro: true, code } };
   }
@@ -940,7 +940,7 @@ export class Bank extends DurableObject {
   proOf(did) { return this.one("SELECT pro.* FROM link JOIN pro ON pro.code = link.code WHERE link.did = ?", did); }
   byCode(code) { return this.one("SELECT * FROM pro WHERE code = ?", code); }
   setStatus(code, status, cust) { this.sql.exec("UPDATE pro SET status = ?, cust = ?, checked = ? WHERE code = ?", status, cust || "", Date.now(), code); }
-  owner(code) { this.sql.exec("INSERT OR IGNORE INTO pro (code, sub, cust, status, checked) VALUES (?, 'owner', '', 'active', ?)", code, Date.now()); return this.one("SELECT * FROM pro WHERE code = ?", code); }
+  owner(code) { this.sql.exec("INSERT OR IGNORE INTO pro (code, sub, cust, status, checked) VALUES (?, ?, '', 'active', ?)", code, this.one("SELECT code FROM pro WHERE sub = 'owner'") ? "owner:" + code : "owner", Date.now()); return this.one("SELECT * FROM pro WHERE code = ?", code); }
   getKV(k) { const r = this.one("SELECT v FROM kv WHERE k = ?", k); return r ? r.v : ""; }
   setKV(k, v) { this.sql.exec("INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT (k) DO UPDATE SET v = excluded.v", k, v); }
   claim(sub, cust, status, did, maxDev) {
