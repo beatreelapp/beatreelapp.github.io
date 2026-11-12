@@ -172,7 +172,7 @@ select.pks{display:none}
 <button type="button" data-t="mo"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button>
 </div>
 <div class="tpn m-both" id="tp-sc">
-<div class="row m-edonly"><select id="tpl" class="pks"></select></div><div class="row m-edonly"><select id="obg" class="pks"></select></div><div class="row m-edonly"><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div>
+<div class="row m-edonly" style="display:none"><select id="tpl" class="pks"></select></div><div class="row m-edonly"><select id="obg" class="pks"></select></div><div class="row m-edonly"><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div>
 <div class="row m-music m-noedit"><select id="sj" class="pks"><option value="0">Subject: Car</option><option value="1">Subject: Vinyl in space</option><option value="2">Subject: Concert</option><option value="3">Subject: Space runner</option><optgroup label="Soft (calm, no bars)"><option value="5">Soft: Aurora</option><option value="6">Soft: Blurred cover</option><option value="7">Soft: Bokeh lights</option><option value="8">Soft: Frosted glass</option><option value="9">Soft: Ink in water</option></optgroup></select></div>
 <div class="row m-music m-noedit" id="cvr" style="display:none"><button class="m" id="cvb" type="button">Choose cover image (optional)</button></div>
 <div class="row m-music m-noedit"><select id="th"></select><select id="cs"></select></div>
@@ -1014,7 +1014,7 @@ function drawOrbit(){const B=OBGS[OBG]||OBGS[0];c.fillStyle=B[1]?obRgb(B[1],1):'
  if(!bv.src){c.fillStyle='#14181f';c.fillRect(OF.x,OF.y,OF.w,OF.h)}
  else{c.fillStyle='#0b0d11';c.fillRect(OF.x,OF.y,OF.w,OF.h)}}
 /* ===== Edit templates (stage 1): Film look, Velocity. Motion only inside the video, the frame stays still ===== */
-const TPLS=['None','Film look','Velocity'];var TPL=0;try{const a=+localStorage.getItem('br_tpl');if(TPLS[a])TPL=a}catch(_){}
+const TPLS=['None','Film look','Velocity'];var TPL=0;/* templates removed in v54 (user: they spoiled the video); code kept */try{localStorage.removeItem('br_tpl')}catch(_){}
 var BEAT={key:'',busy:null,t:[],s:[],per:.5};
 function beatScan(){const src=au.src;if(!src)return Promise.resolve();if(BEAT.key===src)return Promise.resolve();if(BEAT.busy&&BEAT.bk===src)return BEAT.busy;
  BEAT.bk=src;BEAT.busy=(async()=>{try{const SR=11025,b=await decodeAny(src,SR),x0=b.getChannelData(0),x1=b.numberOfChannels>1?b.getChannelData(1):x0,n=b.length,H=256,F=Math.floor(n/H);
@@ -1750,7 +1750,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v53';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v54';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2908,7 +2908,7 @@ function edPanel(p){const pn=$('edpn');edRestore();edMove($('cvw'),$('eds'));pn.
   $('edrs').onclick=()=>{const q=edCur();if(!q)return;q.dx=q.dy=0;q.sz=1;q.a=0;OBC.clear();edUI()};
   $('edal2').onclick=()=>$('alb').click();
   edMove($('lyt'),$('edly'));edMove($('ttl'),$('edtt'))}
- else{H_('<div class="lb">TEMPLATE</div><div class="r" id="edtp"></div><div class="lb">BACKGROUND</div><div class="r" id="edbg"></div><div class="r"><button id="edw0">Light: one shimmer</button><button id="edw1">Light: waves</button></div>'+
+ else{H_('<div class="lb" style="display:none">TEMPLATE</div><div class="r" id="edtp" style="display:none"></div><div class="lb">BACKGROUND</div><div class="r" id="edbg"></div><div class="r"><button id="edw0">Light: one shimmer</button><button id="edw1">Light: waves</button></div>'+
   '<div class="lb">VIDEO</div><div class="r"><label for="vf" class="btn" id="edcv" style="width:auto;flex:0 0 auto;margin:0;padding:8px 12px;border-radius:12px;background:#22262c;border:1px solid #30343b;font:600 13px system-ui,sans-serif;color:#e8eaed">🔄 Change video</label><button id="edzm">🔍 Zoom video</button></div>');
   const tp=['None','Film look','Velocity'];$('edtp').innerHTML=tp.map((n,i)=>'<button type="button" data-t="'+i+'"><img src="/img/ui/tp'+i+'.webp" alt=""><span style="font:500 11px system-ui,sans-serif">'+n+'</span></button>').join('');
   $('edtp').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;$('tpl').value=b.getAttribute('data-t');$('tpl').dispatchEvent(new Event('change'));edUI()};
