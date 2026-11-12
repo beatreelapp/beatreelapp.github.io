@@ -79,6 +79,9 @@ while time.time() - t0 < 600:
     time.sleep(4)
 shot("4_after_save")
 log("ERRORS", ev("JSON.stringify((window.ERRS||[]).slice(-5))"))
+log("SHARE ROW", ev("JSON.stringify({uri:LASTURI,row:!$('shr').hidden,btns:[...$('shr').querySelectorAll('button')].map(b=>b.textContent),save:!$('save').hidden,pv:!$('pv').hidden})"))
+log("SHARE APPS", ev("BRN.shareApps().then(r=>JSON.stringify((r.apps||[]).map(a=>a.id+':'+(a.icon||'').length)))"))
+log("SHARE MORE", ev("BRN.share({uri:LASTURI}).then(()=>'opened').catch(e=>'ERR '+e)")); time.sleep(3); shot("4b_share_sheet"); sh("adb shell input keyevent 4"); time.sleep(2)
 
 # 3) AI Story for real (Gemini plan + Cloudflare FLUX pictures), with typed lyrics
 log("STORY", ev("""(()=>{L=['I left my home at night','the city lights were cold','I miss your voice','one day I will come back'];RNG=L.map((x,i)=>({s:(CS||0)+i*3,e:(CS||0)+i*3+3}));RW=L.map(()=>[]);$('lyt').value=L.join('\\n');makeStory();return 'started'})()"""))

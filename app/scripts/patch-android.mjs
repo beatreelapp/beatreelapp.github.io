@@ -22,6 +22,24 @@ const perms = [
   '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
 ];
 for (const p of perms) if (!m.includes(p)) m = m.replace('</manifest>', `    ${p}\n</manifest>`);
+// apps we can share the finished video to (Android 11+ hides other apps unless they are listed here)
+const queries = `    <queries>
+        <package android:name="com.zhiliaoapp.musically" />
+        <package android:name="com.ss.android.ugc.trill" />
+        <package android:name="com.instagram.android" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.lite" />
+        <package android:name="com.snapchat.android" />
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="video/*" />
+        </intent>
+    </queries>
+`;
+if (!m.includes('<queries>')) m = m.replace('</manifest>', queries + '</manifest>');
 const share = `
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
