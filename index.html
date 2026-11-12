@@ -555,9 +555,11 @@ function musicAI(){if(MLT)clearTimeout(MLT);MLT=setTimeout(async()=>{MLT=null;co
   const r=await fetch(API_URL+'/style',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job:AIJOB,text:lines.join('\n').slice(0,1500),lines:lines,looks:MLOOKS.map(x=>x.n+': '+x.d),colors:ACC.map(x=>x[0]),emojis:EML.map(x=>x[0]+' '+x[1])}),signal:ctl.signal});clearTimeout(to);
   const j=await r.json().catch(()=>null);if(r.ok&&j&&Number.isInteger(j.look)&&j.look>=0&&j.look<LSTY.length){MLOOK=j.look;try{const o=$('tsy').options[0];if(o)o.textContent='Style: Auto (AI picked '+LSTY[MLOOK].n+')'}catch(_){}}}catch(_){}},2500)}
 function musicLyr(i){
+ if(SJ==10&&ESI<0){const k_=L.join('\n');if(k_!==MLK){MLK=k_;MLOOK=0;musicAI()}}
  if(SJ==10&&orbitLyr(i)!==false)return;
- if(MS.sty<0){const k_=L.join('\n');if(k_!==MLK){MLK=k_;MLOOK=0;try{$('tsy').options[0].textContent='Style: Auto (AI picks)'}catch(_){}musicAI()}}
- const S_=LSTY[MS.sty>=0?MS.sty:MLOOK]||LSTY[0],an=MS.anim>0?LANIM[MS.anim][0]:S_.an,t=au.currentTime;
+ const ES_=SJ==10?edSty():null;if(ES_&&ES_.t==='O'){oStraight(i);return}
+ if(SJ!=10&&MS.sty<0){const k_=L.join('\n');if(k_!==MLK){MLK=k_;MLOOK=0;try{$('tsy').options[0].textContent='Style: Auto (AI picks)'}catch(_){}musicAI()}}
+ const S_=(ES_?LSTY[ES_.i]:LSTY[MS.sty>=0?MS.sty:MLOOK])||LSTY[0],an=MS.anim>0?LANIM[MS.anim][0]:S_.an,t=au.currentTime;
  let words=L[i].split(/\s+/).filter(Boolean);if(!words.length)return;
  const rtl=/[؀-ۿ]/.test(L[i]);if(!rtl){if(S_.edit)words=words.map((w,k)=>k?w.toLowerCase():w.toUpperCase());else if(S_.up)words=words.map(w=>w.toUpperCase());else if(S_.low)words=words.map(w=>w.toLowerCase())}
  const wt=wordTimes(i,L[i].split(/\s+/).filter(Boolean)),se=lineSE(i),n=words.length;
@@ -902,7 +904,8 @@ function frameBody(){
  if(!OFFX&&vSync()&&bv.src&&!bv.error){
   if(au.paused){if(!bv.paused)bv.pause();if(Math.abs(bv.currentTime-au.currentTime)>.1&&!bv.seeking){try{bv.currentTime=au.currentTime}catch(_){}}}
   else{if(bv.paused&&performance.now()-VT>400){VT=performance.now();bv.play().catch(()=>{})}if(Math.abs(bv.currentTime-au.currentTime)>.25&&!bv.seeking){vHold(bv);try{bv.currentTime=au.currentTime+.05}catch(_){}}}}
- else if(bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&!SHBUSY&&!(ETOPEN&&SJ==10)&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
+ else if(SJ!=10&&bv.src&&bv.paused&&!bv.ended&&!bv.error&&!OFFX&&!SHBUSY&&performance.now()-VT>1000){VT=performance.now();bv.play().catch(()=>{})}
+ if(SJ==10&&!OFFX)edSync(bv);
  tplPreview(bv);
  const vHeld=SJ==4&&!!VHOLD&&VHT>0&&performance.now()-VHT<3000;
  if(SJ==10&&!OFFX)vWatch(bv);
@@ -1034,7 +1037,7 @@ function tplVT(t){const t0=CS||0;if(TPL!=2||!BEAT.t.length)return Math.max(0,t-t
 function tplSpeed(t){if(TPL!=2)return 1;const C=velCyc(t);return C?velS(C.p):1}
 function tplZoom(t){if(TPL!=2||!BEAT.t.length)return 1;const i=beatIdx(t);if(i<0)return 1;let z=1;for(let k=i;k>=Math.max(0,i-1);k--){if(!BEAT.s[k]&&k&1)continue;const dt=t-BEAT.t[k];if(dt>=0&&dt<.45)z=Math.max(z,1+(BEAT.s[k]?.065:.035)*Math.exp(-dt/.11))}return z}
 var TPV=0;
-function tplPreview(bv){if(SJ!=10||TPL!=2||OFFX||!bv.src||ETOPEN||SHBUSY)return;if(!BEAT.key&&!BEAT.busy){beatScan();return}
+function tplPreview(bv){if(SJ!=10||TPL!=2||OFFX||!bv.src||SHBUSY)return;if(!BEAT.key&&!BEAT.busy){beatScan();return}
  if(au.paused){if(bv.playbackRate!==1)bv.playbackRate=1;return}
  const d=bv.duration;if(!(d>0))return;const t=au.currentTime,tg=tplVT(t)%d,r=Math.max(.25,Math.min(4,tplSpeed(t)));
  if(Math.abs(bv.playbackRate-r)>.04)try{bv.playbackRate=r}catch(_){}
@@ -1063,7 +1066,7 @@ function tplPost(bv){if(!TPL||!bv.src)return;const R=OF;c.save();c.beginPath();c
  q.onchange=()=>{TPL=+q.value;try{localStorage.setItem('br_tpl',TPL)}catch(_){}if(TPL==2)beatScan();const bv=$('bgv');if(TPL!=2&&bv.playbackRate!==1)bv.playbackRate=1;try{TPL&&hit('tpl_'+TPL)}catch(_){}
   if(SJ==10)msg.textContent=TPL?'Template "'+TPLS[TPL]+'" ✓ Press play to see it.':'No template.'}})();
 function songName(){if(!curFile||curVid)return'';return curFile.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').replace(/\s*[\(\[][^\)\]]*(official|lyrics?|audio|video|visuali[sz]er|hd|4k)[^\)\]]*[\)\]]/ig,'').replace(/\s+/g,' ').trim()}
-function sceneUI(){document.body.classList.toggle('ed',SJ==10);etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap "✏️ Edit text" to place the words.':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
+function sceneUI(){document.body.classList.toggle('ed',SJ==10);etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap a shot below, then choose the words in "Text".':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
 var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOPEN=false,SHAUTO='';
 /* ---- shots: the video is cut into shots where the picture changes at once; each shot keeps its own text place ---- */
 function shotDef(){return{part:'shape',x:OH.x,y:OH.y,r:OH.r,f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5}}
@@ -1100,8 +1103,8 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  if($('bgv').src!==key){SCV=null;return}SH=out;SHK=key;SHSEL=0;
  if(SJ==10){SHBUSY=true;SCL='Finding the person…';SCP=.3;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key){SCV=null;return}shotAuto()}
  SCV=null;
- try{v.loop=wasLoop;v.playbackRate=1;v.currentTime=0;if(!ETOPEN)v.play().catch(()=>{})}catch(_){}
- if(SJ==10){const na=SH.filter(q=>q.trk).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+na+' of '+SH.length+' shots (normal text in the others)':'')+'. Tap "✏️ Edit text" to change.':SH.length>1?'Found '+SH.length+' shots ✓ Tap "✏️ Edit text" to choose where the words go in each one.':'Ready ✓ Tap "✏️ Edit text" to choose where the words go.';
+ try{v.loop=wasLoop;v.playbackRate=1;v.currentTime=0;if(!ETOPEN&&SJ!=10)v.play().catch(()=>{})}catch(_){}
+ if(SJ==10){const na=SH.filter(q=>q.trk).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+na+' of '+SH.length+' shots (normal text in the others)':'')+'. Change it in "Text".':SH.length>1?'Found '+SH.length+' shots ✓ Tap a shot, then choose the words in "Text".':'Ready ✓ Choose the words in "Text", then press ▶.';
   if(SHAUTO!==key){SHAUTO=key;etOpen()}}
  etUI()}
 /* ---- Edit: some phones (P20) lose the video picture after heavy seeking; reload it at the same time instead of showing a black square ---- */
@@ -1109,7 +1112,7 @@ var VWB=0,VWL=0,VWN=0;
 function vWatch(v){if(!v.src||SHBUSY||!VOK){VWB=0;return}const now=performance.now(),bad=!!v.error||(v.readyState<2&&!v.seeking);if(!bad){VWB=0;return}if(!VWB){VWB=now;return}
  if(now-VWB<1500||now-VWL<6000||VWN>=5)return;VWL=now;VWB=0;VWN++;const t=isFinite(v.currentTime)?v.currentTime:0,src=v.src;
  try{bug('vid_dead',(v.error?'err '+v.error.code:'rs '+v.readyState+' ns '+v.networkState)+' t '+t.toFixed(1)+' '+v.videoWidth+'x'+v.videoHeight+' n'+VWN)}catch(_){}
- try{v.onloadeddata=null;v.removeAttribute('src');v.load();v.src=src;v.load();v.addEventListener('loadeddata',()=>{try{v.currentTime=t}catch(_){}if(!ETOPEN)v.play().catch(()=>{})},{once:true})}catch(_){}}
+ try{v.onloadeddata=null;v.removeAttribute('src');v.load();v.src=src;v.load();v.addEventListener('loadeddata',()=>{try{v.currentTime=t}catch(_){}if(!ETOPEN&&SJ!=10)v.play().catch(()=>{})},{once:true})}catch(_){}}
 /* ---- while the video is analysed (shots + body), the jumping picture is hidden under a still, blurred frame with a white spinner ---- */
 var SCV=null,SCP=0,SCL='';
 function scanVeil(v){try{const sm=document.createElement('canvas');sm.width=sm.height=96;coverDraw(sm.getContext('2d'),v,96);const b=document.createElement('canvas');b.width=OF.w;b.height=OF.h;const x=b.getContext('2d');
@@ -1193,7 +1196,7 @@ function shotAuto(){if(!TRK.length){/* body finder not available: never guess a 
   const raw=zs.map(z=>({t:z.t,f:trkFeat(z)})).filter(z=>z.f),Z=trkClean(raw);
   const fr=k=>Z.filter(z=>z.f[k]!=null).length/n,hd=Z.filter(z=>z.f.x!=null);
   q.has={eyes:fr('ex')>=.6,hand:fr('hx')>=.6,feet:fr('fx')>=.6,sho:fr('sx')>=.6,waist:fr('wx')>=.6};
-  const r=hd.length?med(hd.map(z=>z.f.r)):0,room=hd.filter(z=>z.f.y-z.f.r*1.9>.03&&z.f.x-z.f.r*1.5>.02&&z.f.x+z.f.r*1.5<.98).length/Math.max(1,hd.length),good=hd.length/n>=.6&&r>=.055&&room>=.6;
+  const r=hd.length?med(hd.map(z=>z.f.r)):0,room=hd.filter(z=>z.f.y-z.f.r*1.9>.03&&z.f.x-z.f.r*1.5>.02&&z.f.x+z.f.r*1.5<.98).length/Math.max(1,hd.length),good=hd.length/n>=.6&&r>=.07&&room>=.6;
   /* not sure where the person is (wide shot, several people, no face): normal text in the middle, never a wrong place */
   q.tk0=Z;if(!good){Object.assign(q,{part:'straight',f:'none',k:0,a:0,sz:1,dx:0,dy:0,c:false,nx:.5,ny:.5});return}
   q.tk=Z;q.trk=true;q.x=med(hd.map(z=>z.f.x));q.y=med(hd.map(z=>z.f.y));q.r=Math.max(.05,Math.min(.3,r));
@@ -1205,7 +1208,7 @@ function shotAuto(){if(!TRK.length){/* body finder not available: never guess a 
    stuck to a body part that is tracked; drag (yellow dot) and pinch only move/size it around that part ---- */
 const FOLS=[['head','Head'],['eyes','Eyes'],['hand','Hand'],['sho','Shoulders'],['waist','Waist'],['feet','Feet'],['none','Nothing']];
 function shapeAnchor(sh){const X=v=>OF.x+v*OF.w,Y=v=>OF.y+v*OF.h,k=sh.k||0,f=sh.f;let ax,ay,w,R=0,ex=0;
- const head=()=>{const r=Math.max(.04,sh.r||OH.r)*OF.w,cx=X(sh.x!=null?sh.x:OH.x),cy=Y(sh.y!=null?sh.y:OH.y);R=r*1.18;ax=cx;ay=sh.c?cy:k>15?cy+R:cy-R;w=sh.c?2*Math.PI*R*1.06:Math.max(R*3,Math.abs(k)/100*1.45*Math.PI*R)};
+ const head=()=>{const r=Math.max(.04,sh.r||OH.r)*OF.w,cx=X(sh.x!=null?sh.x:OH.x),cy=Y(sh.y!=null?sh.y:OH.y);R=Math.max(84,r*1.18+26);ax=cx;ay=sh.c?cy:k>15?cy+R:cy-R;w=sh.c?2*Math.PI*R*1.06:Math.max(R*3,Math.abs(k)/100*1.45*Math.PI*R)};
  if(f==='eyes'&&sh.ex!=null){ax=X(sh.ex);ay=Y(sh.ey);ex=Math.max(-.5,Math.min(.5,sh.ea||0));w=sh.c?2*Math.PI*(sh.ew*OF.w*.6):Math.max(220,sh.ew*OF.w*1.7)}
  else if(f==='hand'&&sh.hx!=null){R=Math.max(55,sh.hr*OF.w+40);const cx=X(sh.hx),cy=Y(sh.hy);ax=cx;ay=sh.c?cy:k>15?cy+R:cy-R;w=sh.c?2*Math.PI*R:Math.max(200,Math.abs(k)/100*1.45*Math.PI*R)}
  else if(f==='sho'&&sh.sx!=null){ax=X(sh.sx);ay=Y(sh.sy)-26;w=sh.c?2*Math.PI*sh.sw*OF.w*.6:Math.max(240,sh.sw*OF.w*1.6)}
@@ -1253,15 +1256,16 @@ function ofLoad(F){if(!F||!F.u)return Promise.resolve();if(OFP[F.id])return OFP[
  try{OFI=Math.max(0,Math.min(OFS.length-1,+(localStorage.getItem('br_ofo')||0)||0))}catch(_){OFI=0}el.value=OFI;if(OFI)ofLoad(OFS[OFI]);
  el.onchange=()=>{OFI=+el.value;try{localStorage.setItem('br_ofo',OFI)}catch(_){}const F=OFS[OFI];if(F.u){ofLoad(F);gfHit(F)}}})();
 var OBC=new Map();
-function orbitDraw(ch,sh,t,out,force){const OF_=OFS[OFI]||OFS[0],on=!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif';
+function orbitDraw(ch,sh,t,out,force){const ES_=SJ==10?edSty():null,LS=ES_&&ES_.t==='L'?LSTY[ES_.i]||LSTY[0]:null,OF_=ES_&&ES_.t==='O'?OFS[ES_.i]:(OFS[OFI]||OFS[0]);if(!LS&&OF_.u&&!OF_.ok)ofLoad(OF_);const on=!LS&&!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif',FN=z=>LS?LS.f.replace('PX',z):z+'px '+ff;
  let Q=orbitQ(sh),fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)),gap,wd,tot;
- for(;;){c.font=fs+'px '+ff;gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(!sh.f&&(sh.part==='head'||sh.part==='left'||sh.part==='right'||sh.part==='hand')){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
- if(t!=null&&!force&&(fs<30||tot>Q.len*1.02))return false;
+ for(;;){c.font=FN(fs);gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(!sh.f&&(sh.part==='head'||sh.part==='left'||sh.part==='right'||sh.part==='hand')){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
+ if(t!=null&&!force&&(fs<34||tot>Q.len*1.02))return false;
  if(t!=null&&!force){/* letters must stay inside the video frame, else normal text */let d0=Math.max(0,Math.min(Q.len-tot,Q.mid-tot/2));const m=fs*.45;for(let k=0;k<ch.length;k+=2){const p=orbitAt(Q,d0+wd[k]/2);d0+=wd[k]+gap+(k+1<ch.length?wd[k+1]+gap:0);if(p[0]<OF.x+m||p[0]>OF.x+OF.w-m||p[1]<OF.y+m||p[1]>OF.y+OF.h-m)return false}}/* too long for this place: the line is shown as normal text instead of tiny letters */
  let d=Q.mid-tot/2;d=Math.max(0,Math.min(Q.len-tot,d));c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
  for(let k=0;k<ch.length;k++){const w=wd[k],m=d+w/2;d+=w+gap;if(ch[k][0]===' ')continue;const u=t==null?1:(t-ch[k][1])/.15;if(u<=0)continue;
   const p=orbitAt(Q,m),sc=1+.55*(1-eOut(cl01(u)));c.save();c.translate(p[0],p[1]);c.rotate(p[2]);c.scale(sc,sc);c.globalAlpha=Math.min(1,u*3)*out;
-  if(on&&OF_.col){c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=10;c.shadowOffsetY=3;c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}
+  if(LS){c.font=FN(fs);c.textBaseline='alphabetic';c.translate(0,fs*.36);LS.p(ch[k][0],{r:fs/118,d:1,p:1,t:t||0,j:k,k:0,w:w,s:fs,rtl:false,back:0,hold:0,last:false})}
+  else if(on&&OF_.col){c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=10;c.shadowOffsetY=3;c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}
   else if(on&&OF_.fill){c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(2,fs*.07);c.strokeStyle=OF_.st;c.strokeText(ch[k][0],0,0);c.shadowColor='rgba(0,0,0,0)';c.fillStyle=OF_.fill;c.fillText(ch[k][0],0,0)}
   else{c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(4,fs*.14);c.strokeStyle='#000';c.strokeText(ch[k][0],0,0);
   c.shadowColor='rgba(0,0,0,0)';c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}c.restore()}
@@ -1269,7 +1273,7 @@ function orbitDraw(ch,sh,t,out,force){const OF_=OFS[OFI]||OFS[0],on=!!(OF_.u&&OF
 function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return true;if(/[؀-ۿ]/.test(L[i]))return false;const sh=shotLive(shotNow());if(sh.part==='straight')return false;
  const t=au.currentTime,wt=wordTimes(i,ws),se=lineSE(i),n=ws.length;let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
  const te=Math.min(nextS,Math.max(se.e,wt[n-1][1]+.8));if(t>te+.05)return true;
- const ch=[];ws.forEach((w,k)=>{w=w.toUpperCase();const a=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-a));for(let j=0;j<w.length;j++)ch.push([w[j],a+d*j/w.length]);if(k<n-1)ch.push([' ',a+d])});
+ const ch=[],lo_=(()=>{const e=edSty();return e.t==='L'&&(LSTY[e.i]||{}).low})();ws.forEach((w,k)=>{w=lo_?w.toLowerCase():w.toUpperCase();const a=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-a));for(let j=0;j<w.length;j++)ch.push([w[j],a+d*j/w.length]);if(k<n-1)ch.push([' ',a+d])});
  /* decided once per line and shot, so the words never jump between curved and normal */
  const ck=SH.indexOf(shotNow())+'|'+i+'|'+L[i],kn=OBC.get(ck);if(kn===false)return false;
  const r=orbitDraw(ch,sh,t,cl01((te-t)/.25),kn===true);if(kn==null)OBC.set(ck,r!==false);return r!==false}
@@ -1315,7 +1319,7 @@ function etLoop(){if(!ETOPEN)return;requestAnimationFrame(etLoop);const v=$('etv
 function etOpen(){if(SJ!=10)return;etBuild();if(!$('bgv').src){$('vf').click();return}if(!SH.length)SH=[Object.assign({s:0,e:1e9},shotDef())];ETOPEN=true;$('etp').hidden=false;etPick(Math.min(SHSEL,SH.length-1));etLoop()}
 function etClose(){ETOPEN=false;if($('etp'))$('etp').hidden=true}
 function etBtn(){try{const on=SJ==10&&!!$('bgv').src;$('etb').style.display=on?'':'none';$('vb2').style.display='none';$('vadd').style.display=SJ==10&&!on?'':'none';$('vchr').style.display=on?'':'none'}catch(_){}}
-function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN){const q=shotLive(shotNow());if(q.part!=='straight'&&q.f){const Q=shapeQ(q);c.save();c.globalAlpha=.85;c.setLineDash([10,8]);c.lineWidth=3;c.strokeStyle='#ffd24d';c.beginPath();Q.P.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.setLineDash([]);c.globalAlpha=1;c.beginPath();c.arc(Q.ax,Q.ay,17,0,7);c.fillStyle='#ffd24d';c.fill();c.lineWidth=4;c.strokeStyle='#111';c.stroke();c.restore()}}const t=ttl.value.trim().toUpperCase(),sn=songName(),lt=!!(OBGS[OBG]||[])[1];c.save();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle=lt?'#15181d':'#fff';
+function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN&&au.paused){const q=shotLive(shotNow());if(q.part!=='straight'&&q.f){const Q=shapeQ(q);c.save();c.globalAlpha=.85;c.setLineDash([10,8]);c.lineWidth=3;c.strokeStyle='#ffd24d';c.beginPath();Q.P.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.stroke();c.setLineDash([]);c.globalAlpha=1;c.beginPath();c.arc(Q.ax,Q.ay,17,0,7);c.fillStyle='#ffd24d';c.fill();c.lineWidth=4;c.strokeStyle='#111';c.stroke();c.restore()}}const t=ttl.value.trim().toUpperCase(),sn=songName(),lt=!!(OBGS[OBG]||[])[1];c.save();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle=lt?'#15181d':'#fff';
  if(t){let fs=78;do{c.font=fs+'px "Anton",Impact,sans-serif';fs-=4}while(c.measureText(t).width>W-80&&fs>34);c.fillText(t,W/2,sn?OF.y-74:OF.y-36)}
  if(sn){c.font='500 26px system-ui,sans-serif';c.fillStyle=lt?'rgba(20,24,29,.6)':'rgba(255,255,255,.6)';let x=sn;while(c.measureText(x).width>W-100&&x.length>4)x=x.slice(0,-2);c.fillText(x===sn?x:x+'…',W/2,OF.y-30)}
  c.restore()}
@@ -1652,17 +1656,17 @@ function wm(){if(PRO)return;c.save();c.globalAlpha=.6;c.textAlign='right';c.text
  const x=W-28,y=SJ==4&&ttl.value.trim()?H-36:122;c.fillText('BeatReel',x,y);const w=c.measureText('BeatReel').width;c.shadowBlur=0;
  for(let i=0;i<4;i++){const h=[10,22,14,26][i];c.fillRect(x-w-14-(3-i)*9,y-h,6,h)}c.restore()}
 frame();
-function loadAudio(f,note){curFile=f;if(!cvUser){try{SFT.reset()}catch(_){}}try{id3Cover(f)}catch(_){}if(!note)curVid=false;RNG=null;DUR=0;$('ce').hidden=true;au.onloadedmetadata=()=>initClip(au.duration);loadWave(f);msg.textContent='Loading '+f.name+'...';au.src=URL.createObjectURL(f);setup();ac.resume();au.play().catch(()=>{});msg.textContent=f.name;if(note)msg.textContent=note}
+function loadAudio(f,note){curFile=f;if(!cvUser){try{SFT.reset()}catch(_){}}try{id3Cover(f)}catch(_){}if(!note)curVid=false;RNG=null;DUR=0;$('ce').hidden=true;au.onloadedmetadata=()=>initClip(au.duration);loadWave(f);msg.textContent='Loading '+f.name+'...';au.src=URL.createObjectURL(f);setup();ac.resume();if(!EDIT&&SJ!=10)au.play().catch(()=>{});msg.textContent=f.name;if(note)msg.textContent=note}
 $('f').onchange=e=>{const f=e.target.files[0];if(!f)return;loadAudio(f)};
 $('vf').onchange=e=>{const f=e.target.files[0];if(!f)return;const v=$('bgv');VOK=false;vidFile=f;VZ=1;VPX=0;VPY=0;const vm=MODE==='video';if(vm){L=[];RNG=null;S=[];EVK='';$('lyt').value=''}const noSongBefore=vm||!curFile||curVid;if(vm||!curFile||curVid)loadAudio(f,"Using your video's sound. Open \"Captions\" and tap \"Auto captions\" to get the words."),curVid=true;
  if(SJ!=10&&noSongBefore&&!L.length&&$('acauto')&&$('acauto').checked){$('sj').value='4';SJ=4;try{$('cs').style.display='none'}catch(_){}AUTOCAP=true}
 
  v.muted=true;v.defaultMuted=true;v.playsInline=true;v.loop=true;v.removeAttribute('src');v.src=URL.createObjectURL(f);v.load();
- v.play().catch(()=>{});$('vx').hidden=false;msg.textContent='Loading video...';
+ if(SJ!=10)v.play().catch(()=>{});$('vx').hidden=false;msg.textContent='Loading video...';
  v.onloadeddata=()=>{VOK=true;$('vadj').hidden=false;etBtn();if(SJ!=10)openVA();else{SH=[];SHK='';etClose();shotScan()}if(SJ!=10&&isFinite(v.duration)&&v.duration>1&&DUR&&v.duration<CE-CS-.5){CE=CS+v.duration;clipUI();msg.textContent='Your clip was shortened to '+Math.round(v.duration)+'s to match your video. Drag the pink edges to change it.';return}msg.textContent=curVid?"Using your video's sound. Open \"Captions\" and tap \"Auto captions\" to get the words.":'Video added at the bottom, behind the bars.'};
  v.onerror=()=>{bug('video_load',(v.error?v.error.code:'?')+' '+(f.type||'')+' '+Math.round(f.size/1048576)+'MB');msg.textContent="This video can't be played here. Try an MP4 (H.264) file, ideally 1080p or smaller."};
  setTimeout(()=>{if(v.src&&!VOK&&!v.error)msg.textContent='The video is not showing yet. Tap the screen once to start it, or try an MP4 (H.264) file.'},4000)};
-cv.addEventListener('click',()=>{const v=$('bgv');if(v.src&&v.paused)v.play().catch(()=>{})});
+cv.addEventListener('click',()=>{const v=$('bgv');if(SJ!=10&&v.src&&v.paused)v.play().catch(()=>{})});
 
 $('etb').onclick=()=>etOpen();
 /* the same file can be picked again after removing it (a file input only fires 'change' when its value changes) */
@@ -1674,7 +1678,7 @@ $('nlb').onpointerdown=e=>e.preventDefault();$('nlb').onclick=()=>{const t=$('ly
 $('lyt').oninput=()=>{parse();S=[];if(RNG&&RNG.length!=L.length)RNG=null};
 $('aut').onclick=async()=>{parse();if(!L.length||!curFile){msg.textContent='Paste the lyrics and choose a song first.';return}
  msg.textContent='Analysing the song...';
- try{const A=await analyseVoice(curFile);const a0=Math.max(0,Math.floor(CS/A.dt)),b0=Math.min(A.env.length,Math.ceil(Math.min(CE,DUR||1e9)/A.dt));RNG=segment(A.env.slice(a0,b0),A.dt,L);RNG.forEach(r=>{r.s+=a0*A.dt;r.e+=a0*A.dt});S=[];setup();ac.resume();au.currentTime=CS;au.play().catch(()=>{});
+ try{const A=await analyseVoice(curFile);const a0=Math.max(0,Math.floor(CS/A.dt)),b0=Math.min(A.env.length,Math.ceil(Math.min(CE,DUR||1e9)/A.dt));RNG=segment(A.env.slice(a0,b0),A.dt,L);RNG.forEach(r=>{r.s+=a0*A.dt;r.e+=a0*A.dt});S=[];setup();ac.resume();au.currentTime=CS;if(!EDIT&&SJ!=10)au.play().catch(()=>{});
   msg.textContent='Auto sync done. Play it and check. Use Earlier/Later to shift, or tap-sync for exact timing.'}
  catch(e){msg.textContent='Could not analyse this file.'}};
 
@@ -1741,7 +1745,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v50';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v51';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1880,13 +1884,13 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   if(!lines.length){msg.textContent='No speech was found in this clip.';return}
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');tabGo('ly');
-  setup();ac.resume();au.currentTime=from;au.play().catch(()=>{});{const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
+  setup();ac.resume();au.currentTime=from;if(SJ!=10){au.play().catch(()=>{});const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
   CAPR={f:f,a:from,b:to};
   msg.textContent=(CAPLONG?'Only the first 10 minutes get captions. ':'')+'Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';
   if(song){TS.frame=0;try{$('tr').value=0}catch(_){}MLK='';msg.textContent='Lyrics ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'}
   else if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
  }catch(e){const m=e&&e.message;if(m==='cancel'&&JOB_)coinRefund(JOB_);if(!/^(cancel|nocoins|short)$/.test(m||''))bug('captions',m);msg.textContent=m==='nocoins'?'No AI coins left today. Tap the coin at the top to see when new coins arrive.':m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
-  if(wasPlaying){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
+  if(wasPlaying&&SJ!=10){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
  finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent=song?'🎤 Auto lyrics (from song)':'Auto captions (from speech)'}};
 /* ===== Add video chooser + Clipping (Pro): the AI picks the best moments of a video and writes a hook title for each ===== */
 (()=>{const st=document.createElement('style');st.textContent='#pmc{max-height:88vh;overflow:auto}#pmc .clp{text-align:left;margin:12px 0 0;padding:10px;border:1px solid #30343b;border-radius:14px;background:#16181c}#pmc .clp input{text-align:left;font:700 15px system-ui,sans-serif;letter-spacing:0}#pmc .clp .sm{margin:0;opacity:.7}';document.head.appendChild(st)})();
@@ -2767,5 +2771,181 @@ function pkSync(){document.querySelectorAll('.pk').forEach(k=>{const v=k._src.va
  setInterval(()=>{hm();if(TABCUR)pkSync()},700);
  tabGo('sc')})();
 </script>
+<style>
+#edx{position:fixed;inset:0;z-index:80;background:#0e1012;color:#e8eaed;display:flex;flex-direction:column;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:calc(6px + env(safe-area-inset-top,0px)) 0 calc(4px + env(safe-area-inset-bottom,0px))}
+#edx[hidden]{display:none}
+#edx button{width:auto;flex:0 0 auto;margin:0;font:600 13px system-ui,sans-serif;color:#e8eaed;background:#22262c;border:1px solid #30343b;border-radius:12px;padding:8px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#edx button.on{background:#173149;border-color:#5ab4f0;color:#fff}
+#edx .ext{display:flex;align-items:center;justify-content:space-between;padding:0 10px 6px}
+#edx .ext #edb{background:transparent;border:0;font-size:26px;line-height:1;padding:2px 10px}
+#edx .ext #edd{background:#5ab4f0;color:#06233a;border:0}
+#edtm{font:500 13px system-ui,sans-serif;color:#9aa3ad}
+#eds{flex:1 1 auto;min-height:0;display:flex;justify-content:center;align-items:stretch;padding:0 8px}
+#eds #cvw{height:100%;aspect-ratio:9/16;max-width:100%;position:relative}
+#eds #cv{width:100%;height:100%;aspect-ratio:auto;touch-action:none;border-radius:14px}
+#edx .exp{display:flex;align-items:center;gap:8px;padding:8px 10px 4px}
+#edpl{width:42px!important;height:42px;border-radius:50%!important;padding:0!important;font-size:16px!important;display:flex;align-items:center;justify-content:center}
+#edtl{position:relative;flex:1;height:44px;display:flex;gap:2px;overflow:hidden;border-radius:8px;background:#1a1d22}
+#edtl canvas{height:44px;width:auto;flex:1 1 0;min-width:0;object-fit:cover;border-radius:4px;outline:0;display:block;cursor:pointer;aspect-ratio:auto;background:#222}
+#edtl canvas.on{outline:2px solid #5ab4f0;outline-offset:-2px}
+#edph{position:absolute;top:0;bottom:0;width:2px;background:#fff;border-radius:1px;pointer-events:none;box-shadow:0 0 4px rgba(0,0,0,.6)}
+#edtl .add{flex:1;display:flex;align-items:center;justify-content:center;font:600 13px system-ui,sans-serif;color:#9aa3ad}
+#edpn{background:#16181c;border-top:1px solid #23272d;max-height:36vh;overflow-y:auto;padding:10px 10px 8px;-webkit-overflow-scrolling:touch}
+#edpn .r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+#edpn .lb{font:500 11px system-ui,sans-serif;color:#9aa3ad;margin:8px 2px 2px;letter-spacing:.3px}
+#edpn .sl{display:flex;align-items:center;gap:8px;margin:4px 2px}
+#edpn .sl input{flex:1;margin:0}
+#edpn .sl span{font:500 12px system-ui,sans-serif;color:#9aa3ad;min-width:34px}
+#edst{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px}
+#edst button{padding:4px!important;display:flex;flex-direction:column;align-items:center;gap:2px;width:68px!important}
+#edst canvas{width:60px;height:34px;border-radius:6px;outline:0;aspect-ratio:auto;background:#0d0f11;display:block}
+#edst span{font:500 10px system-ui,sans-serif;max-width:62px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#edsh button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px!important;min-width:52px}
+#edsh svg{width:30px;height:20px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round}
+#edsh span{font:500 10px system-ui,sans-serif}
+#edpn textarea{width:100%;min-height:110px;box-sizing:border-box}
+#edpn #ttl{width:100%;box-sizing:border-box}
+#edpn #ce{margin:0}
+#edmsg{font:500 12px system-ui,sans-serif;color:#9aa3ad;padding:0 12px 6px;min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#edbar{display:flex;justify-content:space-around;padding:6px 0 2px;background:#0e1012;border-top:1px solid #23272d}
+#edbar button{background:transparent!important;border:0!important;display:flex;flex-direction:column;align-items:center;gap:1px;color:#9aa3ad!important;padding:4px 18px!important}
+#edbar button.on{color:#5ab4f0!important}
+#edbar b{font:700 22px system-ui,sans-serif;line-height:24px}
+#edbar svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#edbar span{font:500 11px system-ui,sans-serif}
+#edtp img{width:64px;height:64px;object-fit:cover;border-radius:8px;display:block}
+#edtp button{padding:4px!important;display:flex;flex-direction:column;align-items:center;gap:2px}
+#edbg button{width:34px!important;height:34px;border-radius:50%!important;padding:0!important}
+</style>
+<script>
+/* ================= Edit: one text style for curved and straight words =================
+   ESI: -1 = Auto (AI picks from the song), else an index in ESTY (25 lyric styles + 8 colour fonts; no plain white) */
+var ESI=-1;try{const v=localStorage.getItem('br_esty');if(v!=null&&v!=='')ESI=+v}catch(_){}
+const ESTY=[];LSTY.forEach((S,i)=>ESTY.push({t:'L',i:i,n:S.n}));OFS.forEach((F,i)=>{if(i)ESTY.push({t:'O',i:i,n:F.n.replace(/\s*\(.*\)\s*/,'')})});
+if(!(ESI>=-1&&ESI<ESTY.length))ESI=-1;
+function edSty(){const e=ESTY[ESI];if(e)return e;return{t:'L',i:(typeof MLOOK==='number'&&LSTY[MLOOK])?MLOOK:0,auto:1}}
+/* a colour-font line that does not fit around the person: same font, straight, low in the frame */
+function oStraight(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return;if(/[؀-ۿ]/.test(L[i]))return;
+ const t=au.currentTime,wt=wordTimes(i,ws),se=lineSE(i),n=ws.length;let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
+ const te=Math.min(nextS,Math.max(se.e,wt[n-1][1]+.8));if(t>te+.05)return;const out=cl01((te-t)/.25);
+ const mk_=(a,b)=>{const ch=[];for(let k=a;k<b;k++){const w=ws[k].toUpperCase(),s0=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-s0));for(let j=0;j<w.length;j++)ch.push([w[j],s0+d*j/w.length]);if(k<b-1)ch.push([' ',s0+d])}return ch};
+ const sz=(OF.w-60)/440,F=OFS[edSty().i]||OFS[0];c.save();c.font=Math.round(44*(F.k||1))+'px "BRO '+F.id+'","Anton",Impact,sans-serif';const tw=c.measureText(L[i].toUpperCase()).width;c.restore();
+ let rows=[[0,n]];if(tw>OF.w-60&&n>1){let best=1,bd=1e9;const tot=L[i].length;let acc=0;for(let k=1;k<n;k++){acc+=ws[k-1].length+1;const d=Math.abs(acc-tot/2);if(d<bd){bd=d;best=k}}rows=[[0,best],[best,n]]}
+ rows.forEach((r,ri)=>{const y=OF.h-62-(rows.length-1-ri)*58;orbitDraw(mk_(r[0],r[1]),{part:'shape',f:'none',nx:.5,ny:y/OF.h,k:0,sz:sz,a:0,c:false,dx:0,dy:0},t,out,true)})}
+/* the video follows the song (play only when the user presses play) */
+function edSync(bv){if(!bv.src||SHBUSY||!VOK||bv.error||vaOn)return;const d=bv.duration;if(!(d>0))return;const t=au.currentTime,tg=((TPL==2?tplVT(t):Math.max(0,t-(CS||0)))%d+d)%d;
+ if(au.paused){if(!bv.paused)bv.pause();if(bv.playbackRate!==1)bv.playbackRate=1;if(Math.abs(bv.currentTime-tg)>.08&&!bv.seeking){try{bv.currentTime=tg}catch(_){}}return}
+ if(TPL==2)return;if(bv.playbackRate!==1)bv.playbackRate=1;if(bv.paused&&performance.now()-VT>300){VT=performance.now();bv.play().catch(()=>{})}
+ let df=bv.currentTime-tg;if(df>d/2)df-=d;else if(df<-d/2)df+=d;if(Math.abs(df)>.3&&!bv.seeking&&performance.now()-TPV>600){TPV=performance.now();try{bv.currentTime=tg}catch(_){}}}
+
+/* ================= Edit screen (like CapCut): big video, timeline, Music / Text / Frame ================= */
+var EDP='tx',EDON=false;const EDMV=[];
+const EDI={mu:'<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+ fr:'<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 4v16"/></svg>'};
+const EDSHP=[['arc','Arc','<svg viewBox="0 0 30 20"><path d="M3 17 Q15 -5 27 17"/></svg>'],['line','Line','<svg viewBox="0 0 30 20"><path d="M3 10 H27"/></svg>'],
+ ['smile','Under','<svg viewBox="0 0 30 20"><path d="M3 3 Q15 25 27 3"/></svg>'],['circle','Circle','<svg viewBox="0 0 30 20"><circle cx="15" cy="10" r="8"/></svg>'],
+ ['low','Bottom','<svg viewBox="0 0 30 20"><rect x="2" y="2" width="26" height="16" rx="2" stroke-width="1.6"/><path d="M7 14 H23"/></svg>']];
+function edMove(el,dest){if(!el||!dest)return;const ph=document.createComment('ed');el.parentNode.insertBefore(ph,el);dest.appendChild(el);EDMV.push([el,ph])}
+function edRestore(){while(EDMV.length){const[el,ph]=EDMV.pop();try{ph.parentNode.replaceChild(el,ph)}catch(_){}}}
+function edBuild(){if($('edx'))return;const d=document.createElement('div');d.id='edx';d.hidden=true;
+ d.innerHTML='<div class="ext"><button id="edb" aria-label="Back">‹</button><span id="edtm">0:00</span><button id="edd">Download</button></div>'+
+ '<div id="eds"></div><div class="exp"><button id="edpl" aria-label="Play">▶</button><div id="edtl"><div id="edph"></div></div></div><div id="edmsg"></div><div id="edpn"></div>'+
+ '<div id="edbar"><button data-p="mu">'+EDI.mu+'<span>Music</span></button><button data-p="tx"><b>A</b><span>Text</span></button><button data-p="fr">'+EDI.fr+'<span>Frame</span></button></div>';
+ document.body.appendChild(d);
+ $('edb').onclick=()=>edExit();$('edd').onclick=()=>{au.pause();$('rec').click()};
+ $('edpl').onclick=()=>{if(!au.src){$('f').click();return}setup();ac.resume();if(au.paused){if(au.currentTime<CS||au.currentTime>=CE-.05)au.currentTime=CS;au.play().catch(()=>{})}else au.pause()};
+ d.querySelectorAll('#edbar [data-p]').forEach(b=>b.onclick=()=>edShow(b.getAttribute('data-p')));
+ edTouch();edLoop()}
+function edOpen(){edBuild();if(EDON)return;EDON=true;$('edx').hidden=false;edMove($('cvw'),$('eds'));edShow(EDP);document.body.style.overflow='hidden'}
+function edClose(){if(!EDON)return;EDON=false;ETOPEN=false;edRestore();$('edx').hidden=true;document.body.style.overflow=''}
+function edExit(){au.pause();edClose();EDIT=false;SJ=+$('sj').value||0;if(SJ==3&&typeof drawSpace_reset==='function')drawSpace_reset();$('cs').style.display=SJ?'none':'';sceneUI()}
+/* thumbnails of the styles: drawn once with the real style code on a spare canvas */
+function edThumb(cn,e){const x=cn.getContext('2d'),w=cn.width,h=cn.height;x.clearRect(0,0,w,h);x.fillStyle='#0d0f11';x.fillRect(0,0,w,h);
+ if(e.t==='O'){const F=OFS[e.i];if(F.u&&!F.ok){ofLoad(F).then(()=>edThumb(cn,e));}x.font='34px "BRO '+F.id+'","Anton",Impact,sans-serif';x.textAlign='center';x.textBaseline='middle';
+  if(F.fill){x.lineWidth=3;x.strokeStyle=F.st;x.strokeText('Aa',w/2,h/2+2);x.fillStyle=F.fill}else x.fillStyle='#fff';x.fillText('Aa',w/2,h/2+2);return}
+ const S=LSTY[e.i]||LSTY[0];c.save();c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,240,140);c.textAlign='center';c.textBaseline='alphabetic';c.font=S.f.replace('PX',78);c.translate(120,104);
+ try{S.p(S.low?'aa':'Aa',{r:78/118,d:1,p:1,t:0,j:0,k:0,w:90,s:78,rtl:false,back:0,hold:0,last:false})}catch(_){}c.restore();
+ x.drawImage(cv,0,0,240,140,0,0,w,h)}
+function edStyles(){const box=$('edst');if(!box)return;box.innerHTML='';const all=[{auto:1,n:'Auto ✨'}].concat(ESTY);
+ all.forEach((e,k)=>{const b=document.createElement('button');b.type='button';const cn=document.createElement('canvas');cn.width=120;cn.height=68;
+  if(e.auto){const x=cn.getContext('2d');x.fillStyle='#0d0f11';x.fillRect(0,0,120,68);x.fillStyle='#5ab4f0';x.font='700 26px system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('AI ✨',60,36)}
+  else edThumb(cn,e);
+  const sp=document.createElement('span');sp.textContent=e.auto?'Auto':e.n;b.appendChild(cn);b.appendChild(sp);b.classList.toggle('on',k-1===ESI);
+  b.onclick=()=>{ESI=k-1;try{localStorage.setItem('br_esty',ESI)}catch(_){}OBC.clear();if(ESI>=0){const e2=ESTY[ESI];if(e2.t==='O')ofLoad(OFS[e2.i]);else if(typeof gfLoad==='function'){}}else{MLK=''}box.querySelectorAll('button').forEach((x,j)=>x.classList.toggle('on',j===k));};
+  box.appendChild(b)})}
+function edCur(){const q=SH[SHSEL];if(q&&!q.f)Object.assign(q,{f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5});return q}
+function edPanel(p){const pn=$('edpn');edRestore();edMove($('cvw'),$('eds'));pn.innerHTML='';const H_=h=>{const z=document.createElement('div');z.innerHTML=h;while(z.firstChild)pn.appendChild(z.firstChild)};
+ if(p==='mu'){H_('<div class="r"><span style="flex:1;font:600 14px system-ui,sans-serif;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" id="edsn"></span><label class="btn" for="f" style="width:auto;flex:0 0 auto;margin:0;padding:8px 12px;border-radius:12px;background:#22262c;border:1px solid #30343b;font:600 13px system-ui,sans-serif;color:#e8eaed">Change song</label></div><div id="edce"></div><div class="r"><button id="edal">🎤 Auto lyrics (from song)</button></div>');
+  $('edsn').textContent=curFile&&!curVid?'♪ '+curFile.name:'♪ No song yet';edMove($('ce'),$('edce'));$('edal').onclick=()=>$('alb').click()}
+ else if(p==='tx'){H_('<div class="lb">STYLE</div><div id="edst"></div><div class="lb">SHAPE</div><div class="r" id="edsh"></div>'+
+  '<div class="sl"><svg viewBox="0 0 30 20" style="width:26px;height:18px;stroke:#9aa3ad;fill:none;stroke-width:2.4"><path d="M3 17 Q15 -5 27 17"/></svg><input type="range" id="edk" min="-100" max="100" step="1"><svg viewBox="0 0 30 20" style="width:26px;height:18px;stroke:#9aa3ad;fill:none;stroke-width:2.4"><path d="M3 3 Q15 25 27 3"/></svg></div>'+
+  '<div class="sl"><span>Size</span><input type="range" id="edz" min="35" max="300" step="1"></div><div class="sl"><span>Turn</span><input type="range" id="eda" min="-90" max="90" step="1"></div>'+
+  '<div class="lb">STICK TO</div><div class="r" id="edf"></div><div class="r"><button id="edall">Same for all shots</button><button id="edmg">Merge with previous</button><button id="edrs">↺ Reset</button></div>'+
+  '<div class="lb">WORDS</div><div class="r"><button id="edal2">🎤 Auto lyrics (from song)</button></div><div id="edly"></div><div class="lb">TITLE</div><div id="edtt"></div>');
+  edStyles();
+  $('edsh').innerHTML=EDSHP.map(x=>'<button type="button" data-s="'+x[0]+'">'+x[2]+'<span>'+x[1]+'</span></button>').join('');
+  $('edsh').onclick=e=>{const b=e.target.closest('[data-s]'),q=edCur();if(!b||!q)return;const s_=b.getAttribute('data-s');
+   if(s_==='low')q.part='straight';else{if(q.part==='straight'&&q.f==='none'){q.nx=.5;q.ny=.2;q.dx=q.dy=0}q.part='shape';q.c=s_==='circle';if(s_==='arc')q.k=-100;else if(s_==='line')q.k=0;else if(s_==='smile')q.k=100}OBC.clear();edUI()};
+  $('edk').oninput=e=>{const q=edCur();if(!q)return;q.k=+e.target.value;q.c=false;q.part='shape';OBC.clear();edUI(1)};
+  $('edz').oninput=e=>{const q=edCur();if(!q)return;q.sz=(+e.target.value)/100;OBC.clear()};
+  $('eda').oninput=e=>{const q=edCur();if(!q)return;q.a=+e.target.value;OBC.clear()};
+  $('edf').innerHTML=FOLS.map(x=>'<button type="button" data-f="'+x[0]+'">'+x[1]+'</button>').join('');
+  $('edf').onclick=e=>{const b=e.target.closest('[data-f]'),q=edCur();if(!b||!q)return;const f=b.getAttribute('data-f');
+   if(!q.trk&&q.tk0&&q.tk0.length&&f!=='none'){q.tk=q.tk0;q.trk=true;const h=q.tk0.filter(z=>z.f.x!=null);if(h.length){const m=h[h.length>>1].f;q.x=m.x;q.y=m.y;q.r=Math.max(.05,Math.min(.3,m.r))}}
+   Object.assign(q,{part:'shape',f:f,dx:0,dy:0,sz:1,a:0,c:f==='hand'},f==='head'?{k:-80}:f==='eyes'||f==='none'?{k:0}:f==='sho'?{k:-35}:{k:30});OBC.clear();edUI()};
+  $('edall').onclick=()=>{const q=SH[SHSEL];if(!q)return;SH.forEach(o=>{if(o===q)return;['part','f','k','a','c','sz','dx','dy','nx','ny'].forEach(k=>o[k]=q[k]);if(!o.trk){o.x=q.x;o.y=q.y;o.r=q.r}});OBC.clear();msg.textContent='Same place for all '+SH.length+' shots ✓'};
+  $('edmg').onclick=()=>{if(SHSEL<1)return;const a=SH[SHSEL-1],b=SH[SHSEL];a.e=b.e;if(a.tk||b.tk){a.tk=(a.tk||[]).concat(b.tk||[]);if(!a.trk&&b.trk){a.trk=true;['part','f','k','x','y','r'].forEach(k=>a[k]=b[k])}}SH.splice(SHSEL,1);SHSEL--;OBC.clear();edTL();edUI()};
+  $('edrs').onclick=()=>{const q=edCur();if(!q)return;q.dx=q.dy=0;q.sz=1;q.a=0;OBC.clear();edUI()};
+  $('edal2').onclick=()=>$('alb').click();
+  edMove($('lyt'),$('edly'));edMove($('ttl'),$('edtt'))}
+ else{H_('<div class="lb">TEMPLATE</div><div class="r" id="edtp"></div><div class="lb">BACKGROUND</div><div class="r" id="edbg"></div><div class="r"><button id="edw0">Light: one shimmer</button><button id="edw1">Light: waves</button></div>'+
+  '<div class="lb">VIDEO</div><div class="r"><label for="vf" class="btn" id="edcv" style="width:auto;flex:0 0 auto;margin:0;padding:8px 12px;border-radius:12px;background:#22262c;border:1px solid #30343b;font:600 13px system-ui,sans-serif;color:#e8eaed">🔄 Change video</label><button id="edzm">🔍 Zoom video</button></div>');
+  const tp=['None','Film look','Velocity'];$('edtp').innerHTML=tp.map((n,i)=>'<button type="button" data-t="'+i+'"><img src="/img/ui/tp'+i+'.webp" alt=""><span style="font:500 11px system-ui,sans-serif">'+n+'</span></button>').join('');
+  $('edtp').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;$('tpl').value=b.getAttribute('data-t');$('tpl').dispatchEvent(new Event('change'));edUI()};
+  $('edbg').innerHTML=OBGS.map((o,i)=>'<button type="button" data-b="'+i+'" aria-label="'+o[0]+'" style="background:'+(o[1]?'rgb('+o[1].join(',')+')':'#000')+'"></button>').join('');
+  $('edbg').onclick=e=>{const b=e.target.closest('[data-b]');if(!b)return;$('obg').value=b.getAttribute('data-b');$('obg').dispatchEvent(new Event('change'));edUI()};
+  $('edw0').onclick=()=>{$('obw').value='0';$('obw').dispatchEvent(new Event('change'));edUI()};$('edw1').onclick=()=>{$('obw').value='1';$('obw').dispatchEvent(new Event('change'));edUI()};
+  $('edcv').addEventListener('click',()=>{try{$('vf').value=''}catch(_){}});$('edzm').onclick=()=>{if($('bgv').src)openVA()}}
+ edUI()}
+function edShow(p){EDP=p;ETOPEN=p==='tx'&&EDON;document.querySelectorAll('#edbar [data-p]').forEach(b=>b.classList.toggle('on',b.getAttribute('data-p')===p));edPanel(p);edTL()}
+function edUI(soft){if(!EDON)return;const q=SH[SHSEL];
+ const sh=$('edsh');if(sh)sh.querySelectorAll('[data-s]').forEach(b=>{const s_=b.getAttribute('data-s');let on=false;if(q){if(q.part==='straight')on=s_==='low';else if(q.c)on=s_==='circle';else on=(s_==='arc'&&(q.k||0)<=-40)||(s_==='line'&&Math.abs(q.k||0)<40)||(s_==='smile'&&(q.k||0)>=40)}b.classList.toggle('on',on)});
+ if(q&&$('edk')&&!soft)$('edk').value=q.k||0;if(q&&$('edz'))$('edz').value=Math.round((q.sz||1)*100);if(q&&$('eda'))$('eda').value=q.a||0;
+ const ef=$('edf');if(ef)ef.querySelectorAll('[data-f]').forEach(b=>{const f=b.getAttribute('data-f');b.classList.toggle('on',!!q&&q.part!=='straight'&&f===q.f);b.style.display=f==='head'||f==='none'||(q&&q.has&&q.has[f])?'':'none'});
+ if($('edmg'))$('edmg').disabled=SHSEL<1;
+ const tp=$('edtp');if(tp)tp.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',+b.getAttribute('data-t')===TPL));
+ const bg=$('edbg');if(bg)bg.querySelectorAll('[data-b]').forEach(b=>b.style.outline=+b.getAttribute('data-b')===OBG?'3px solid #5ab4f0':'none');
+ if($('edw0')){$('edw0').classList.toggle('on',$('obw').value==='0');$('edw1').classList.toggle('on',$('obw').value==='1')}
+ const tl=$('edtl');if(tl)tl.querySelectorAll('canvas').forEach((cn,k)=>cn.classList.toggle('on',k===SHSEL&&SH.length>1))}
+function edTL(){const tl=$('edtl');if(!tl)return;const ph=$('edph');tl.innerHTML='';tl.appendChild(ph);const bv=$('bgv'),d=bv.duration;
+ if(!bv.src||!(d>0)){const a=document.createElement('label');a.className='add';a.setAttribute('for','vf');a.textContent=bv.src?'Loading…':'＋ Add your video';a.addEventListener('click',()=>{try{$('vf').value=''}catch(_){}});tl.appendChild(a);return}
+ (SH.length?SH:[{s:0,e:d}]).forEach((q,k)=>{const cn=document.createElement('canvas');cn.width=80;cn.height=80;const x=cn.getContext('2d');if(q.th)x.drawImage(q.th,0,0,80,80);else{x.fillStyle='#2a3038';x.fillRect(0,0,80,80)}
+  cn.style.flexGrow=Math.max(.2,Math.min(q.e,d)-q.s);cn.onclick=()=>edPick(k);tl.insertBefore(cn,ph)});edUI()}
+function edPick(k){SHSEL=k;const q=SH[k],bv=$('bgv');au.pause();if(q){const mt=q.mt!=null?q.mt:(q.s+Math.min(q.e,bv.duration||q.e))/2,t=(CS||0)+mt;if(t<CE)au.currentTime=t;else{try{bv.currentTime=mt}catch(_){}}}OBC.clear();edUI()}
+function edLoop(){requestAnimationFrame(edLoop);if(!EDON)return;const bv=$('bgv'),d=bv.duration,t=au.currentTime,cs=CS||0;
+ const f=x=>{x=Math.max(0,x);return Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0')};$('edtm').textContent=f(t-cs)+' / '+f((CE||0)-cs);
+ $('edpl').textContent=au.paused?'▶':'❚❚';{const m=$('edmsg'),tx=msg.textContent||'';if(m.textContent!==tx)m.textContent=tx}
+ const ph=$('edph');if(ph){if(bv.src&&d>0){const vt=((TPL==2?tplVT(t):Math.max(0,t-cs))%d+d)%d;ph.style.display='';ph.style.left='calc('+(vt/d*100).toFixed(2)+'% - 1px)'}else ph.style.display='none'}
+ if(!au.paused&&SH.length>1){const vt=bv.currentTime||0;for(let k=0;k<SH.length;k++)if(vt>=SH[k].s&&vt<SH[k].e){if(k!==SHSEL){SHSEL=k;edUI()}break}}}
+/* drag the words with a finger on the big video, pinch to resize (only the text, never starts the video) */
+function edTouch(){const v=cv,pts=new Map();let drag=null,pd=0,ps=1;
+ const toC=e=>{const r=v.getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]};
+ v.addEventListener('pointerdown',e=>{if(!EDON||SJ!=10)return;const q=SH[SHSEL];if(!q||q.part==='straight')return;pts.set(e.pointerId,toC(e));try{v.setPointerCapture(e.pointerId)}catch(_){}
+  if(pts.size===2){const[a,b]=[...pts.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1]);ps=q.sz||1;drag=null}
+  else{const p=toC(e),Q=shapeQ(shotLive(q));let near=Math.hypot(p[0]-Q.ax,p[1]-Q.ay)<90;if(!near)for(let k=0;k<Q.P.length;k+=3){if(Math.hypot(p[0]-Q.P[k][0],p[1]-Q.P[k][1])<60){near=true;break}}
+   if(near){au.pause();drag={x:p[0],y:p[1],dx:q.dx||0,dy:q.dy||0}}}e.preventDefault()});
+ v.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const q=SH[SHSEL];if(!q)return;pts.set(e.pointerId,toC(e));
+  if(pts.size===2&&pd>0){const[a,b]=[...pts.values()];q.sz=Math.max(.35,Math.min(3,ps*Math.hypot(a[0]-b[0],a[1]-b[1])/pd));OBC.clear()}
+  else if(drag){const p=toC(e);q.dx=Math.max(-500,Math.min(500,drag.dx+p[0]-drag.x));q.dy=Math.max(-600,Math.min(600,drag.dy+p[1]-drag.y));OBC.clear()}e.preventDefault()});
+ const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pd=0;if(!pts.size){drag=null;edUI()}};v.addEventListener('pointerup',up);v.addEventListener('pointercancel',up)}
+/* hooks into the existing code */
+etOpen=function(){if(SJ!=10)return;edOpen();edShow('tx')};
+const etUI0=etUI;etUI=function(){etUI0();try{edTL()}catch(_){}};
+etPick=function(k){edPick(k)};
+const sceneUI0=sceneUI;sceneUI=function(){sceneUI0();if(SJ==10)edOpen();else edClose()};
+setInterval(()=>{if(SJ==10&&!EDON&&MODE!=='video')edOpen();if(SJ!=10&&EDON)edClose();if(EDON&&$('edsn'))$('edsn').textContent=curFile&&!curVid?'♪ '+curFile.name:'♪ No song yet';
+ if(EDON){const tl=$('edtl'),bv=$('bgv'),need=(SH.length?SH.length:(bv.src&&bv.duration>0?1:0)),have=tl?tl.querySelectorAll('canvas').length:0;if(need!==have||(!need&&tl&&!tl.querySelector('.add')))edTL()}},600);
+</script>
+
 </body>
 </html>
