@@ -50,6 +50,9 @@ p{font-size:14px;opacity:.75;margin:10px 0 0}
 .mcard.on{border-color:#5ab4f0;background:#1c2a36}
 body.nomode .m-music,body.nomode .m-video,body.nomode .m-both{display:none!important}
 body.mm .m-video{display:none!important}body.mv .m-music{display:none!important}
+#pcov,#pnam{position:absolute;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);font:700 16px system-ui,sans-serif;text-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer;background:none;border:0;padding:0;margin:0;border-radius:10px;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+#pcov{left:20.833%;top:11.5625%;width:58.333%;height:32.8125%}#pcov.e{border:2px dashed rgba(255,255,255,.55);background:rgba(0,0,0,.18)}
+#pnam{left:17.2%;top:46.1%;width:65.6%;height:5.8%;justify-content:flex-start;font-size:14px}#pnam.e{border:1.5px dashed rgba(255,255,255,.45);padding-left:10px}
 #vadd{position:absolute;left:8.333%;top:25%;width:83.333%;height:46.875%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font:700 18px system-ui,sans-serif;letter-spacing:.3px;cursor:pointer;text-shadow:0 2px 8px rgba(0,0,0,.6);white-space:nowrap;-webkit-tap-highlight-color:transparent}#vadd[style*="none"]{display:none!important}#vadd:active{opacity:.7}
 .m-edonly{display:none}body.ed .m-edonly{display:block}body.ed .row.m-edonly{display:flex}body.ed .m-noedit{display:none!important}
 .vrow{display:flex;gap:10px;align-items:center;margin-top:8px}.vrow span{font-size:14px;min-width:92px}.vrow input[type=range]{flex:1;width:auto;min-width:0;padding:0;border:0;background:none;accent-color:#5ab4f0}.vrow b{min-width:46px;text-align:right;font-size:14px;font-weight:600}
@@ -161,7 +164,7 @@ select.pks{display:none}
 <div id="xo"><div id="xw"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#262a30"/><circle id="xr" cx="50" cy="50" r="44" stroke="#5ab4f0" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/></svg><div id="xp">0%</div></div>
 <div id="xt">Creating your video</div><div id="xs">Keep this page open. It saves automatically when it reaches 100%.</div><button id="xc">Cancel</button></div>
 <div class="mcs"><button class="mcard" id="m1" type="button"><b>Musical video</b><span>Music scenes, or an Edit with your own video</span></button><button class="mcard" id="m2" type="button"><b>Video captions</b><span>Pick a video. Words and shapes appear automatically</span></button></div>
-<div id="cvw" style="position:relative"><canvas id="cv" width="720" height="1280"></canvas><label id="vadd" for="vf" style="display:none">＋ Add your video</label></div>
+<div id="cvw" style="position:relative"><canvas id="cv" width="720" height="1280"></canvas><label id="vadd" for="vf" style="display:none">＋ Add your video</label><label id="pcov" for="cvi" style="display:none"></label><button type="button" id="pnam" style="display:none"></button></div>
 <div class="row" id="mrow"><label class="btn m m-music" id="pick" for="f"><svg class="ic" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Choose song</label><label class="btn m m-music" id="vb2" for="vf" style="display:none">Add your video</label><button class="m m-video" id="vbm" type="button"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>Add your video</button><button class="m m-music" id="etb" type="button" style="display:none">✏️ Edit text</button><button id="rec" class="m-both"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Download video</button></div>
 <div class="row" id="vchr" style="display:none"><label class="btn m" id="vch" for="vf" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:46px;background:#1c1f24;color:#e8eaed;border:1px solid #3a3e45">🔄 Change video</label></div>
 <div class="row"><button class="m" id="save" hidden>Save video</button><button id="cvt" class="m m-both" hidden>Convert for TikTok</button></div>
@@ -1354,6 +1357,11 @@ function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN&&au.pau
  if(sn){c.font='500 26px system-ui,sans-serif';c.fillStyle=lt?'rgba(20,24,29,.6)':'rgba(255,255,255,.6)';let x=sn;while(c.measureText(x).width>W-100&&x.length>4)x=x.slice(0,-2);c.fillText(x===sn?x:x+'…',W/2,OF.y-30)}
  c.restore()}
 var cvUser=false;
+function plUI(){try{const on=SJ==11&&!EDIT&&$('cvw').parentNode!==$('eds'),a=$('pcov'),b=$('pnam');a.style.display=b.style.display=on?'':'none';if(!on)return;
+ const hc=SFT.has();a.classList.toggle('e',!hc);a.textContent=hc?'':'＋ Add picture';const hn=!!(PLT||PLA);b.classList.toggle('e',!hn);b.textContent=hn?'':'＋ Add song name'}catch(_){}}
+setInterval(plUI,700);
+(()=>{const b=$('pnam');if(!b)return;b.onclick=async()=>{const a=await modal('<h3>Song name</h3><p>Both are optional. Leave empty to show nothing.</p><input id="mpt" placeholder="Song name" autocomplete="off" style="text-align:left;font:600 15px system-ui,sans-serif;letter-spacing:0" value="'+clEsc(PLT)+'"><input id="mpa" placeholder="Artist" autocomplete="off" style="text-align:left;font:600 15px system-ui,sans-serif;letter-spacing:0" value="'+clEsc(PLA)+'"><button class="pri" data-a="ok">OK</button><button data-a="close">Cancel</button>');
+ if(a!=='ok')return;plSet('t',($('mpt').value||'').trim().slice(0,60));plSet('a',($('mpa').value||'').trim().slice(0,60));plUI()}})();
 var PLT='',PLA='';function plSet(k,v){if(k==='t'){PLT=v;try{$('plt').value=v}catch(_){}}else{PLA=v;try{$('pla').value=v}catch(_){}}}
 (()=>{const a=$('plt'),b=$('pla');if(a)a.oninput=()=>{PLT=a.value.trim()};if(b)b.oninput=()=>{PLA=b.value.trim()}})();
 function id3Cover(f){plSet('t','');plSet('a','');if(!/mp3|mpeg/i.test(f.type+f.name))return;f.slice(0,1500000).arrayBuffer().then(b=>{const d=new Uint8Array(b);if(d[0]!=73||d[1]!=68||d[2]!=51)return;const ver=d[3],tot=((d[6]&127)<<21)|((d[7]&127)<<14)|((d[8]&127)<<7)|(d[9]&127);let p=10;const end=Math.min(d.length,10+tot);
@@ -1362,7 +1370,7 @@ function id3Cover(f){plSet('t','');plSet('a','');if(!/mp3|mpeg/i.test(f.type+f.n
   if(id==='APIC'){let q=p+10;const enc=d[q++];while(q<end&&d[q])q++;q++;q++;if(enc==1||enc==2){while(q+1<end&&!(d[q]==0&&d[q+1]==0))q+=2;q+=2}else{while(q<end&&d[q])q++;q++}
    const img=d.slice(q,p+10+sz),u=URL.createObjectURL(new Blob([img])),im=new Image();im.onload=()=>{if(!cvUser)SFT.setImg(im);URL.revokeObjectURL(u)};im.src=u}
   p+=10+sz}}).catch(()=>{})}
-function softUI(){const soft=SJ>=5;try{$('rsr').style.display=soft?'none':'';$('th').style.display=SJ==10?'none':'';$('cvr').style.display=SJ==6||SJ==11?'':'none';$('plr').style.display=SJ==11?'':'none'}catch(_){}}
+function softUI(){const soft=SJ>=5;try{$('rsr').style.display=soft?'none':'';$('th').style.display=SJ==10?'none':'';$('cvr').style.display=SJ==6||SJ==11?'':'none';$('plr').style.display=SJ==11?'':'none';plUI()}catch(_){}}
 
 var drawSpace_reset;
 var drawSpace=(function(){
@@ -1833,7 +1841,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v59';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v60';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
