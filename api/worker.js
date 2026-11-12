@@ -83,7 +83,7 @@ export default {
         return Response.json({ error: String((e && e.message) || e) }, { status: (e && e.status) || 500, headers: cors });
       }
     }
-    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips" && route !== "/mood"))
+    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips" && route !== "/mood" && route !== "/story"))
       return new Response("BeatReel API OK", { headers: cors });
     if (!ALLOWED.includes(origin))
       return new Response("Forbidden", { status: 403, headers: cors });
@@ -92,7 +92,13 @@ export default {
       // /transcribe needs a paid-for job (one coin). /style is cheap: allowed with a job, or a few times a day per network without one.
       const gate = await bank(env).gate(route, typeof body.job === "string" ? body.job : "", await ipKey(req));
       if (!gate.ok) return Response.json({ error: gate.error }, { status: 402, headers: cors });
-      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : route === "/mood" ? "ai_mood" : "ai_style", ""));
+      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : route === "/mood" ? "ai_mood" : route === "/story" ? "ai_story" : "ai_style", ""));
+      if (route === "/story") {
+        const out = await story(env, body);
+        if (out._err) ctx.waitUntil(stub(env).err("story-server", "story", out._err, "api", "server").catch(() => {}));
+        delete out._err;
+        return Response.json(out, { status: out.error ? 503 : 200, headers: cors });
+      }
       if (route === "/mood") {
         const out = await mood(env, body);
         ctx.waitUntil(count(env, out.src === "gemini" ? "mood_gem" : "mood_fail", ""));
@@ -237,6 +243,69 @@ async function mood(env, body) {
     } catch (e) { last = "gemini " + m + " " + String((e && e.message) || e).slice(0, 100); } finally { clearTimeout(to); }
   }
   return { error: "gemini_failed", src: "none", _err: last.slice(0, 300) };
+}
+
+// AI Story: the lyrics become 3-6 scenes (Gemini writes one picture prompt per scene, Groq/Cloudflare text AI as backup),
+// then Cloudflare FLUX draws each picture (free neurons). Needs a coin job. Pictures come back as base64 JPEG.
+const FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell";
+async function gemText(env, prompt) {
+  if (!env.GEMINI_API_KEY) return null;
+  for (const [m, ms] of GEMINI_MODELS) {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent", {
+        method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 3000, thinkingConfig: { thinkingLevel: "low" } } }),
+      });
+      if (!r.ok) continue;
+      const j = await r.json().catch(() => null);
+      const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts.filter((p) => !p.thought).map((p) => p.text || "").join("");
+      const mm = /\{[\s\S]*\}/.exec(txt || "");
+      if (mm) return JSON.parse(mm[0]);
+    } catch (_) {} finally { clearTimeout(to); }
+  }
+  return null;
+}
+async function story(env, body) {
+  const lines = Array.isArray(body.lines) ? body.lines.slice(0, 60).map((x) => String(x || "").slice(0, 120)) : [];
+  if (lines.filter((x) => x.trim()).length < 2) throw bad("lyrics required");
+  const prompt =
+    "You direct a short vertical music video for these song lyrics. Split the lines into 3 to 6 scenes in order " +
+    "(every line belongs to exactly one scene; scenes follow the meaning). Write ONE picture prompt in English per scene. " +
+    "All pictures must look like stills from the same film: same main character (describe them the same way every time, adult, not a real or famous person), " +
+    "same place style, same colour grade. Cinematic, realistic, calm and adult, soft natural light, vertical composition with the subject in the upper middle, " +
+    "empty darker area at the bottom for lyrics. No text, no letters, no logos, nothing violent, sexual or scary. Answer JSON only:\n" +
+    '{"look":"one sentence: film look shared by all pictures","scenes":[{"from":0,"to":2,"prompt":"..."}]}\n' +
+    "from/to are line numbers (inclusive).\nLYRICS:\n" + lines.map((t, i) => i + ": " + t).join("\n");
+  let plan = await gemText(env, prompt), via = "gemini";
+  if (!plan || !Array.isArray(plan.scenes)) {
+    via = "llm";
+    try {
+      const out = await llm(env, { messages: [{ role: "user", content: prompt }], max_tokens: 1500, temperature: 0.7 });
+      const mm = /\{[\s\S]*\}/.exec((out && out.response) || "");
+      plan = mm ? JSON.parse(mm[0]) : null;
+    } catch (_) { plan = null; }
+  }
+  if (!plan || !Array.isArray(plan.scenes) || !plan.scenes.length) return { error: "plan_failed", _err: "no plan from " + via };
+  const look = String(plan.look || "").slice(0, 300), n = lines.length;
+  let sc = plan.scenes.slice(0, 6).map((x) => ({ from: Math.max(0, Math.min(n - 1, +x.from || 0)), to: Math.max(0, Math.min(n - 1, +x.to || 0)), prompt: String(x.prompt || "").slice(0, 600) })).filter((x) => x.prompt);
+  sc.sort((a, b) => a.from - b.from);
+  if (!sc.length) return { error: "plan_failed", _err: "empty scenes" };
+  sc[0].from = 0;
+  for (let i = 0; i < sc.length; i++) sc[i].to = i + 1 < sc.length ? Math.max(sc[i].from, sc[i + 1].from - 1) : n - 1;
+  let errs = "";
+  const imgs = await Promise.all(sc.map(async (x) => {
+    for (let t = 0; t < 2; t++) {
+      try {
+        const r = await env.AI.run(FLUX_MODEL, { prompt: (look ? look + ". " : "") + x.prompt + ". Cinematic film still, shallow depth of field, no text, no watermark.", steps: 6, seed: 7 + t });
+        if (r && r.image) return r.image;
+      } catch (e) { errs = String((e && e.message) || e).slice(0, 160); }
+    }
+    return null;
+  }));
+  const out = sc.map((x, i) => ({ from: x.from, to: x.to, img: imgs[i] })).filter((x) => x.img);
+  if (!out.length) return { error: "draw_failed", _err: "flux: " + errs };
+  return { via, look, scenes: out, _err: errs && out.length < sc.length ? "flux partial: " + errs : "" };
 }
 
 // Text AI: Groq first (gpt-oss-120b, stronger, free plan, same GROQ_API_KEY), Cloudflare Llama 3.3 as backup.
@@ -460,6 +529,7 @@ const LABELS = [
   ["mood_gem", "  ↳ نجح عبر Gemini"],
   ["mood_fail", "  ↳ فشل (التطبيق اختار وحده)"],
   ["auto", "فيديو تلقائي من أغنية"],
+  ["ai_story", "قصص AI (صور من الكلمات)"],
   ["pro_new", "اشتراكات Pro جديدة"],
 ];
 
@@ -775,10 +845,11 @@ export class Bank extends DurableObject {
         this.sql.exec("UPDATE jobs SET calls = calls + 1, tr = tr + ? WHERE id = ?", route === "/transcribe" ? 1 : 0, job);
         return { ok: true };
       }
-      if (route === "/transcribe" || route === "/clips") return { ok: false, error: "job_expired" };
+      if (route === "/transcribe" || route === "/clips" || route === "/story") return { ok: false, error: "job_expired" };
     }
     if (route === "/transcribe") return { ok: false, error: "no_coins" };
     if (route === "/clips") return { ok: false, error: "pro_only" };
+    if (route === "/story") return { ok: false, error: "no_coins" };
     const day = today(), r = this.one("SELECT s FROM ipuse WHERE ip = ? AND day = ?", ip, day);
     if (r && r.s >= STYLE_FREE_CAP) return { ok: false, error: "no_coins" };
     this.sql.exec("INSERT INTO ipuse (ip, day, n, s) VALUES (?, ?, 0, 1) ON CONFLICT (ip, day) DO UPDATE SET s = s + 1", ip, day);

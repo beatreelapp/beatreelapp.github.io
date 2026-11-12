@@ -66,3 +66,15 @@ while time.time() - t0 < 600:
     time.sleep(4)
 shot("4_after_save")
 log("ERRORS", ev("JSON.stringify((window.ERRS||[]).slice(-5))"))
+
+# 3) AI Story for real (Gemini plan + Cloudflare FLUX pictures), with typed lyrics
+log("STORY", ev("""(()=>{L=['I left my home at night','the city lights were cold','I miss your voice','one day I will come back'];RNG=L.map((x,i)=>({s:(CS||0)+i*3,e:(CS||0)+i*3+3}));RW=L.map(()=>[]);$('lyt').value=L.join('\\n');makeStory();return 'started'})()"""))
+t0 = time.time(); last = ""
+while time.time() - t0 < 170:
+    m = ev("msg.textContent") or ""
+    if m != last and "drawing your story" not in m: log(f"[{int(time.time()-t0)}s] MSG:", m[:200]); last = m
+    if "Story ready" in m or "Could not" in m or "could not" in m: break
+    time.sleep(3)
+log("STORY STATE", ev("JSON.stringify(STORY?{n:STORY.sc.length,look:STORY.look,size:STORY.sc.map(x=>x.img.width+'x'+x.img.height)}:null)"))
+for k, tt in enumerate([0.5, 3.5, 6.5, 9.5]):
+    ev(f"au.pause();au.currentTime=(CS||0)+{tt};true"); time.sleep(1.5); shot(f"5_story_{k}")
