@@ -26,7 +26,7 @@ const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 
 const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
 const SITE = "https://beatreelapp.github.io";
 const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
-const EVENTS = ["visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok", "tpl_1", "tpl_2"];
+const EVENTS = ["auto", "hook", "visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok", "tpl_1", "tpl_2"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 // Google Fonts the app offers; picks are counted as "f_<id>" so the menu can show the most used first
 const FONT_IDS = ["dirt", "glitch", "wet", "bang", "mono", "shade", "mark", "audio", "anton", "bebas", "mont", "pop", "archivo", "russo", "lilita", "right", "nsil", "nmint", "spice", "oshade", "fold", "tint", "ramp", "kaln"];
@@ -83,7 +83,7 @@ export default {
         return Response.json({ error: String((e && e.message) || e) }, { status: (e && e.status) || 500, headers: cors });
       }
     }
-    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips"))
+    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips" && route !== "/mood"))
       return new Response("BeatReel API OK", { headers: cors });
     if (!ALLOWED.includes(origin))
       return new Response("Forbidden", { status: 403, headers: cors });
@@ -92,7 +92,14 @@ export default {
       // /transcribe needs a paid-for job (one coin). /style is cheap: allowed with a job, or a few times a day per network without one.
       const gate = await bank(env).gate(route, typeof body.job === "string" ? body.job : "", await ipKey(req));
       if (!gate.ok) return Response.json({ error: gate.error }, { status: 402, headers: cors });
-      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : "ai_style", ""));
+      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : route === "/mood" ? "ai_mood" : "ai_style", ""));
+      if (route === "/mood") {
+        const out = await mood(env, body);
+        ctx.waitUntil(count(env, out.src === "gemini" ? "mood_gem" : "mood_fail", ""));
+        if (out._err) ctx.waitUntil(stub(env).err("gemini-server", "gemini", out._err, "api", "server").catch(() => {}));
+        delete out._err;
+        return Response.json(out, { status: out.error ? 503 : 200, headers: cors });
+      }
       if (route === "/clips") return CLIPS_ON ? Response.json(await clips(env, body), { headers: cors }) : Response.json({ error: "soon" }, { status: 503, headers: cors });
       if (route === "/transcribe") {
         const out = await transcribe(env, body);
@@ -179,6 +186,56 @@ function groqToCf(g, vad) {
   const nsp = keep.length ? keep.reduce((t, s) => t + (+s.no_speech_prob || 0), 0) / keep.length : 1;
   const sure = text.split(/\s+/).filter(Boolean).length >= 3 && nsp < 0.4 ? 0.9 : 0.5;
   return { text, segments, word_count: segments.reduce((t, s) => t + s.words.length, 0), transcription_info: { language: code, language_probability: code ? sure : 0, duration: +g.duration || 0 }, src: "groq" };
+}
+
+// Song understanding: Google Gemini Flash (free plan, secret GEMINI_API_KEY) LISTENS to up to 30 s of the song
+// and picks scene, colour theme and lyric look from the menus the app sends. The app falls back to its own tempo/key guess if this fails.
+const GEMINI_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"];
+async function mood(env, body) {
+  const audio = typeof body.audio === "string" ? body.audio : "";
+  if (!audio || audio.length > 4_000_000) throw bad("audio required (max ~30 s)");
+  const menu = (k, max) => (Array.isArray(body[k]) ? body[k].slice(0, max).map((v) => String(v).slice(0, 80)) : []);
+  const scenes = menu("scenes", 16), themes = menu("themes", 16), looks = menu("looks", 40);
+  if (!scenes.length || !looks.length) throw bad("scenes and looks required");
+  if (!env.GEMINI_API_KEY) return { error: "no_key", src: "none" };
+  const list = (a) => a.map((v, i) => i + "=" + v).join("\n");
+  const prompt =
+    "You are the art director of BeatReel, an app that makes vertical lyric videos for TikTok. Listen to this part of a song " +
+    "(music, voice, tempo, instruments, mood, language, what the words are about). Choose what fits it best. Prefer calm, cinematic, adult looks; " +
+    "never childish. Answer JSON only:\n" +
+    '{"mood":"2-4 words","genre":"1-2 words","lang":"language of the singing or none","energy":0.0,"sad":false,"warm":false,"scene":0,"theme":0,"look":0,"why":"one short sentence"}\n' +
+    "energy: 0 = very calm, 1 = very energetic. warm: true if warm/golden colours fit better than cool/blue ones.\n" +
+    "SCENES (background):\n" + list(scenes) + "\n" + (themes.length ? "COLOUR THEMES (used with scenes 0-3 only):\n" + list(themes) + "\n" : "") +
+    "LYRIC LOOKS:\n" + list(looks);
+  let last = "";
+  for (const m of GEMINI_MODELS) {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 25000);
+    try {
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent", {
+        method: "POST", signal: ctl.signal,
+        headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ inline_data: { mime_type: "audio/wav", data: audio } }, { text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 400 },
+        }),
+      });
+      const t = await r.text();
+      if (!r.ok) { last = "gemini " + m + " " + r.status + " " + t.slice(0, 160); if (r.status === 404 || r.status === 400) continue; if (r.status === 429) continue; continue; }
+      let j = null; try { j = JSON.parse(t); } catch (_) {}
+      const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts.map((p) => p.text || "").join("");
+      const mm = /\{[\s\S]*\}/.exec(txt || "");
+      if (!mm) { last = "gemini " + m + " no json"; continue; }
+      const o = JSON.parse(mm[0]), int = (v, n) => (Number.isInteger(+v) && +v >= 0 && +v < n ? +v : -1);
+      return {
+        src: "gemini", model: m,
+        mood: String(o.mood || "").slice(0, 40), genre: String(o.genre || "").slice(0, 30), lang: String(o.lang || "").slice(0, 20),
+        energy: Math.max(0, Math.min(1, +o.energy || 0)), sad: !!o.sad, warm: !!o.warm,
+        scene: int(o.scene, scenes.length), theme: themes.length ? int(o.theme, themes.length) : -1, look: int(o.look, looks.length),
+        why: String(o.why || "").slice(0, 140),
+      };
+    } catch (e) { last = "gemini " + m + " " + String((e && e.message) || e).slice(0, 100); } finally { clearTimeout(to); }
+  }
+  return { error: "gemini_failed", src: "none", _err: last.slice(0, 300) };
 }
 
 // Text AI: Groq first (gpt-oss-120b, stronger, free plan, same GROQ_API_KEY), Cloudflare Llama 3.3 as backup.
@@ -398,6 +455,10 @@ const LABELS = [
   ["tr_cf", "  ↳ منها عبر Cloudflare (احتياط)"],
   ["st_groq", "ذكاء الستايل/القص عبر Groq"],
   ["st_cf", "ذكاء الستايل/القص عبر Cloudflare (احتياط)"],
+  ["ai_mood", "Gemini يستمع للأغنية (مزاج)"],
+  ["mood_gem", "  ↳ نجح عبر Gemini"],
+  ["mood_fail", "  ↳ فشل (التطبيق اختار وحده)"],
+  ["auto", "فيديو تلقائي من أغنية"],
   ["pro_new", "اشتراكات Pro جديدة"],
 ];
 

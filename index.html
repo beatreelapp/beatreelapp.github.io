@@ -997,7 +997,7 @@ var SFT=(function(){
   c.globalCompositeOperation='source-over'}
  /* Player: music-player look (most shared lyric format), own design: slow 3D cover, light that breathes, progress bar, lyrics below. Calm: no beat pulses */
  const pcv=document.createElement('canvas');pcv.width=pcv.height=256;const pc2=pcv.getContext('2d');let pcK='';
- function moodCover(){let warm=false;try{const m=HOOK&&HOOK.key===CFK?songMood():null;warm=!!(m&&!m.minor&&m.name!=='calm')}catch(_){}const k=warm?'w':'c';if(pcK===k)return;pcK=k;
+ function moodCover(){let warm=false;try{if(GMOOD&&GMOOD.k===CFK)warm=!!GMOOD.warm;else{const m=HOOK&&HOOK.key===CFK?songMood():null;warm=!!(m&&!m.minor&&m.name!=='calm')}}catch(_){}const k=(warm?'w':'c')+(GMOOD&&GMOOD.k===CFK?'g':'');if(pcK===k)return;pcK=k;
   const C=warm?['#2a160b','#8a4a22','#f2b46b','#fff3d6','#5a2f16','#3a1d0c']:['#0d1b2a','#274766','#7fa7c9','#e8f1f8','#1d3550','#12263b'],g=pc2.createLinearGradient(0,0,0,256);g.addColorStop(0,C[0]);g.addColorStop(.6,C[1]);g.addColorStop(1,C[2]);pc2.fillStyle=g;pc2.fillRect(0,0,256,256);
   const mg=pc2.createRadialGradient(170,78,8,170,78,70);mg.addColorStop(0,'rgba(255,255,255,.35)');mg.addColorStop(1,'rgba(255,255,255,0)');pc2.fillStyle=mg;pc2.fillRect(0,0,256,256);pc2.fillStyle=C[3];pc2.beginPath();pc2.arc(170,78,22,0,7);pc2.fill();
   [[165,14,.012,C[4]],[198,10,.02,C[5]]].forEach(h=>{pc2.fillStyle=h[3];pc2.beginPath();pc2.moveTo(0,256);for(let x=0;x<=256;x+=4)pc2.lineTo(x,h[0]+Math.sin(x*h[2]+h[1])*h[1]);pc2.lineTo(256,256);pc2.fill()})}
@@ -1698,16 +1698,25 @@ function hookRanges(){const H=HOOK;if(!H)return[];if(H.rg)return H.rg;const N=H.
  H.rg=R;return R}
 var CHC={k:'',s:null};
 function chorusLine(i){try{if(SJ==10||!HOOK||HOOK.key!==CFK||!RNG||!RNG[i]||L.length<3)return false;const k=HOOK.key.name+'|'+L.length+'|'+RNG.length;if(CHC.k!==k){const R=hookRanges(),st=new Set();RNG.forEach((g,j)=>{const m=(g.s+g.e)/2;if(R.some(r=>m>=r[0]&&m<=r[1]))st.add(j)});CHC={k:k,s:st.size<L.length?st:new Set()}}return CHC.s.has(i)}catch(_){return false}}
+/* Gemini (free, on our server) LISTENS to up to 30 s of the best part and picks scene, colours and lyric look. If it fails, the app guesses from tempo and key */
+var GMOOD=null;
+const GSCN=[[0,'Car: night city drive, retro'],[1,'Vinyl record spinning in space'],[2,'Concert stage, lights and crowd'],[3,'Space runner, arcade energy'],[5,'Aurora: calm northern lights'],[6,'Album cover blurred, music player'],[7,'Bokeh: soft out-of-focus lights'],[8,'Frosted glass: soft and modern'],[9,'Ink in water: slow, emotional']],GTHA=[2,3,5,8,9,11];
+async function gemMood(f){try{const to=Math.min(CE<1e8?CE:DUR,DUR||1e9,(CS||0)+30),pcm=await pcm16k(f,CS||0,to);if(CFK!==f||pcm.length<16000*4)return null;
+ const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),35000);let r;
+ try{r=await fetch(API_URL+'/mood',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body:JSON.stringify({audio:wavB64(pcm),scenes:GSCN.map(x=>x[1]),themes:GTHA.map(i=>TH[i].n),looks:MLOOKS.map(x=>x.n+': '+x.d),job:AIJOB||''})})}finally{clearTimeout(tm)}
+ const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error||!Number.isInteger(j.scene)||!GSCN[j.scene])return null;j.k=f;return j}catch(_){return null}}
 async function autoPilot(f){if(!APON||curVid||EDIT||SJ==10||SJ==4||CFK!==f||acBusy)return;
- msg.textContent='✨ Making your video: finding the beat and the mood…';try{await beatScan()}catch(_){}if(CFK!==f||SJ==10||SJ==4)return;
- const md=songMood(),q=$('sj');q.value=md.sc;q.dispatchEvent(new Event('change'));try{pkSync()}catch(_){}
- if(md.sc<5){const th=$('th'),hs=[...(f.name||'x')].reduce((x,ch)=>x+ch.charCodeAt(0),0)&1,tv=md.name==='energetic'?(md.minor?[5,9]:[3,9])[hs]:md.name==='warm'?[3,11][hs]:md.name==='dark'?[2,8][hs]:[2,8][hs];/* no purple themes */th.value=tv;th.dispatchEvent(new Event('change'))}
+ msg.textContent='✨ Making your video: listening to the song…';const gp=gemMood(f);try{await beatScan()}catch(_){}const g=await gp;if(CFK!==f||SJ==10||SJ==4)return;GMOOD=g;
+ const md=songMood();if(g){md.sc=GSCN[g.scene][0];md.name=g.mood||md.name;md.ai=1;md.minor=!!g.sad}
+ const q=$('sj');q.value=md.sc;q.dispatchEvent(new Event('change'));try{pkSync()}catch(_){}
+ if(md.sc<5&&g&&g.theme>=0){const th=$('th');th.value=GTHA[g.theme];th.dispatchEvent(new Event('change'))}else if(md.sc<5){const th=$('th'),hs=[...(f.name||'x')].reduce((x,ch)=>x+ch.charCodeAt(0),0)&1,tv=md.name==='energetic'?(md.minor?[5,9]:[3,9])[hs]:md.name==='warm'?[3,11][hs]:md.name==='dark'?[2,8][hs]:[2,8][hs];/* no purple themes */th.value=tv;th.dispatchEvent(new Event('change'))}
  const sy=$('tsy');sy.value=-1;sy.dispatchEvent(new Event('change'));
  const scn=(q.options[q.selectedIndex]&&q.options[q.selectedIndex].textContent||'').replace(/^Subject:\s*/,'');
  const had=L.filter(x=>x&&x.trim()).length>1&&RNG,r0=RNG;
  if(!had){msg.textContent='✨ Writing the lyrics (uses 1 AI coin)…';try{await $('acb').onclick()}catch(_){}}if(CFK!==f)return;
  const ok=had||(RNG&&RNG!==r0);
- if(ok)msg.textContent='✨ Your video is ready: '+(HKA?'best part '+fmt(CS)+'–'+fmt(CE)+', ':'')+md.name+' song → scene "'+scn+'", lyrics ✓, style picked by AI, chorus lines bigger. Press Play, then Download.';
+ if(g&&g.look>=0&&LSTY[g.look]&&MS.sty<0){MLOOK=g.look;MLK=L.join('\n');try{$('tsy').options[0].textContent='Style: Auto (AI picked '+LSTY[MLOOK].n+')'}catch(_){}}
+ if(ok)msg.textContent='✨ Your video is ready: '+(HKA?'best part '+fmt(CS)+'–'+fmt(CE)+', ':'')+(md.ai?'AI heard a "'+md.name+'" song':md.name+' song')+' → scene "'+scn+'", lyrics ✓, style picked by AI, chorus lines bigger. Press Play, then Download.';
  else msg.textContent='✨ Scene "'+scn+'" ('+md.name+' song)'+(HKA?' and best part ':' ')+'ready. Lyrics: '+msg.textContent;
  try{hit('auto')}catch(_){}}
 async function loadWave(file){PK=null;CFK=file;
@@ -1849,7 +1858,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v61';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v62';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
