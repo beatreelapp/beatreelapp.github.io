@@ -30,6 +30,23 @@ def ev(js, timeout=300):
 def shot(name): sh(f"adb exec-out screencap -p > shots/{name}.png")
 
 log("APP", ev("APPV+' NAT='+(typeof NAT!=='undefined'&&NAT)"))
+# 1) share the song from "another app" (Android share sheet) and see what the app receives
+ev("window.__SH=null;try{BRN.addListener('shared',d=>{window.__SH=d})}catch(e){window.__SH={err:String(e)}};true")
+import os
+sid = os.environ.get("SONG_ID", "")
+log("SHARE INTENT", sh(f"adb shell am start -a android.intent.action.SEND -t audio/mpeg --eu android.intent.extra.STREAM content://media/external/audio/media/{sid} --grant-read-uri-permission -n io.github.beatreelapp.twa.test/io.github.beatreelapp.twa.MainActivity"))
+time.sleep(10)
+got = ev("JSON.stringify(window.__SH)")
+log("SHARE RECEIVED", got, "| curFile:", ev("curFile?curFile.name+' '+curFile.size:'none'"))
+shot("1b_after_share")
+if ev("!!curFile") is not True:
+    log("SHARE DID NOT LOAD A SONG -> loading a generated song with JS instead")
+    log(ev("""(async()=>{const sr=22050,d=60,oc=new OfflineAudioContext(1,sr*d,sr);const ch=[[220,277,330],[196,247,294],[262,330,392],[349,440,523]];
+for(let i=0;i<d/2;i++){const sec=(i>=8&&i<16)||(i>=24)?2:0;const set=ch[sec+(i%2)];set.forEach(f=>{const o=oc.createOscillator(),g=oc.createGain();o.frequency.value=f;g.gain.value=(sec?0.25:0.1);o.connect(g);g.connect(oc.destination);o.start(i*2);o.stop(i*2+2)})}
+const b=await oc.startRendering(),x=b.getChannelData(0),n=x.length,ab=new ArrayBuffer(44+n*2),v=new DataView(ab),W=(o,t)=>{for(let k=0;k<t.length;k++)v.setUint8(o+k,t.charCodeAt(k))};
+W(0,'RIFF');v.setUint32(4,36+n*2,true);W(8,'WAVE');W(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);W(36,'data');v.setUint32(40,n*2,true);
+for(let k=0;k<n;k++)v.setInt16(44+k*2,Math.max(-1,Math.min(1,x[k]))*32000,true);
+const f=new File([ab],'generated-song.wav',{type:'audio/wav'});EDIT=false;setMode('music');sceneUI();$('f').onchange({target:{files:[f],value:''}});return 'generated song loaded'})()"""))
 t0 = time.time(); last = ""
 while time.time() - t0 < 180:
     m = ev("msg.textContent") or ""

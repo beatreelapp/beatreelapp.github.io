@@ -14,9 +14,7 @@ adb logcat -c
 adb shell am start -n $PKG/io.github.beatreelapp.twa.MainActivity
 sleep 20
 adb exec-out screencap -p > shots/0_open.png
-adb shell am start -a android.intent.action.SEND -t audio/mpeg --eu android.intent.extra.STREAM content://media/external/audio/media/$ID --grant-read-uri-permission -n $PKG/io.github.beatreelapp.twa.MainActivity
-sleep 8
-adb exec-out screencap -p > shots/1_shared.png
+export SONG_ID=$ID
 python3 .github/emu/drive.py 2>&1 | tee shots/drive.log
 echo "=== gallery ==="; adb shell ls -l /sdcard/Movies/BeatReel/ 2>&1 | tee shots/gallery.txt
 echo "=== notifications ==="; adb shell dumpsys notification --noredact | grep -i -A3 "beatreel" | head -40 | tee shots/notif.txt
