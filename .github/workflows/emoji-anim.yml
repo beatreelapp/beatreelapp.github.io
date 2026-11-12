@@ -1,5 +1,5 @@
 name: emoji-anim
-# Manual: downloads Google Noto Animated Emoji (CC BY 4.0) into emoji/anim on main, resized to 256 px.
+# Manual: downloads Google Noto Animated Emoji (CC BY 4.0) into emoji/anim on main, resized to 192 px, 15 fps.
 on: workflow_dispatch
 permissions:
   contents: write
@@ -11,7 +11,7 @@ jobs:
       - run: pip install pillow
       - run: |
           set -e
-          mkdir -p emoji/anim
+          rm -rf emoji/anim && mkdir -p emoji/anim
           curl -fsSL -o /tmp/api.json https://googlefonts.github.io/noto-emoji-animation/data/api.json || echo "no api.json"
           curl -sSI https://fonts.gstatic.com/s/e/notoemoji/latest/1f525/512.webp | grep -i -E "access-control|content-type|content-length" || true
           for c in $(cat .github/emoji-anim.txt | tr ' ' '\n' | sort -u); do
@@ -22,9 +22,12 @@ jobs:
           c=sys.argv[1]
           im=Image.open('/tmp/e.webp')
           fr=[];du=[]
-          for f in ImageSequence.Iterator(im):
-              fr.append(f.convert('RGBA').resize((256,256),Image.LANCZOS));du.append(f.info.get('duration',40))
-          fr[0].save('emoji/anim/'+c+'.webp',save_all=True,append_images=fr[1:],duration=du,loop=0,quality=82,method=4,lossless=False)
+          for i,f in enumerate(ImageSequence.Iterator(im)):
+              d=f.info.get('duration',33)
+              if i%2==0:
+                  fr.append(f.convert('RGBA').resize((192,192),Image.LANCZOS));du.append(d)
+              else: du[-1]+=d
+          fr[0].save('emoji/anim/'+c+'.webp',save_all=True,append_images=fr[1:],duration=du,loop=0,quality=70,method=6,lossless=False,minimize_size=True)
           print(c,len(fr),sum(du))
           PY
             else echo "missing $c"; fi
@@ -47,4 +50,4 @@ jobs:
           PY
           du -sh emoji/anim
           git config user.name "github-actions" && git config user.email "actions@github.com"
-          git add emoji/anim && git commit -qm "Noto Animated Emoji (CC BY 4.0), 256 px" && git push
+          git add emoji/anim && git commit -qm "Noto Animated Emoji (CC BY 4.0), 192 px 15 fps" && git push
