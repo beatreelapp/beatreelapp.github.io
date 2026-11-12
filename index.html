@@ -1195,15 +1195,26 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  try{if(!(v.readyState>=2))await new Promise((res,rej)=>{const ok=()=>{v.removeEventListener('loadeddata',ok);res()};v.addEventListener('loadeddata',ok);setTimeout(()=>rej(new Error('load timeout')),20000)});
   const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0))throw new Error('duration '+v.duration);
   if(SJ==10){scanVeil(v);SCP=0;SCL='Finding the shots…'}
+  /* Edit: ONE pass finds the shots AND the person (it used to be two passes). The body finder loads while the video is read. */
+  const body=SJ==10,BT=[],bStep=dur>90?1:dur>45?.8:.6,berr={n:0};let M=null,mpE='';
+  if(body){Promise.race([mpLoad(),new Promise((_,j)=>setTimeout(()=>j(new Error('timeout 30s')),30000))]).then(m=>{M=m}).catch(e=>{mpE=String((e&&e.message)||e)})}
   const sm=document.createElement('canvas');sm.width=sm.height=32;const x=sm.getContext('2d',{willReadFrequently:true}),S=[];
-  const grab=t=>{x.drawImage(v,0,0,32,32);const d=x.getImageData(0,0,32,32).data,h=new Float32Array(48);let br=0;for(let i=0;i<d.length;i+=4){h[d[i]>>4]++;h[16+(d[i+1]>>4)]++;h[32+(d[i+2]>>4)]++;br+=d[i]+d[i+1]+d[i+2]}S.push({t:t,h:h,br:br/(1024*765)})};
-  const pc=t=>{SCP=Math.min(.99,t/dur)*.3;if(SJ==10)msg.textContent='Finding the shots in your video… '+Math.min(99,Math.round(t/dur*100))+'%'};
+  const grab=t=>{x.drawImage(v,0,0,32,32);const d=x.getImageData(0,0,32,32).data,h=new Float32Array(48);let br=0;for(let i=0;i<d.length;i+=4){h[d[i]>>4]++;h[16+(d[i+1]>>4)]++;h[32+(d[i+2]>>4)]++;br+=d[i]+d[i+1]+d[i+2]}const o={t:t,h:h,br:br/(1024*765)};if(S.length%4===0){const th=document.createElement('canvas');th.width=th.height=80;try{coverDraw(th.getContext('2d'),v,80);o.th=th}catch(_){}}S.push(o)};
+  const pc=t=>{SCP=Math.min(.99,t/dur)*(body?.9:.3);if(SJ==10)msg.textContent=(body?'Finding the shots and the person… ':'Finding the shots in your video… ')+Math.min(99,Math.round(t/dur*100))+'%'};
   v.pause();v.loop=false;await seekTo(v,0);
-  if('requestVideoFrameCallback' in v){await new Promise(res=>{let last=-1,fin=false;const end=()=>{if(!fin){fin=true;try{v.pause()}catch(_){}v.removeEventListener('ended',end);res()}};
-    const cb=(now,md)=>{if(fin)return;const t=md.mediaTime;if(t-last>=.095){last=t;try{grab(t)}catch(e){why=String(e)}pc(t)}if(t>=dur-.06||v.ended){end();return}v.requestVideoFrameCallback(cb)};
-    v.requestVideoFrameCallback(cb);v.addEventListener('ended',end);setTimeout(end,(dur/2+15)*1000);v.playbackRate=3;v.play().catch(e=>{why='play '+e;end()})})}
+  if('requestVideoFrameCallback' in v){await new Promise(res=>{let last=-1,fin=false,nb=.05,cutT=-1,bDone=-1,prevH=null,hist=[],lp=performance.now();
+    const end=()=>{if(!fin){fin=true;try{v.pause()}catch(_){}v.removeEventListener('ended',end);clearInterval(wd);res()}};
+    const wd=setInterval(()=>{if($('bgv').src!==key)end();else if(document.visibilityState==='visible'&&performance.now()-lp>8000){why+=' stall '+last.toFixed(1);end()}},1000);
+    const cb=(now,md)=>{if(fin)return;lp=performance.now();const t=md.mediaTime;
+     if(t-last>=.095){last=t;try{grab(t)}catch(e){why=String(e)}pc(t);
+      const q=S[S.length-1];if(q&&q.br<=.92&&q.br>=.025){if(prevH){let d=0;for(let i=0;i<48;i++)d+=Math.abs(q.h[i]-prevH[i]);d/=6144;const avg=hist.length?hist.reduce((a,b)=>a+b,0)/hist.length:0;if(d>.25&&d>avg*2.5)cutT=t;if(d<=.25){hist.push(d);if(hist.length>5)hist.shift()}}prevH=q.h}}
+     /* the person: a picture every bStep seconds and just after every cut, while the video is paused for it */
+     if(body&&M&&(t>=nb||(cutT>bDone&&t-cutT>.12))){try{v.pause()}catch(_){}try{BT.push(bodyAt(M,v,t,berr))}catch(_){}bDone=t;nb=t+bStep;lp=performance.now();
+      if(t>=dur-.06){end();return}setTimeout(()=>{if(!fin){v.requestVideoFrameCallback(cb);v.play().catch(e=>{why+=' play2 '+e;end()})}},0);return}
+     if(t>=dur-.06||v.ended){end();return}v.requestVideoFrameCallback(cb)};
+    v.requestVideoFrameCallback(cb);v.addEventListener('ended',end);v.playbackRate=3;v.play().catch(e=>{why='play '+e;end()})})}
   v.playbackRate=1;
-  if(S.length<dur*3){why+=' rvfc '+S.length;S.length=0;for(let t=.05;t<dur;t+=.1){await seekTo(v,t);grab(t);pc(t)}}
+  if(S.length<dur*3){why+=' rvfc '+S.length;S.length=0;BT.length=0;for(let t=.05;t<dur;t+=.1){await seekTo(v,t);grab(t);pc(t)}}
   const cuts=[0];let prev=null,hist=[];
   for(const q of S){if(q.br>.92||q.br<.025)continue;if(prev){let d=0;for(let i=0;i<48;i++)d+=Math.abs(q.h[i]-prev.h[i]);d/=6144;const avg=hist.length?hist.reduce((a,b)=>a+b,0)/hist.length:0;
     if(d>.25&&d>avg*2.5&&q.t-cuts[cuts.length-1]>.15)cuts.push((q.t+prev.t)/2);if(d<=.25){hist.push(d);if(hist.length>5)hist.shift()}}prev=q}
@@ -1212,13 +1223,19 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
   if(sh.length>1&&sh[0].e-sh[0].s<.5){sh[1].s=0;sh.shift()}
   while(sh.length>12){let m=1;for(let k=1;k<sh.length;k++)if(Math.min(sh[k].e,dur)-sh[k].s<Math.min(sh[m].e,dur)-sh[m].s)m=k;sh[m-1].e=sh[m].e;sh.splice(m,1)}
   for(const q of sh){Object.assign(q,shotDef());const th=document.createElement('canvas');th.width=th.height=160;const tx=th.getContext('2d');tx.fillStyle='#000';tx.fillRect(0,0,160,160);
-   const mid=(q.s+Math.min(q.e,dur))/2;let bt=mid,bd=1e9;for(const z of S)if(z.t>=q.s&&z.t<Math.min(q.e,dur)&&z.br<=.92&&z.br>=.025&&Math.abs(z.t-mid)<bd){bd=Math.abs(z.t-mid);bt=z.t}q.mt=bt;await seekTo(v,Math.min(dur-.05,bt));coverDraw(tx,v,160);q.th=th}
+   const mid=(q.s+Math.min(q.e,dur))/2;let bt=mid,bd=1e9,bz=null;for(const z of S)if(z.t>=q.s&&z.t<Math.min(q.e,dur)&&z.br<=.92&&z.br>=.025&&Math.abs(z.t-mid)<bd){bd=Math.abs(z.t-mid);bt=z.t}q.mt=bt;
+   bd=1e9;for(const z of S)if(z.th&&z.t>=q.s&&z.t<Math.min(q.e,dur)&&Math.abs(z.t-bt)<bd){bd=Math.abs(z.t-bt);bz=z}
+   if(bz)tx.drawImage(bz.th,0,0,160,160);else{await seekTo(v,Math.min(dur-.05,bt));coverDraw(tx,v,160)}q.th=th}
+  /* person pictures missing (body finder still loading at the start, or no in-order read): fill them with seeks */
+  if(body){if(!M&&!mpE){SCL='Loading the body finder…';const t0=performance.now();while(!M&&!mpE&&performance.now()-t0<30000)await new Promise(r=>setTimeout(r,200))}
+   if(M){SCL='Finding the person…';const upto=BT.length?BT[0].t-bStep*.5:dur,fill=[];for(let t=.05;t<upto;t+=bStep){if($('bgv').src!==key)break;await seekTo(v,Math.min(dur-.05,t));fill.push(bodyAt(M,v,t,berr));SCP=.9+.1*Math.min(1,t/Math.max(.1,upto));msg.textContent='Finding the person in your video… '+Math.round(100*Math.min(1,t/Math.max(.1,upto)))+'%';await new Promise(r=>setTimeout(r,0))}
+    TRK=fill.concat(BT).sort((a,b)=>a.t-b.t);TRKK=key;mpFree()}else{try{bug('body','load '+(mpE||'slow'))}catch(_){}TRK=[];TRKK=key}}
   out=sh}
  catch(e){why+=' '+((e&&e.message)||e);out=[Object.assign({s:0,e:1e9},shotDef())]}
  finally{try{v.playbackRate=1;v.loop=wasLoop}catch(_){}SHBUSY=false}
  if(why.trim())try{bug('shots',why.trim())}catch(_){}
  if($('bgv').src!==key){SCV=null;return}SH=out;SHK=key;SHSEL=0;
- if(SJ==10){SHBUSY=true;SCL='Finding the person…';SCP=.3;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key){SCV=null;return}shotAuto()}
+ if(SJ==10&&TRKK!==key){SHBUSY=true;SCL='Finding the person…';SCP=.3;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key){SCV=null;return}shotAuto()}
  SCV=null;
  try{v.loop=wasLoop;v.playbackRate=1;v.currentTime=0;if(!ETOPEN&&SJ!=10)v.play().catch(()=>{})}catch(_){}
  if(SJ==10){const na=SH.filter(q=>q.trk).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+na+' of '+SH.length+' shots (normal text in the others)':'')+'. Change it in "Text".':SH.length>1?'Found '+SH.length+' shots ✓ Tap a shot, then choose the words in "Text".':'Ready ✓ Choose the words in "Text", then press ▶.';
@@ -1271,6 +1288,15 @@ async function bodyScan(key){const v=$('bgv');if(TRKK===key&&TRK.length)return;T
   if(!seq){try{bug('body','in-order read stopped at '+(out.length?out[out.length-1].t.toFixed(1):0)+'s, seeking')}catch(_){}}}
  if(!seq){const st=out.length?out[out.length-1].t+step:.05;for(let t=st;t<dur;t+=step){if($('bgv').src!==key||SJ!=10)return;await seekTo(v,Math.min(dur-.05,t));one(t);await new Promise(r=>setTimeout(r,0))}}
  TRK=out;TRKK=key;mpFree()}
+/* one picture -> body + face points (shared by the single pass and the old pass) */
+var BSC=null;
+function bodyAt(M,v,t,errs){const k=Math.min(1,384/Math.max(v.videoWidth,v.videoHeight)),w=Math.max(16,Math.round(v.videoWidth*k)),h=Math.max(16,Math.round(v.videoHeight*k));if(!BSC||BSC.width!==w||BSC.height!==h){BSC=document.createElement('canvas');BSC.width=w;BSC.height=h}const sc=BSC,x=sc.getContext('2d');
+ x.drawImage(v,0,0,w,h);let p=null,f=null;
+ try{const r=M.pose.detect(sc),l=r&&r.landmarks&&r.landmarks[0];if(l)p=l.map(q=>[q.x,q.y,q.visibility==null?1:q.visibility])}catch(e){if(errs&&!errs.n++)try{bug('body','pose '+((e&&e.message)||e))}catch(_){}}
+ /* the face finder runs only when the body finder did not see the face well (it is the slow half on weak phones) */
+ if(M.face&&!(p&&[0,2,5].every(i=>p[i]&&p[i][2]>.65)))try{const r=M.face.detect(sc),d=r&&r.detections&&r.detections[0];if(d&&d.boundingBox&&d.keypoints&&d.keypoints.length>=2){const b=d.boundingBox,bx=b.originX/w,by=b.originY/h,bw=b.width/w,bh=b.height/h,cx=bx+bw/2,cy=by+bh/2,e0=d.keypoints[0],e1=d.keypoints[1];
+  f=[[e0.x,e0.y],[e0.x,e0.y],[e1.x,e1.y],[e1.x,e1.y],[cx,by-bh*.12],[cx,by+bh],[bx,cy],[bx+bw,cy]]}}catch(_){}
+ return{t:t,p:p,f:f}}
 function mpFree(){const P=MPV;MPV=null;if(P)P.then(M=>{try{M.pose&&M.pose.close()}catch(_){}try{M.face&&M.face.close()}catch(_){}}).catch(()=>{})}
 /* video picture (0..1) -> Edit frame (0..1), same maths as vidDraw */
 function v2f(nx,ny){const v=$('bgv');if(!v.videoWidth)return[nx,ny];const g=vidGeom(v,OF.w,OF.h),ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;return[(ox+nx*g.dw)/OF.w,(oy+ny*g.dh)/OF.h]}
@@ -1967,7 +1993,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v74';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v75';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
