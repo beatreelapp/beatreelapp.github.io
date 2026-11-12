@@ -1,0 +1,50 @@
+name: emoji-anim
+# Manual: downloads Google Noto Animated Emoji (CC BY 4.0) into emoji/anim on main, resized to 256 px.
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow
+      - run: |
+          set -e
+          mkdir -p emoji/anim
+          curl -fsSL -o /tmp/api.json https://googlefonts.github.io/noto-emoji-animation/data/api.json || echo "no api.json"
+          curl -sSI https://fonts.gstatic.com/s/e/notoemoji/latest/1f525/512.webp | grep -i -E "access-control|content-type|content-length" || true
+          for c in $(cat .github/emoji-anim.txt | tr ' ' '\n' | sort -u); do
+            if curl -fsSL -o /tmp/e.webp https://fonts.gstatic.com/s/e/notoemoji/latest/$c/512.webp; then
+              python3 - "$c" <<'PY'
+          import sys
+          from PIL import Image, ImageSequence
+          c=sys.argv[1]
+          im=Image.open('/tmp/e.webp')
+          fr=[];du=[]
+          for f in ImageSequence.Iterator(im):
+              fr.append(f.convert('RGBA').resize((256,256),Image.LANCZOS));du.append(f.info.get('duration',40))
+          fr[0].save('emoji/anim/'+c+'.webp',save_all=True,append_images=fr[1:],duration=du,loop=0,quality=82,method=4,lossless=False)
+          print(c,len(fr),sum(du))
+          PY
+            else echo "missing $c"; fi
+          done
+          python3 - <<'PY'
+          import json,os
+          have={f[:-5] for f in os.listdir('emoji/anim') if f.endswith('.webp')}
+          out=[]
+          try:
+              d=json.load(open('/tmp/api.json'))
+              for e in d.get('icons',[]):
+                  c=e.get('codepoint','')
+                  if c in have:
+                      out.append({'c':c,'t':' '.join(e.get('tags',[]))[:80].replace(':','')})
+          except Exception as ex: print('api',ex)
+          got={o['c'] for o in out}
+          for c in sorted(have-got): out.append({'c':c,'t':''})
+          json.dump(out,open('emoji/anim/list.json','w'),ensure_ascii=False,separators=(',',':'))
+          print(len(out),'emojis')
+          PY
+          du -sh emoji/anim
+          git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add emoji/anim && git commit -qm "Noto Animated Emoji (CC BY 4.0), 256 px" && git push
