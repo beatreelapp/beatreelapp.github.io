@@ -1262,9 +1262,9 @@ function ofLoad(F){if(!F||!F.u)return Promise.resolve();if(OFP[F.id])return OFP[
  el.onchange=()=>{OFI=+el.value;try{localStorage.setItem('br_ofo',OFI)}catch(_){}const F=OFS[OFI];if(F.u){ofLoad(F);gfHit(F)}}})();
 var OBC=new Map();
 function orbitDraw(ch,sh,t,out,force){const ES_=SJ==10?edSty():null,LS=ES_&&ES_.t==='L'?LSTY[ES_.i]||LSTY[0]:null,OF_=ES_&&ES_.t==='O'?OFS[ES_.i]:(OFS[OFI]||OFS[0]);if(!LS&&OF_.u&&!OF_.ok)ofLoad(OF_);const on=!LS&&!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif',FN=z=>LS?LS.f.replace('PX',z):z+'px '+ff;
- let Q=orbitQ(sh),fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)),gap,wd,tot;
+ let Q=orbitQ(sh),zS=sh.f&&!sh.nf?Math.max(.35,Math.min(3,sh.sz||1)):1,fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)*zS),gap,wd,tot;/* Size makes the letters bigger, the curve grows with them (same bend) */
  for(;;){c.font=FN(fs);gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(!sh.f&&(sh.part==='head'||sh.part==='left'||sh.part==='right'||sh.part==='hand')){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
- if(t!=null&&!force&&(fs<34||tot>Q.len*1.02))return false;
+ if(t!=null&&!force&&(fs<34*Math.min(1,zS)||tot>Q.len*1.02))return false;
  if(t!=null&&!force){/* letters must stay inside the video frame, else normal text */let d0=Math.max(0,Math.min(Q.len-tot,Q.mid-tot/2));const m=fs*.45;for(let k=0;k<ch.length;k+=2){const p=orbitAt(Q,d0+wd[k]/2);d0+=wd[k]+gap+(k+1<ch.length?wd[k+1]+gap:0);if(p[0]<OF.x+m||p[0]>OF.x+OF.w-m||p[1]<OF.y+m||p[1]>OF.y+OF.h-m)return false}}/* too long for this place: the line is shown as normal text instead of tiny letters */
  let d=Q.mid-tot/2;d=Math.max(0,Math.min(Q.len-tot,d));c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
  for(let k=0;k<ch.length;k++){const w=wd[k],m=d+w/2;d+=w+gap;if(ch[k][0]===' ')continue;const u=t==null?1:(t-ch[k][1])/.15;if(u<=0)continue;
@@ -1750,7 +1750,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v54';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v55';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2839,7 +2839,7 @@ function oStraight(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)ret
  const mk_=(a,b)=>{const ch=[];for(let k=a;k<b;k++){const w=ws[k].toUpperCase(),s0=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-s0));for(let j=0;j<w.length;j++)ch.push([w[j],s0+d*j/w.length]);if(k<b-1)ch.push([' ',s0+d])}return ch};
  const sz=(OF.w-60)/440,F=OFS[edSty().i]||OFS[0];c.save();c.font=Math.round(44*(F.k||1))+'px "BRO '+F.id+'","Anton",Impact,sans-serif';const tw=c.measureText(L[i].toUpperCase()).width;c.restore();
  let rows=[[0,n]];if(tw>OF.w-60&&n>1){let best=1,bd=1e9;const tot=L[i].length;let acc=0;for(let k=1;k<n;k++){acc+=ws[k-1].length+1;const d=Math.abs(acc-tot/2);if(d<bd){bd=d;best=k}}rows=[[0,best],[best,n]]}
- rows.forEach((r,ri)=>{const y=OF.h-62-(rows.length-1-ri)*58;orbitDraw(mk_(r[0],r[1]),{part:'shape',f:'none',nx:.5,ny:y/OF.h,k:0,sz:sz,a:0,c:false,dx:0,dy:0},t,out,true)})}
+ rows.forEach((r,ri)=>{const y=OF.h-62-(rows.length-1-ri)*58;orbitDraw(mk_(r[0],r[1]),{part:'shape',f:'none',nf:1,nx:.5,ny:y/OF.h,k:0,sz:sz,a:0,c:false,dx:0,dy:0},t,out,true)})}
 /* the video follows the song (play only when the user presses play) */
 function edSync(bv){if(!bv.src||SHBUSY||!VOK||bv.error||vaOn)return;const d=bv.duration;if(!(d>0))return;const t=au.currentTime,tg=((TPL==2?tplVT(t):Math.max(0,t-(CS||0)))%d+d)%d;
  if(au.paused){if(!bv.paused)bv.pause();if(bv.playbackRate!==1)bv.playbackRate=1;if(Math.abs(bv.currentTime-tg)>.08&&!bv.seeking){try{bv.currentTime=tg}catch(_){}}return}
