@@ -1,0 +1,27 @@
+name: Gemini check (manual)
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      K: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - name: Key present
+        run: '[ -n "$K" ] && echo "key length ${#K}" || echo "NO KEY"'
+      - name: Flash models this key can use
+        run: curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200" -H "x-goog-api-key: $K" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('error') or [m['name'] for m in d.get('models',[]) if 'flash' in m['name']])"
+      - name: Text test on gemini-flash-latest
+        run: curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" -H "x-goog-api-key: $K" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Say OK"}]}]}' | head -c 600; echo
+      - name: Worker /mood with 5 s of test audio
+        run: |
+          python3 - <<'P'
+          import base64,io,json,math,struct,wave,urllib.request
+          b=io.BytesIO();w=wave.open(b,'wb');w.setnchannels(1);w.setsampwidth(2);w.setframerate(16000)
+          w.writeframes(b''.join(struct.pack('<h',int(8000*math.sin(2*math.pi*220*i/16000))) for i in range(16000*5)));w.close()
+          body=json.dumps({"audio":base64.b64encode(b.getvalue()).decode(),"scenes":["Car","Aurora calm"],"themes":["Ocean"],"looks":["Chrome","Soft serif"]}).encode()
+          r=urllib.request.Request("https://beatreel-api.renardkatty8.workers.dev/mood",data=body,headers={"Content-Type":"application/json","Origin":"https://beatreelapp.github.io"})
+          try:
+            print(urllib.request.urlopen(r,timeout=60).read()[:600])
+          except Exception as e:
+            print("ERR",e, getattr(e,'read',lambda:b'')()[:600])
+          P
