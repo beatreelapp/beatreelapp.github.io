@@ -43,6 +43,21 @@ def _allow():
         time.sleep(3)
 threading.Thread(target=_allow, daemon=True).start()
 log("APP", ev("APPV+' NAT='+(typeof NAT!=='undefined'&&NAT)"))
+# native start screen: welcome on first launch, then home; nothing may play or open by itself
+time.sleep(2); shot("0b_welcome")
+log("STILL", ev("JSON.stringify({auPaused:au.paused,bgv:!!$('bgv').src,curFile:!!curFile,home:getComputedStyle(document.getElementById('home')).display,mcs:getComputedStyle(document.querySelector('.mcs')).display})"))
+def tap_text(words):
+    x = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
+    import re as _r
+    for w in words:
+        m = _r.search(r'text="' + w + r'"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
+        if m:
+            a1, b1, c1, d1 = map(int, m.groups()); sh(f"adb shell input tap {(a1+c1)//2} {(b1+d1)//2}"); return w
+    return None
+log("WELCOME NEXT", tap_text(["Next"])); time.sleep(1); shot("0c_welcome2")
+log("WELCOME SKIP", tap_text(["Skip"])); time.sleep(2); shot("0d_home")
+log("CLIP SOON", tap_text(["Clipping"])); time.sleep(1); shot("0e_soon")
+log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
 # 1) share the song from "another app" (Android share sheet) and see what the app receives
 ev("window.__SH=null;try{BRN.addListener('shared',d=>{window.__SH=d})}catch(e){window.__SH={err:String(e)}};true")
 import os
@@ -82,6 +97,9 @@ log("ERRORS", ev("JSON.stringify((window.ERRS||[]).slice(-5))"))
 log("SHARE ROW", ev("JSON.stringify({uri:LASTURI,row:!$('shr').hidden,btns:[...$('shr').querySelectorAll('button')].map(b=>b.textContent),save:!$('save').hidden,pv:!$('pv').hidden})"))
 log("SHARE APPS", ev("BRN.shareApps().then(r=>JSON.stringify((r.apps||[]).map(a=>a.id+':'+(a.icon||'').length)))"))
 log("SHARE MORE", ev("BRN.share({uri:LASTURI}).then(()=>'opened').catch(e=>'ERR '+e)")); time.sleep(3); shot("4b_share_sheet"); sh("adb shell input keyevent 4"); time.sleep(2)
+log("HOME AFTER SAVE", ev("BRN.showHome().then(()=>'shown')")); time.sleep(3); shot("4c_home_videos")
+sh("adb shell input keyevent 4"); time.sleep(1); shot("4d_after_back")
+log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
 
 # 3) AI Story for real (Gemini plan + Cloudflare FLUX pictures), with typed lyrics
 log("STORY", ev("""(()=>{L=['I left my home at night','the city lights were cold','I miss your voice','one day I will come back'];RNG=L.map((x,i)=>({s:(CS||0)+i*3,e:(CS||0)+i*3+3}));RW=L.map(()=>[]);$('lyt').value=L.join('\\n');makeStory();return 'started'})()"""))

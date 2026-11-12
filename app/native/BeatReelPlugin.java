@@ -81,42 +81,70 @@ public class BeatReelPlugin extends Plugin {
             if (!Intent.ACTION_SEND.equals(it.getAction())) return;
             Uri u = it.getParcelableExtra(Intent.EXTRA_STREAM);
             if (u == null) return;
-            ContentResolver cr = getContext().getContentResolver();
-            String mime = it.getType();
-            String crMime = cr.getType(u);
-            if (crMime != null) mime = crMime;
-            String name = "shared";
-            try (Cursor c = cr.query(u, new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
-                if (c != null && c.moveToFirst()) {
-                    String n = c.getString(0);
-                    if (n != null && n.length() > 0) name = n;
-                }
-            } catch (Exception ignored) {}
-            File dir = new File(getContext().getCacheDir(), "shared");
-            if (dir.exists()) {
-                File[] old = dir.listFiles();
-                if (old != null) for (File f : old) f.delete();
-            }
-            dir.mkdirs();
-            String safe = name.replaceAll("[^A-Za-z0-9._ -]", "_");
-            File out = new File(dir, System.currentTimeMillis() + "_" + safe);
-            try (InputStream in = cr.openInputStream(u); OutputStream os = new FileOutputStream(out)) {
-                byte[] b = new byte[1 << 16];
-                int n;
-                while ((n = in.read(b)) > 0) os.write(b, 0, n);
-            }
-            JSObject d = new JSObject();
-            d.put("path", out.getAbsolutePath());
-            d.put("name", name);
-            d.put("mime", mime == null ? "" : mime);
-            pendingShare = d;
-            notifyListeners("shared", d, true);
             it.setAction(Intent.ACTION_MAIN); // do not open the same file again after a restart
+            if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).hideHome();
+            deliver(u, it.getType(), null);
         } catch (Exception e) {
             JSObject d = new JSObject();
             d.put("error", String.valueOf(e));
             notifyListeners("shared", d, true);
         }
+    }
+
+    /** A song or video for the editor (shared from another app, or picked on the start screen). Copied in the background. */
+    public void deliver(final Uri u, final String mimeHint, final String want) {
+        new Thread(() -> {
+            try {
+                ContentResolver cr = getContext().getContentResolver();
+                String mime = mimeHint;
+                String crMime = cr.getType(u);
+                if (crMime != null) mime = crMime;
+                String name = "shared";
+                try (Cursor c = cr.query(u, new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
+                    if (c != null && c.moveToFirst()) {
+                        String n = c.getString(0);
+                        if (n != null && n.length() > 0) name = n;
+                    }
+                } catch (Exception ignored) {}
+                File dir = new File(getContext().getCacheDir(), "shared");
+                if (dir.exists()) {
+                    File[] old = dir.listFiles();
+                    if (old != null) for (File f : old) f.delete();
+                }
+                dir.mkdirs();
+                String safe = name.replaceAll("[^A-Za-z0-9._ -]", "_");
+                File out = new File(dir, System.currentTimeMillis() + "_" + safe);
+                try (InputStream in = cr.openInputStream(u); OutputStream os = new FileOutputStream(out)) {
+                    byte[] b = new byte[1 << 16];
+                    int n;
+                    while ((n = in.read(b)) > 0) os.write(b, 0, n);
+                }
+                JSObject d = new JSObject();
+                d.put("path", out.getAbsolutePath());
+                d.put("name", name);
+                d.put("mime", mime == null ? "" : mime);
+                if (want != null) d.put("want", want);
+                pendingShare = d;
+                notifyListeners("shared", d, true);
+            } catch (Exception e) {
+                JSObject d = new JSObject();
+                d.put("error", String.valueOf(e));
+                notifyListeners("shared", d, true);
+            }
+        }).start();
+    }
+
+    /** The editor page asks for the native start screen (its "Home" button), or hides it (tests). */
+    @PluginMethod
+    public void showHome(PluginCall call) {
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).showHome();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void hideHome(PluginCall call) {
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).hideHome();
+        call.resolve();
     }
 
     @PluginMethod

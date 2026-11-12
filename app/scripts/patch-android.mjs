@@ -12,7 +12,10 @@ const must = (ok, what) => { if (!ok) { console.error('PATCH FAILED: ' + what); 
 
 // 1. native code
 fs.mkdirSync(PKG, { recursive: true });
-for (const f of ['MainActivity.java', 'BeatReelPlugin.java']) fs.copyFileSync(`native/${f}`, `${PKG}/${f}`);
+for (const f of ['MainActivity.java', 'BeatReelPlugin.java', 'HomeView.java']) fs.copyFileSync(`native/${f}`, `${PKG}/${f}`);
+// fonts for the native start screen (Audiowide, SIL OFL)
+fs.mkdirSync(`${SRC}/assets/fonts`, { recursive: true });
+for (const f of fs.readdirSync('native/assets/fonts')) fs.copyFileSync(`native/assets/fonts/${f}`, `${SRC}/assets/fonts/${f}`);
 
 // 2. manifest: permissions + "Share to BeatReel"
 const mp = `${SRC}/AndroidManifest.xml`;
