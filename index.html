@@ -174,7 +174,8 @@ select.pks{display:none}
 <div class="tpn m-both" id="tp-sc">
 <div class="row m-edonly" style="display:none"><select id="tpl" class="pks"></select></div><div class="row m-edonly"><select id="obg" class="pks"></select></div><div class="row m-edonly"><select id="obw"><option value="0">Light: one shimmer</option><option value="1">Light: waves</option></select></div>
 <div class="row m-music m-noedit"><select id="sj" class="pks"><option value="0">Subject: Car</option><option value="1">Subject: Vinyl in space</option><option value="2">Subject: Concert</option><option value="3">Subject: Space runner</option><optgroup label="Soft (calm, no bars)"><option value="5">Soft: Aurora</option><option value="6">Soft: Blurred cover</option><option value="7">Soft: Bokeh lights</option><option value="8">Soft: Frosted glass</option><option value="9">Soft: Ink in water</option><option value="11">Soft: Player (cover + lyrics)</option></optgroup></select></div>
-<div class="row m-music m-noedit" id="cvr" style="display:none"><button class="m" id="cvb" type="button">Choose cover image (optional)</button></div>
+<div class="row m-music m-noedit" id="cvr" style="display:none"><button class="m" id="cvb" type="button">🖼 Choose picture (optional)</button></div>
+<div class="row m-music m-noedit" id="plr" style="display:none"><input type="text" id="plt" placeholder="Song name (optional)" autocomplete="off" style="text-align:left"><input type="text" id="pla" placeholder="Artist (optional)" autocomplete="off" style="text-align:left"></div>
 <div class="row m-music m-noedit"><select id="th"></select><select id="cs"></select></div>
 <div class="row m-video"><select id="cbg" class="pks"><option value="0">Background: Blue-grey fog</option><option value="1">Background: Amber fog</option><option value="2">Background: Forest fog</option><option value="3">Background: Ocean fog</option><option value="4">Background: Charcoal fog</option><option value="5">Background: Cinema</option><option value="6">Background: Golden dust</option><option value="7">Background: Blue night</option><option value="8">Background: Warm sand</option><option value="9">Background: Light lines</option></select></div>
 <div class="row m-music m-noedit" id="rsr"><select id="rs"><option value="0">Rhythm: Blocks</option><option value="1">Rhythm: Smooth bars</option><option value="2">Rhythm: Wave</option><option value="3">Rhythm: Dots</option></select></div>
@@ -1007,8 +1008,8 @@ var SFT=(function(){
   c.save();rp(c,x,y,s,s,14);c.clip();const kz=1.06+.03*Math.sin(t*.21);c.drawImage(img,x-(kz-1)*s/2+Math.sin(t*.27)*5,y-(kz-1)*s/2+Math.cos(t*.23)*5,s*kz,s*kz);
   const b=.5+.5*Math.sin(t*.8),gl=c.createLinearGradient(x,y,x+s,y+s);gl.addColorStop(0,'rgba(255,255,255,'+(.1+.08*b)+')');gl.addColorStop(.45,'rgba(255,255,255,0)');c.fillStyle=gl;c.fillRect(x,y,s,s);c.restore();
   c.strokeStyle='rgba(255,255,255,.16)';c.lineWidth=1;rp(c,x+.5,y+.5,s-1,s-1,14);c.stroke();c.restore();
-  let nm=(curFile&&!curVid&&curFile.name||'Your song').replace(/\.[a-z0-9]{2,4}$/i,'').replace(/[_]+/g,' ');c.textAlign='left';c.textBaseline='alphabetic';c.font='700 17px system-ui,sans-serif';while(c.measureText(nm).width>236&&nm.length>4)nm=nm.slice(0,-2)+'…';
-  c.fillStyle='#fff';c.fillText(nm,62,310);c.font='500 12px system-ui,sans-serif';c.fillStyle='rgba(255,255,255,.6)';c.fillText('Now playing',62,327);
+  const fit=(v,f)=>{c.font=f;while(c.measureText(v).width>236&&v.length>4)v=v.slice(0,-2)+'…';return v};c.textAlign='left';c.textBaseline='alphabetic';
+  const n1=PLT||PLA,n2=PLT?PLA:'';if(n1){c.fillStyle='#fff';c.fillText(fit(n1,'700 17px system-ui,sans-serif'),62,n2?310:318)}if(n2){c.fillStyle='rgba(255,255,255,.6)';c.fillText(fit(n2,'500 12px system-ui,sans-serif'),62,327)}
   const d=Math.max(1,(CE<1e8?CE:DUR||1)-(CS||0)),el=Math.max(0,Math.min(d,au.currentTime-(CS||0))),fr=el/d;
   c.fillStyle='rgba(255,255,255,.22)';rp(c,62,343,236,4,2);c.fill();c.fillStyle='#fff';rp(c,62,343,Math.max(4,236*fr),4,2);c.fill();c.beginPath();c.arc(62+236*fr,345,6,0,7);c.fill();
   const mm=v=>Math.floor(v/60)+':'+String(Math.floor(v%60)).padStart(2,'0');c.font='500 11px system-ui,sans-serif';c.fillStyle='rgba(255,255,255,.6)';c.fillText(mm(el),62,364);c.textAlign='right';c.fillText('-'+mm(d-el),298,364);
@@ -1353,12 +1354,15 @@ function orbitTitle(){c.drawImage(orbitGrain(),0,0,W,H);if(!OFFX&&ETOPEN&&au.pau
  if(sn){c.font='500 26px system-ui,sans-serif';c.fillStyle=lt?'rgba(20,24,29,.6)':'rgba(255,255,255,.6)';let x=sn;while(c.measureText(x).width>W-100&&x.length>4)x=x.slice(0,-2);c.fillText(x===sn?x:x+'…',W/2,OF.y-30)}
  c.restore()}
 var cvUser=false;
-function id3Cover(f){if(!/mp3|mpeg/i.test(f.type+f.name))return;f.slice(0,1500000).arrayBuffer().then(b=>{const d=new Uint8Array(b);if(d[0]!=73||d[1]!=68||d[2]!=51)return;const ver=d[3],tot=((d[6]&127)<<21)|((d[7]&127)<<14)|((d[8]&127)<<7)|(d[9]&127);let p=10;const end=Math.min(d.length,10+tot);
+var PLT='',PLA='';function plSet(k,v){if(k==='t'){PLT=v;try{$('plt').value=v}catch(_){}}else{PLA=v;try{$('pla').value=v}catch(_){}}}
+(()=>{const a=$('plt'),b=$('pla');if(a)a.oninput=()=>{PLT=a.value.trim()};if(b)b.oninput=()=>{PLA=b.value.trim()}})();
+function id3Cover(f){plSet('t','');plSet('a','');if(!/mp3|mpeg/i.test(f.type+f.name))return;f.slice(0,1500000).arrayBuffer().then(b=>{const d=new Uint8Array(b);if(d[0]!=73||d[1]!=68||d[2]!=51)return;const ver=d[3],tot=((d[6]&127)<<21)|((d[7]&127)<<14)|((d[8]&127)<<7)|(d[9]&127);let p=10;const end=Math.min(d.length,10+tot);
  while(p+10<end){const id=String.fromCharCode(d[p],d[p+1],d[p+2],d[p+3]);let sz=ver==4?((d[p+4]&127)<<21)|((d[p+5]&127)<<14)|((d[p+6]&127)<<7)|(d[p+7]&127):(d[p+4]<<24)|(d[p+5]<<16)|(d[p+6]<<8)|d[p+7];if(!sz||!/^[A-Z0-9]{4}$/.test(id))break;
+  if((id==='TIT2'||id==='TPE1')&&sz>1){const e=d[p+10],raw=d.slice(p+11,p+10+sz);let tx='';try{tx=new TextDecoder(e==1?'utf-16':e==2?'utf-16be':e==3?'utf-8':'latin1').decode(raw)}catch(_){}tx=tx.replace(/\u0000/g,' ').trim().slice(0,60);if(tx)plSet(id==='TIT2'?'t':'a',tx)}
   if(id==='APIC'){let q=p+10;const enc=d[q++];while(q<end&&d[q])q++;q++;q++;if(enc==1||enc==2){while(q+1<end&&!(d[q]==0&&d[q+1]==0))q+=2;q+=2}else{while(q<end&&d[q])q++;q++}
-   const img=d.slice(q,p+10+sz),u=URL.createObjectURL(new Blob([img])),im=new Image();im.onload=()=>{if(!cvUser)SFT.setImg(im);URL.revokeObjectURL(u)};im.src=u;return}
+   const img=d.slice(q,p+10+sz),u=URL.createObjectURL(new Blob([img])),im=new Image();im.onload=()=>{if(!cvUser)SFT.setImg(im);URL.revokeObjectURL(u)};im.src=u}
   p+=10+sz}}).catch(()=>{})}
-function softUI(){const soft=SJ>=5;try{$('rsr').style.display=soft?'none':'';$('th').style.display=SJ==10?'none':'';$('cvr').style.display=SJ==6||SJ==11?'':'none'}catch(_){}}
+function softUI(){const soft=SJ>=5;try{$('rsr').style.display=soft?'none':'';$('th').style.display=SJ==10?'none':'';$('cvr').style.display=SJ==6||SJ==11?'':'none';$('plr').style.display=SJ==11?'':'none'}catch(_){}}
 
 var drawSpace_reset;
 var drawSpace=(function(){
@@ -1829,7 +1833,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v58';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v59';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
