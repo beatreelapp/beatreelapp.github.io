@@ -655,7 +655,8 @@ async function stripe(env, method, path, form) {
 // Pro rows checked before payments went live (test mode) are checked again at once
 const LIVE_SINCE = Date.parse("2026-11-10T20:55:00Z");
 // the owner's free Pro code: only its SHA-256 is here, the code itself is kept by the owner
-const OWNER_HASH = "acdc6f23621658d6567f27f164aa9718d095b8af3835f40520ef3410969ac918";
+// owner codes (only their SHA-256 is here); the second one was made on Nov 12 2026 when the first was forgotten
+const OWNER_HASH = ["acdc6f23621658d6567f27f164aa9718d095b8af3835f40520ef3410969ac918", "53dddd511871a673c0b15e9df148ddcff5956fb628d411715132e7795825d854"];
 const YT_ON = true, YT_PRO_ONLY = true, CLIPS_ON = false; // YouTube link: test phase, Pro only (app shows TEST to Pro, Soon to others)
 const ACTIVE = ["active", "trialing", "past_due"];
 
@@ -823,7 +824,7 @@ async function account(env, route, body, req) {
     const code = String(body.code || "").trim().toUpperCase();
     if (!/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) return { status: 404, body: { error: "bad_code" } };
     let row = await b.byCode(code);
-    if (!row && (await sha(code)) === OWNER_HASH) row = await b.owner(code);
+    if (!row && OWNER_HASH.includes(await sha(code))) row = await b.owner(code);
     if (!row) return { status: 404, body: { error: "bad_code" } };
     const st = await subStatus(env, b, row, true);
     if (!ACTIVE.includes(st)) return { status: 402, body: { error: "not_active" } };
