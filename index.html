@@ -995,7 +995,12 @@ var SFT=(function(){
 })();
 function drawSoft(){SFT.draw(SJ)}
 /* ===== Orbit Edit (SJ 10, Pro): the user's video in a still square frame on black, TikTok edit look ===== */
-const OF={x:60,y:320,w:600,h:600};var OGR=null;
+const OF={x:30,y:340,w:660,h:660};var OGR=null,OFT=210,OFV=830;
+/* smart frame: the Edit frame takes the shape of the video (square, 4:5, tall) and stays still */
+function ofFit(vw,vh){const a=vw&&vh?vh/vw:1;let w=660,h=a<1.08?660:a<1.5?Math.round(660*Math.min(a,1.25)):1040;const y=a>=1.5?150:Math.round(120+(1280-180-h)/2);
+ if(!(OF.w===w&&OF.h===h&&OF.y===y)){OF.x=(720-w)/2;OF.y=y;OF.w=w;OF.h=h;FLM=null;SCV=null;try{OBC.clear()}catch(_){}}
+ OFT=Math.max(0,OF.y-130);OFV=Math.min(1280-OFT,OF.h+170);edCrop()}
+function edCrop(){try{cv.style.setProperty('--ofty',(-OFT/1280*100)+'%');const a=$('vadd').style;a.left=(OF.x/720*100)+'%';a.width=(OF.w/720*100)+'%';a.top=((OF.y-OFT)/OFV*100)+'%';a.height=(OF.h/OFV*100)+'%';if(typeof EDFIT==='function')EDFIT()}catch(_){}}
 function orbitGrain(){if(OGR)return OGR;OGR=document.createElement('canvas');OGR.width=360;OGR.height=640;const x=OGR.getContext('2d'),d=x.createImageData(360,640);let r=12345;for(let i=0;i<d.data.length;i+=4){r=(r*1103515245+12345)&0x7fffffff;const v=r%256;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=10}x.putImageData(d,0,0);return OGR}
 const OBGS=[['Black (classic edit)'],['Light sky blue',[200,221,236],[80,130,180]],['Pearl grey',[210,216,224],[110,125,145]],['Ice blue',[214,230,240],[90,140,175]],['Mint',[206,232,224],[70,145,120]],['Misty teal',[198,226,228],[60,135,140]],['Silver',[220,223,227],[120,128,140]],['Powder blue',[196,212,232],[85,115,165]],['Sage',[214,224,212],[105,135,100]]];
 var OBG=1,OBW=0;try{const a=localStorage.getItem('br_obg'),b=localStorage.getItem('br_obw');if(a!=null&&OBGS[+a])OBG=+a;if(b!=null)OBW=+b?1:0}catch(_){}
@@ -1066,7 +1071,7 @@ function tplPost(bv){if(!TPL||!bv.src)return;const R=OF;c.save();c.beginPath();c
  q.onchange=()=>{TPL=+q.value;try{localStorage.setItem('br_tpl',TPL)}catch(_){}if(TPL==2)beatScan();const bv=$('bgv');if(TPL!=2&&bv.playbackRate!==1)bv.playbackRate=1;try{TPL&&hit('tpl_'+TPL)}catch(_){}
   if(SJ==10)msg.textContent=TPL?'Template "'+TPLS[TPL]+'" ✓ Press play to see it.':'No template.'}})();
 function songName(){if(!curFile||curVid)return'';return curFile.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').replace(/\s*[\(\[][^\)\]]*(official|lyrics?|audio|video|visuali[sz]er|hd|4k)[^\)\]]*[\)\]]/ig,'').replace(/\s+/g,' ').trim()}
-function sceneUI(){document.body.classList.toggle('ed',SJ==10);etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap a shot below, then choose the words in "Text".':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
+function sceneUI(){document.body.classList.toggle('ed',SJ==10);if(SJ==10){const b_=$('bgv');ofFit(b_.src?b_.videoWidth:1,b_.src?b_.videoHeight:1)}etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap a shot below, then choose the words in "Text".':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
 var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOPEN=false,SHAUTO='';
 /* ---- shots: the video is cut into shots where the picture changes at once; each shot keeps its own text place ---- */
 function shotDef(){return{part:'shape',x:OH.x,y:OH.y,r:OH.r,f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5}}
@@ -1663,7 +1668,7 @@ $('vf').onchange=e=>{const f=e.target.files[0];if(!f)return;const v=$('bgv');VOK
 
  v.muted=true;v.defaultMuted=true;v.playsInline=true;v.loop=true;v.removeAttribute('src');v.src=URL.createObjectURL(f);v.load();
  if(SJ!=10)v.play().catch(()=>{});$('vx').hidden=false;msg.textContent='Loading video...';
- v.onloadeddata=()=>{VOK=true;$('vadj').hidden=false;etBtn();if(SJ!=10)openVA();else{SH=[];SHK='';etClose();shotScan()}if(SJ!=10&&isFinite(v.duration)&&v.duration>1&&DUR&&v.duration<CE-CS-.5){CE=CS+v.duration;clipUI();msg.textContent='Your clip was shortened to '+Math.round(v.duration)+'s to match your video. Drag the pink edges to change it.';return}msg.textContent=curVid?"Using your video's sound. Open \"Captions\" and tap \"Auto captions\" to get the words.":'Video added at the bottom, behind the bars.'};
+ v.onloadeddata=()=>{VOK=true;if(SJ==10)ofFit(v.videoWidth,v.videoHeight);$('vadj').hidden=false;etBtn();if(SJ!=10)openVA();else{SH=[];SHK='';etClose();shotScan()}if(SJ!=10&&isFinite(v.duration)&&v.duration>1&&DUR&&v.duration<CE-CS-.5){CE=CS+v.duration;clipUI();msg.textContent='Your clip was shortened to '+Math.round(v.duration)+'s to match your video. Drag the pink edges to change it.';return}msg.textContent=curVid?"Using your video's sound. Open \"Captions\" and tap \"Auto captions\" to get the words.":'Video added at the bottom, behind the bars.'};
  v.onerror=()=>{bug('video_load',(v.error?v.error.code:'?')+' '+(f.type||'')+' '+Math.round(f.size/1048576)+'MB');msg.textContent="This video can't be played here. Try an MP4 (H.264) file, ideally 1080p or smaller."};
  setTimeout(()=>{if(v.src&&!VOK&&!v.error)msg.textContent='The video is not showing yet. Tap the screen once to start it, or try an MP4 (H.264) file.'},4000)};
 cv.addEventListener('click',()=>{const v=$('bgv');if(SJ!=10&&v.src&&v.paused)v.play().catch(()=>{})});
@@ -1745,7 +1750,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v52';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v53';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2782,8 +2787,8 @@ function pkSync(){document.querySelectorAll('.pk').forEach(k=>{const v=k._src.va
 #edtm{font:500 13px system-ui,sans-serif;color:#9aa3ad}
 #eds{flex:1 1 auto;min-height:0;display:flex;justify-content:center;align-items:center;padding:0 8px}
 #eds #cvw{flex:0 0 auto;position:relative;overflow:hidden;border-radius:14px;background:#0d0f11}
-#eds #cv{position:absolute;left:0;top:0;width:100%;height:auto;aspect-ratio:9/16;transform:translateY(-14.84375%);touch-action:none;border-radius:0}
-#eds #vadd{left:8.333%;top:16.667%;width:83.333%;height:76.923%}
+#eds #cv{position:absolute;left:0;top:0;width:100%;height:auto;aspect-ratio:9/16;transform:translateY(var(--ofty,-16.40625%));touch-action:none;border-radius:0}
+#eds #vadd{left:4.1667%;top:15.663%;width:91.667%;height:79.518%}
 #edpn[hidden]{display:none}
 #edx #edpx{float:right;background:transparent;border:0;font-size:18px;padding:0 4px;color:#9aa3ad}
 #edx .exp{display:flex;align-items:center;gap:8px;padding:8px 10px 4px}
@@ -2859,7 +2864,7 @@ function edBuild(){if($('edx'))return;const d=document.createElement('div');d.id
  $('edpl').onclick=()=>{if(!au.src){$('f').click();return}setup();ac.resume();if(au.paused){if(au.currentTime<CS||au.currentTime>=CE-.05)au.currentTime=CS;au.play().catch(()=>{})}else au.pause()};
  d.querySelectorAll('#edbar [data-p]').forEach(b=>b.onclick=()=>edShow(b.getAttribute('data-p')));
  edTouch();edLoop();
- const fit=()=>{const st=$('eds'),cw=$('cvw');if(!st||!cw||cw.parentNode!==st)return;const w=st.clientWidth-16,h=st.clientHeight,k=780/720,ww=Math.max(60,Math.min(w,h/k));cw.style.width=Math.floor(ww)+'px';cw.style.height=Math.floor(ww*k)+'px'};
+ const fit=()=>{const st=$('eds'),cw=$('cvw');if(!st||!cw||cw.parentNode!==st)return;const w=st.clientWidth-16,h=st.clientHeight,k=OFV/720,ww=Math.max(60,Math.min(w,h/k));cw.style.width=Math.floor(ww)+'px';cw.style.height=Math.floor(ww*k)+'px'};
  try{new ResizeObserver(fit).observe($('eds'))}catch(_){}setInterval(fit,500);EDFIT=fit}
 function edOpen(){edBuild();if(EDON)return;EDON=true;$('edx').hidden=false;edMove($('cvw'),$('eds'));edShow(EDP,1);document.body.style.overflow='hidden'}
 function edClose(){if(!EDON)return;EDON=false;ETOPEN=false;edRestore();$('edx').hidden=true;document.body.style.overflow=''}
