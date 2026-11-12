@@ -27,7 +27,7 @@ jobs:
               if i%2==0:
                   fr.append(f.convert('RGBA').resize((192,192),Image.LANCZOS));du.append(d)
               else: du[-1]+=d
-          fr[0].save('emoji/anim/'+c+'.webp',save_all=True,append_images=fr[1:],duration=du,loop=0,quality=70,method=6,lossless=False,minimize_size=True)
+          fr[0].save('emoji/anim/'+c+'.webp',save_all=True,append_images=fr[1:],duration=du,loop=0,quality=70,method=3,lossless=False)
           print(c,len(fr),sum(du))
           PY
             else echo "missing $c"; fi
