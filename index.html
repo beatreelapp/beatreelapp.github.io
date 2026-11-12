@@ -1702,7 +1702,7 @@ function chorusLine(i){try{if(SJ==10||!HOOK||HOOK.key!==CFK||!RNG||!RNG[i]||L.le
 var GMOOD=null;
 const GSCN=[[0,'Car: night city drive, retro'],[1,'Vinyl record spinning in space'],[2,'Concert stage, lights and crowd'],[3,'Space runner, arcade energy'],[5,'Aurora: calm northern lights'],[6,'Album cover blurred, music player'],[7,'Bokeh: soft out-of-focus lights'],[8,'Frosted glass: soft and modern'],[9,'Ink in water: slow, emotional']],GTHA=[2,3,5,8,9,11];
 async function gemMood(f){try{const to=Math.min(CE<1e8?CE:DUR,DUR||1e9,(CS||0)+30),pcm=await pcm16k(f,CS||0,to);if(CFK!==f||pcm.length<16000*4)return null;
- const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),35000);let r;
+ const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),55000);let r;
  try{r=await fetch(API_URL+'/mood',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body:JSON.stringify({audio:wavB64(pcm),scenes:GSCN.map(x=>x[1]),themes:GTHA.map(i=>TH[i].n),looks:MLOOKS.map(x=>x.n+': '+x.d),job:AIJOB||''})})}finally{clearTimeout(tm)}
  const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error||!Number.isInteger(j.scene)||!GSCN[j.scene])return null;j.k=f;return j}catch(_){return null}}
 async function autoPilot(f){if(!APON||curVid||EDIT||SJ==10||SJ==4||CFK!==f||acBusy)return;
@@ -1858,7 +1858,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v62';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v63';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);

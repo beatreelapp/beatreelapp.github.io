@@ -190,7 +190,8 @@ function groqToCf(g, vad) {
 
 // Song understanding: Google Gemini Flash (free plan, secret GEMINI_API_KEY) LISTENS to up to 30 s of the song
 // and picks scene, colour theme and lyric look from the menus the app sends. The app falls back to its own tempo/key guess if this fails.
-const GEMINI_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"];
+// tested Nov 12 2026 from GitHub Actions: 3.5 Flash 4-22 s, 3.1 Flash-Lite ~4 s; "latest" aliases often 503 (high demand), 2.5 closed to new users
+const GEMINI_MODELS = [["gemini-3.5-flash", 24000], ["gemini-3.1-flash-lite", 12000], ["gemini-3.6-flash", 15000]];
 async function mood(env, body) {
   const audio = typeof body.audio === "string" ? body.audio : "";
   if (!audio || audio.length > 4_000_000) throw bad("audio required (max ~30 s)");
@@ -208,21 +209,21 @@ async function mood(env, body) {
     "SCENES (background):\n" + list(scenes) + "\n" + (themes.length ? "COLOUR THEMES (used with scenes 0-3 only):\n" + list(themes) + "\n" : "") +
     "LYRIC LOOKS:\n" + list(looks);
   let last = "";
-  for (const m of GEMINI_MODELS) {
-    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 25000);
+  for (const [m, ms] of GEMINI_MODELS) {
+    const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
     try {
       const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent", {
         method: "POST", signal: ctl.signal,
         headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ inline_data: { mime_type: "audio/wav", data: audio } }, { text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 400 },
+          generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 2000, thinkingConfig: { thinkingLevel: "low" } },
         }),
       });
       const t = await r.text();
       if (!r.ok) { last = "gemini " + m + " " + r.status + " " + t.slice(0, 160); if (r.status === 404 || r.status === 400) continue; if (r.status === 429) continue; continue; }
       let j = null; try { j = JSON.parse(t); } catch (_) {}
-      const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts.map((p) => p.text || "").join("");
+      const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts.filter((p) => !p.thought).map((p) => p.text || "").join("");
       const mm = /\{[\s\S]*\}/.exec(txt || "");
       if (!mm) { last = "gemini " + m + " no json"; continue; }
       const o = JSON.parse(mm[0]), int = (v, n) => (Number.isInteger(+v) && +v >= 0 && +v < n ? +v : -1);
