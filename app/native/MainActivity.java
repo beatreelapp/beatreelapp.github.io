@@ -1,5 +1,6 @@
 package io.github.beatreelapp.twa;
 
+import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.WebView;
@@ -13,6 +14,8 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(BeatReelPlugin.class);
         super.onCreate(savedInstanceState);
+        // Test app only (debug build): lets the automatic test on the virtual phone drive the page. Never on in the real app.
+        if ((getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0) WebView.setWebContentsDebuggingEnabled(true);
 
         // Phone Back button:
         // - on the Stripe pay / subscription page -> back to the app (payment cancelled)

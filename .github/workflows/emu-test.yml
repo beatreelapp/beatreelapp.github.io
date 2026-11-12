@@ -1,0 +1,56 @@
+name: Test on virtual phone
+on:
+  workflow_run:
+    workflows: ["Build Android app"]
+    types: [completed]
+  workflow_dispatch:
+concurrency:
+  group: emu-test
+  cancel-in-progress: true
+jobs:
+  test:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM (fast virtual phone)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Get the test app and make a test song
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download apk-test -p BeatReel-test.apk -R ${{ github.repository }}
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          python3 -m pip install -q websocket-client numpy
+          python3 - <<'P'
+          import numpy as np, wave
+          sr=22050
+          def chord(fs,d,a,beat=True):
+              t=np.arange(int(sr*d))/sr; y=sum(np.sin(2*np.pi*f*t) for f in fs)/len(fs)
+              if beat: y=y*(0.6+0.4*np.exp(-((t*2)%1)*6))
+              return a*y
+          A=[[220,277,330],[196,247,294]]; B=[[262,330,392],[349,440,523],[294,370,440],[392,494,587]]
+          seg=lambda p,d,a:np.concatenate([chord(p[i%len(p)],2,a) for i in range(int(d/2))])
+          s=np.concatenate([chord([110,165],8,.15,False),seg(A,16,.35),seg(B,16,.8),seg(A,16,.35),seg(B,16,.8),chord([110,165],8,.15,False)])
+          d=(np.clip(s,-1,1)*32000).astype(np.int16); w=wave.open('t.wav','wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr); w.writeframes(d.tobytes()); w.close()
+          P
+          ffmpeg -loglevel error -y -i t.wav -b:a 128k -metadata title="Test Song" -metadata artist="BeatReel Bot" test-song.mp3
+          ls -la BeatReel-test.apk test-song.mp3
+      - name: Run the app on a virtual Android phone
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash .github/emu/test.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emu
+          path: shots/
