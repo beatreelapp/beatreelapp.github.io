@@ -96,6 +96,7 @@ export default {
       if (route === "/story") {
         const out = await story(env, body);
         if (out._err) ctx.waitUntil(stub(env).err("story-server", "story", out._err, "api", "server").catch(() => {}));
+        if (out.error) out.detail = String(out._err || "").slice(0, 200);
         delete out._err;
         return Response.json(out, { status: out.error ? 503 : 200, headers: cors });
       }

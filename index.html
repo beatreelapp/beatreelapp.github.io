@@ -1713,13 +1713,13 @@ async function makeStory(){const b=$('stb');if(b.disabled)return;if(!curFile||cu
  b.disabled=true;const old=b.textContent;b.textContent='✨ Drawing your story…';let job='';const t0=performance.now(),tk=setInterval(()=>{msg.textContent='✨ AI is drawing your story… '+Math.round((performance.now()-t0)/1000)+'s (about 20-60 s). Keep this page open.'},1000);
  try{const cj=await coinJob();if(cj&&cj.no){clearInterval(tk);await outOfCoins();return}if(!cj||!cj.job){msg.textContent='The AI is not available right now. Try again in a minute.';return}job=cj.job;
   const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),150000);let r;try{r=await fetch(API_URL+'/story',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body:JSON.stringify({job:job,lines:L})})}finally{clearTimeout(tm)}
-  const j=await r.json().catch(()=>null);if(!r.ok||!j||!Array.isArray(j.scenes)||!j.scenes.length)throw new Error((j&&j.error)||('server '+r.status));
+  const j=await r.json().catch(()=>null);if(!r.ok||!j||!Array.isArray(j.scenes)||!j.scenes.length)throw new Error(((j&&j.error)||('server '+r.status))+(j&&j.detail?' | '+j.detail:''));
   const sc=[];for(const x of j.scenes){const bin=atob(x.img),u=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)u[k]=bin.charCodeAt(k);const img=await createImageBitmap(new Blob([u],{type:'image/jpeg'}));
    const a=RNG[Math.max(0,Math.min(RNG.length-1,x.from))],e=RNG[Math.max(0,Math.min(RNG.length-1,x.to))];sc.push({s:a?a.s:0,e:e?e.e:0,img:img})}
   sc.sort((p,q)=>p.s-q.s);sc[0].s=Math.min(sc[0].s,CS||0);sc[sc.length-1].e=Math.max(sc[sc.length-1].e,CE<1e8?CE:DUR||9999);for(let k=0;k+1<sc.length;k++)sc[k].e=sc[k+1].s;
   STORY={k:stKey(),sc:sc,look:j.look};const q=$('sj');q.value=12;q.dispatchEvent(new Event('change'));try{pkSync()}catch(_){}
   clearInterval(tk);msg.textContent='✨ AI Story ready: '+sc.length+' pictures that follow your lyrics. Press Play, then Download.';setup();ac.resume();au.currentTime=CS||0;au.play().catch(()=>{})}
- catch(e){clearInterval(tk);if(job)coinRefund(job);const m=String((e&&e.message)||e);bug('story',m);msg.textContent=m==='draw_failed'||m==='plan_failed'?'The AI could not draw this story right now. Your coin was given back. Try again later.':'Could not make the story ('+m.slice(0,60)+'). Your coin was given back.'}
+ catch(e){clearInterval(tk);if(job)coinRefund(job);const m=String((e&&e.message)||e);window.__STERR=m;bug('story',m);msg.textContent=/^(draw_failed|plan_failed)/.test(m)?'The AI could not draw this story right now. Your coin was given back. Try again later.':'Could not make the story ('+m.slice(0,60)+'). Your coin was given back.'}
  finally{clearInterval(tk);b.disabled=false;b.textContent=old}}
 (()=>{const b=$('stb');if(b)b.onclick=makeStory})();
 /* Gemini (free, on our server) LISTENS to up to 30 s of the best part and picks scene, colours and lyric look. If it fails, the app guesses from tempo and key */
@@ -1882,7 +1882,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v65';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v66';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);

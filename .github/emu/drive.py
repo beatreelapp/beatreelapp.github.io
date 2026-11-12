@@ -75,6 +75,7 @@ while time.time() - t0 < 170:
     if m != last and "drawing your story" not in m: log(f"[{int(time.time()-t0)}s] MSG:", m[:200]); last = m
     if "Story ready" in m or "Could not" in m or "could not" in m: break
     time.sleep(3)
+log("STORY ERROR", ev("String(window.__STERR||'')"))
 log("STORY STATE", ev("JSON.stringify(STORY?{n:STORY.sc.length,look:STORY.look,size:STORY.sc.map(x=>x.img.width+'x'+x.img.height)}:null)"))
 for k, tt in enumerate([0.5, 3.5, 6.5, 9.5]):
     ev(f"au.pause();au.currentTime=(CS||0)+{tt};true"); time.sleep(1.5); shot(f"5_story_{k}")
