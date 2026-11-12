@@ -226,7 +226,7 @@ select.pks{display:none}
 <div class="gl">Your clip</div>
 <canvas id="wf"></canvas><canvas id="wo" hidden></canvas>
 <div class="row" style="align-items:center"><button id="cp" class="cpb">Play</button><div id="ct"></div><button id="cr" class="cpb">Reset</button></div>
-<p id="cn"></p><p style="margin:4px 4px 0;font-size:12px;opacity:.5">Tip: drag the wave to scroll, drag the blue box to move it, drag its edges to resize it, tap to listen from there.</p>
+<div class="row" id="hkr" style="gap:8px"><button id="hk15" class="cpb" style="flex:1;white-space:nowrap">✨ Best 15s</button><button id="hk30" class="cpb" style="flex:1;white-space:nowrap">✨ Best 30s</button></div><p id="cn"></p><p style="margin:4px 4px 0;font-size:12px;opacity:.5">Tip: drag the wave to scroll, drag the blue box to move it, drag its edges to resize it, tap to listen from there.</p>
 </div>
 <video id="pv" controls playsinline hidden style="width:100%;margin-top:10px;border-radius:12px"></video>
 <input type="file" id="mf" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.flac" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none">
@@ -1606,19 +1606,44 @@ function drawRhythm(){
  for(let i=0;i<NB;i++){const n=Math.round(sm[i]*10),x=i*bw+bw/2;for(let k=0;k<n;k++){c.fillStyle='rgb('+lerp(Math.min(1,k/10))+')';c.beginPath();c.arc(x,base-12-k*20,Math.max(3,bw*.3),0,7);c.fill()}}
 }
 
-var CS=0,CE=1e9,DUR=0,PK=null,PKN=0,CFK=null,VS=0,VW=60,CMODE=null,CMV=false,CPV=0,GOFF=0,LX=0,CX0=0,VS0=0,CLIM=0;
+var CUSER=0,HKA=0,HOOK=null,CS=0,CE=1e9,DUR=0,PK=null,PKN=0,CFK=null,VS=0,VW=60,CMODE=null,CMV=false,CPV=0,GOFF=0,LX=0,CX0=0,VS0=0,CLIM=0;
 function maxLen(){return PRO?1e9:30}
 function fmt(t){t=Math.max(0,t);const m=Math.floor(t/60),x=Math.floor(t%60);return m+':'+(x<10?'0':'')+x}
 function clampVS(){VS=Math.max(0,Math.min(Math.max(0,DUR-VW),VS))}
-function initClip(d){if(!isFinite(d)||d<=0)return;DUR=d;CS=0;CE=Math.min(d,maxLen());VW=Math.min(60,d);VS=0;$('ce').hidden=false;clipUI()}
-function clipUI(){$('ct').textContent=fmt(CS)+' - '+fmt(CE)+'  ('+Math.round(CE-CS)+'s)';$('cn').textContent=PRO?'Pro: no clip limit.':'Up to 30 seconds free. Pro: no limit.';$('wo').hidden=DUR<=VW+.5}
+function initClip(d){if(!isFinite(d)||d<=0)return;CUSER=0;HKA=0;DUR=d;CS=0;CE=Math.min(d,maxLen());VW=Math.min(60,d);VS=0;$('ce').hidden=false;clipUI()}
+function clipUI(){$('ct').textContent=fmt(CS)+' - '+fmt(CE)+'  ('+Math.round(CE-CS)+'s)';$('cn').textContent=(HKA?'✨ Best part of the song picked for you. ':'')+(PRO?'Pro: no clip limit.':'Up to 30 seconds free. Pro: no limit.');$('wo').hidden=DUR<=VW+.5}
 function peakAt(t0,t1){if(!PK)return .08;let a=Math.max(0,Math.floor(t0/DUR*PKN)),b=Math.min(PKN,Math.max(a+1,Math.ceil(t1/DUR*PKN))),m=0;for(let i=a;i<b;i++)if(PK[i]>m)m=PK[i];return m}
+/* ===== Best part finder: finds the strongest part of the song that comes back (usually the chorus), on the phone, no server ===== */
+function hkFFT(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
+ for(let len=2;len<=n;len<<=1){const a=-2*Math.PI/len,wr=Math.cos(a),wi=Math.sin(a);for(let i=0;i<n;i+=len){let cr=1,ci=0;for(let k=0;k<len/2;k++){const u=i+k,v=u+len/2,xr=re[v]*cr-im[v]*ci,xi=re[v]*ci+im[v]*cr;re[v]=re[u]-xr;im[v]=im[u]-xi;re[u]+=xr;im[u]+=xi;const nr=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=nr}}}}
+async function hookPrep(ab,key){HOOK=null;const sr=ab.sampleRate,c0=ab.getChannelData(0),c1=ab.numberOfChannels>1?ab.getChannelData(1):c0,ds=Math.max(1,Math.round(sr/11025)),fs=sr/ds,hop=Math.round(fs*.25),M=2048,N=Math.floor((c0.length/ds-M)/hop);if(N<60)return;
+ const ch=new Float32Array(N*12),en=new Float32Array(N),re=new Float32Array(M),im=new Float32Array(M),win=new Float32Array(M),pcb=new Int8Array(M/2);
+ for(let i=0;i<M;i++)win[i]=.5-.5*Math.cos(2*Math.PI*i/M);for(let k=0;k<M/2;k++){const f=k*fs/M;pcb[k]=f<80||f>2000?-1:((Math.round(12*Math.log2(f/261.63))%12)+12)%12}
+ for(let f=0;f<N;f++){const a=f*hop*ds;let e=0;for(let i=0;i<M;i++){const j=a+i*ds,v=(c0[j]+c1[j])*.5;re[i]=v*win[i];im[i]=0;e+=v*v}en[f]=Math.sqrt(e/M);hkFFT(re,im);
+  for(let k=1;k<M/2;k++){const p=pcb[k];if(p>=0)ch[f*12+p]+=Math.log(1+40*Math.hypot(re[k],im[k]))}
+  if(f%120===119){await new Promise(r=>setTimeout(r,0));if(CFK!==key)return}}
+ const sm=new Float32Array(N*12);for(let f=0;f<N;f++){let n2=0;for(let p=0;p<12;p++){let v=0;for(let k=Math.max(0,f-2);k<=Math.min(N-1,f+2);k++)v+=ch[k*12+p];sm[f*12+p]=v;n2+=v*v}n2=Math.sqrt(n2)||1;for(let p=0;p<12;p++)sm[f*12+p]/=n2}
+ HOOK={key:key,N:N,ch:sm,en:en,dt:.25}}
+function hookPick(L){const H=HOOK;if(!H)return null;const N=H.N,Lf=Math.min(N,Math.round(L/H.dt));if(Lf>=N-4)return{s:0};const S=N-Lf+1,rep=new Float32Array(S),minLag=Math.round(10/H.dt),d=new Float32Array(N+1);
+ for(let lag=minLag;lag<N-8;lag++){d[0]=0;for(let i=0;i+lag<N;i++){let v=0;for(let p=0;p<12;p++)v+=H.ch[i*12+p]*H.ch[(i+lag)*12+p];d[i+1]=d[i]+v}const n=N-lag;
+  for(let st=0;st<S;st++){if(st+Lf<=n){const m=(d[st+Lf]-d[st])/Lf;if(m>rep[st])rep[st]=m}const b=st-lag;if(b>=0&&b+Lf<=n){const m=(d[b+Lf]-d[b])/Lf;if(m>rep[st])rep[st]=m}}}
+ const ep=new Float32Array(N+1);for(let i=0;i<N;i++)ep[i+1]=ep[i]+H.en[i];let rmn=1e9,rmx=-1e9,emx=1e-9;const ew=new Float32Array(S);
+ for(let st=0;st<S;st++){ew[st]=(ep[st+Lf]-ep[st])/Lf;if(ew[st]>emx)emx=ew[st];if(rep[st]<rmn)rmn=rep[st];if(rep[st]>rmx)rmx=rep[st]}
+ let best=0,bs=-1e9;const intro=Math.round(8/H.dt);for(let st=0;st<S;st++){const r=rmx>rmn?(rep[st]-rmn)/(rmx-rmn):0,e=ew[st]/emx,e3=(ep[Math.min(N,st+12)]-ep[st])/Math.max(1,Math.min(N,st+12)-st)/emx,sc=.5*r+.38*e+.17*e3-(st<intro?.12:0);if(sc>bs+1e-6){bs=sc;best=st}}
+ let t=best*H.dt,bi=best,br=-1;for(let i=Math.max(1,best-6);i<=Math.min(N-1,best+4);i++){const rr=H.en[i]-H.en[i-1];if(rr>br){br=rr;bi=i}}t=bi*H.dt;
+ if(BEAT&&BEAT.key===au.src&&BEAT.t.length){let nb=null;for(const b of BEAT.t)if(Math.abs(b-t)<.4&&(nb==null||Math.abs(b-t)<Math.abs(nb-t)))nb=b;if(nb!=null)t=nb}
+ return{s:Math.max(0,Math.min(DUR-L,t-.05))}}
+function hookUse(L,auto){if(!HOOK||HOOK.key!==CFK){msg.textContent='Still listening to the song… try again in a few seconds.';return}L=Math.min(L,DUR,maxLen());const r=hookPick(L);if(!r)return;
+ HKA=1;CS=r.s;CE=Math.min(DUR,CS+L);VW=Math.min(DUR,Math.max(60,(CE-CS)*1.4));VS=CS-(VW-(CE-CS))/2;clampVS();clipUI();au.pause();au.currentTime=CS;
+ msg.textContent='✨ Best part picked: '+fmt(CS)+' – '+fmt(CE)+(auto?'. Tap Reset to start from the beginning.':'. Press Play to listen.');try{hit('hook')}catch(_){}}
+(()=>{const b=(id,L)=>{const e=$(id);if(e)e.onclick=()=>{if(!DUR)return;CUSER=1;hookUse(L)}};b('hk15',15);b('hk30',30)})();
 async function loadWave(file){PK=null;CFK=file;
  try{const buf=await file.arrayBuffer(),OC=window.OfflineAudioContext||window.webkitOfflineAudioContext,tmp=new OC(1,44100,44100);
   const ab=await new Promise((res,rej)=>{const p=tmp.decodeAudioData(buf,res,rej);if(p&&p.then)p.then(res,rej)});
   if(CFK!==file)return;const ch=ab.getChannelData(0),N=Math.min(8000,Math.max(60,Math.ceil(ab.duration*10))),step=ch.length/N,pk=new Float32Array(N);let mx=1e-6;
   for(let i=0;i<N;i++){let m=0;const a=Math.floor(i*step),b=Math.min(ch.length,Math.floor((i+1)*step)),k=Math.max(1,Math.floor((b-a)/100));for(let j=a;j<b;j+=k){const v=Math.abs(ch[j]);if(v>m)m=v}pk[i]=m;if(m>mx)mx=m}
-  for(let i=0;i<N;i++)pk[i]=Math.pow(pk[i]/mx,.8);PKN=N;PK=pk;if(Math.abs(ab.duration-DUR)>.5||!DUR)initClip(ab.duration)}
+  for(let i=0;i<N;i++)pk[i]=Math.pow(pk[i]/mx,.8);PKN=N;PK=pk;if(Math.abs(ab.duration-DUR)>.5||!DUR)initClip(ab.duration)
+  try{await hookPrep(ab,file);if(CFK===file&&!curVid&&!CUSER&&DUR>35&&CE-CS<DUR-1)hookUse(CE-CS,1)}catch(e){try{bug('hook',String((e&&e.message)||e))}catch(_){}}}
  catch(e){}}
 function sizeCv(c1){const dpr=window.devicePixelRatio||1,w=Math.round(c1.clientWidth*dpr),h=Math.round(c1.clientHeight*dpr);if(c1.width!==w||c1.height!==h){c1.width=w;c1.height=h}return[w,h,dpr]}
 function wfDraw(){if($('ce').hidden||!DUR)return;const c1=$('wf');if(!c1.clientWidth)return;const[w,h,dpr]=sizeCv(c1),x=c1.getContext('2d');x.clearRect(0,0,w,h);
@@ -1633,7 +1658,7 @@ function wfDraw(){if($('ce').hidden||!DUR)return;const c1=$('wf');if(!c1.clientW
   for(let i=0;i<n2;i++){const v=peakAt(i/n2*DUR,(i+1)/n2*DUR),bh=Math.max(2*od,v*oh*.9);y.fillStyle='rgba(243,238,252,.45)';y.fillRect(i*b2,(oh-bh)/2,Math.max(1,b2*.6),bh)}
   y.fillStyle='rgba(255,79,163,.45)';y.fillRect(CS/DUR*ow,0,Math.max(2,(CE-CS)/DUR*ow),oh);y.strokeStyle='#fff';y.lineWidth=2*od;y.strokeRect(VS/DUR*ow+od,od,VW/DUR*ow-2*od,oh-2*od);
   y.fillStyle='#fff';y.fillRect(au.currentTime/DUR*ow-od,0,2*od,oh)}}
-function applyDrag(){const W=$('wf').clientWidth,ML=maxLen();if(CMODE==='P'){VS=VS0-(LX-CX0)/W*VW;clampVS();return}
+function applyDrag(){const W=$('wf').clientWidth,ML=maxLen();if(CMODE==='P'){VS=VS0-(LX-CX0)/W*VW;clampVS();return}CUSER=1;HKA=0;
  const t=VS+LX/W*VW;CLIM=0;
  if(CMODE==='L'){let ns=t-GOFF;ns=Math.max(0,Math.min(CE-1,ns));if(CE-ns>ML){ns=CE-ML;CLIM=1}CS=ns}
  else if(CMODE==='R'){let ne=t-GOFF;ne=Math.min(DUR,Math.max(CS+1,ne));if(ne-CS>ML){ne=CS+ML;CLIM=1}CE=ne}
@@ -1654,7 +1679,7 @@ setInterval(()=>{wfDraw();const t=au.currentTime;
  const ov=e=>{if(!DUR)return;const r=o.getBoundingClientRect();VS=(e.clientX-r.left)/r.width*DUR-VW/2;clampVS()};
  o.addEventListener('pointerdown',e=>{e.preventDefault();o.setPointerCapture(e.pointerId);o._d=1;ov(e)});o.addEventListener('pointermove',e=>{if(o._d)ov(e)});o.addEventListener('pointerup',()=>{o._d=0});o.addEventListener('pointercancel',()=>{o._d=0});
  $('cp').onclick=()=>{if(!au.src)return;setup();ac.resume();if(au.paused){if(au.currentTime<CS||au.currentTime>=CE-.05)au.currentTime=CS;au.play().catch(()=>{})}else au.pause()};
- $('cr').onclick=()=>{if(DUR){CS=0;CE=Math.min(DUR,maxLen());VS=0;clipUI();au.currentTime=0}}})();
+ $('cr').onclick=()=>{if(DUR){CUSER=1;HKA=0;CS=0;CE=Math.min(DUR,maxLen());VS=0;clipUI();au.currentTime=0}}})();
 var PRO=false;
 try{PRO=localStorage.getItem('br_pro')==='1'&&localStorage.getItem('br_pro_src')==='stripe'}catch(_){}
 function wm(){if(PRO)return;c.save();c.globalAlpha=.6;c.textAlign='right';c.textBaseline='alphabetic';c.font='800 34px system-ui,sans-serif';c.shadowColor='rgba(0,0,0,.55)';c.shadowBlur=6;c.fillStyle='#fff';
@@ -1750,7 +1775,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v55';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v56';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
