@@ -54,7 +54,7 @@ public class MainActivity extends BridgeActivity {
             }
             public void web(String js) { hideHome(); evalJs(js, null); }
             public void eval(String js, ValueCallback<String> cb) { evalJs(js, cb); }
-            public void soon(String what) { Toast.makeText(MainActivity.this, what + ": coming soon", Toast.LENGTH_SHORT).show(); }
+            public void soon(String what) { Toast.makeText(MainActivity.this, what, Toast.LENGTH_SHORT).show(); }
             public void openVideo(Uri u) {
                 try {
                     Intent i = new Intent(Intent.ACTION_VIEW);

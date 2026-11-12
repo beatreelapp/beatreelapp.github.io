@@ -163,7 +163,7 @@ public class HomeView extends FrameLayout {
         col.addView(row, rp);
         row.addView(small("music", t("Music", "Musique", "موسيقى"), null, v -> host.pick("music")), cell(0));
         row.addView(small("edit", "Edit", "PRO", v -> host.pick("edit")), cell(1));
-        row.addView(small("clip", "Clipping", "Soon", v -> host.soon("Clipping")), cell(2));
+        row.addView(small("clip", "Clipping", "Soon", v -> host.soon(t("Clipping: coming soon", "Clipping : bientôt disponible", "Clipping: قريباً"))), cell(2));
 
         // your videos
         TextView yv = text(t("Your videos", "Tes vidéos", "فيديوهاتك"), 14, MUTED, true);
@@ -205,6 +205,7 @@ public class HomeView extends FrameLayout {
         v.setGravity(Gravity.CENTER);
         v.addView(new Icon(getContext(), icon, ACC), new LinearLayout.LayoutParams(dp(28), dp(28)));
         TextView l = text(label, 13, TX, true);
+        l.setGravity(Gravity.CENTER);
         l.setPadding(0, dp(6), 0, 0);
         v.addView(l);
         f.addView(v, new LayoutParams(-1, -1));
@@ -227,6 +228,7 @@ public class HomeView extends FrameLayout {
         v.setGravity(Gravity.CENTER);
         v.addView(new Icon(getContext(), icon, on ? ACC : MUTED), new LinearLayout.LayoutParams(dp(24), dp(24)));
         TextView l = text(label, 11, on ? ACC : MUTED, false);
+        l.setGravity(Gravity.CENTER);
         l.setPadding(0, dp(2), 0, 0);
         v.addView(l);
         if (click != null) v.setOnClickListener(click);
