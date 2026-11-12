@@ -1945,6 +1945,8 @@ if(NAT)document.documentElement.classList.add('native');
 const b64_=b=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result).split(',')[1]||'');r.onerror=()=>no(r.error);r.readAsDataURL(b)});
 async function natSave(blob,name,onP){await BRN.fileStart();const P=3*1024*1024;for(let i=0;i<blob.size;i+=P){await BRN.fileAppend({data:await b64_(blob.slice(i,i+P))});if(onP)onP(Math.min(1,(i+P)/blob.size))}
  const r=await BRN.fileSave({name,mime:blob.type||'video/mp4'});if(document.hidden){try{BRN.notifyDone({title:'BeatReel',body:'Your video is saved in the gallery (Movies/BeatReel).'})}catch(_){}}return r}
+/* Pro codes pasted from a chat can carry hidden marks, spaces or other dashes: keep only letters and numbers, then rebuild BR-XXXX-XXXX-XXXX */
+function brCode(v){const r=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');return /^BR[A-Z0-9]{12}$/.test(r)?'BR-'+r.slice(2,6)+'-'+r.slice(6,10)+'-'+r.slice(10,14):String(v||'').trim().toUpperCase()}
 var LASTURI='';
 async function dlBlob(blob,name){if(NAT&&BRN){const r=await natSave(blob,name.replace(/(\.\w+)$/,'_'+Date.now()+'$1'));LASTURI=r&&r.uri||'';return 'gallery'}
  const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);return 'download'}
@@ -1963,7 +1965,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v68';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v69';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2021,7 +2023,7 @@ async function openPro(){
  const p=modal(html),c=document.getElementById('pmc'),er=()=>document.getElementById('pme');
  c.querySelectorAll('[data-a="_buy"],[data-a="_restore"]').forEach(b=>b.onclick=async()=>{const buy=b.getAttribute('data-a')==='_buy';b.disabled=true;er().textContent=buy?'Opening the secure payment page...':'Checking your code...';
   try{if(buy){const j=await acct('/checkout',{},25000);if(j.url){location.href=j.url;return}er().textContent='Could not open the payment page'+(j.error?' ('+String(j.error).slice(0,90)+')':'')+'.'}
-   else{const code=(document.getElementById('pmi').value||'').trim().toUpperCase(),j=await acct('/restore',{code});
+   else{const code=brCode(document.getElementById('pmi').value),j=await acct('/restore',{code});
     if(j.pro){setPro(true,j.code);modal('<div class="coin big">B</div><h3>Pro restored ✓</h3><p>Unlimited AI and no watermark on this device.</p><button class="pri" data-a="ok">Great</button>');return}
     er().textContent=j.error==='device_limit'?'This code is already used on 3 devices.':j.error==='not_active'?'This subscription is not active anymore.':'That code is not valid.'}}
   catch(_){er().textContent='No internet connection. Please try again.'}b.disabled=false});
@@ -2972,7 +2974,7 @@ document.querySelectorAll('#home .final [data-go]').forEach(b=>b.onclick=()=>doc
 (()=>{const cd=document.getElementById('code'),ac_=document.getElementById('act'),row=document.getElementById('prow'),m=document.getElementById('msg');
 function ui(){if(PRO){row.innerHTML='<p style="margin:0;color:#7dffb0">Watermark removed. Thank you!</p>'}}
 ui();
-ac_.onclick=async()=>{const raw=(cd.value||'').trim(),v=raw.toUpperCase();
+ac_.onclick=async()=>{const raw=(cd.value||'').trim(),v=/^BR/i.test(raw.replace(/[^A-Za-z0-9]/g,''))?brCode(raw):raw.toUpperCase();
  if(!v){openPro();return}
  if(/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(v)){acct('/restore',{code:v}).then(j=>{if(j.pro){setPro(true,j.code);m.textContent='Pro restored. Thank you!'}else m.textContent='That code is not valid or not active.'}).catch(()=>{m.textContent='No internet connection.'});return}
  m.textContent='That code is not valid. Pro codes look like BR-XXXX-XXXX-XXXX.'}})();

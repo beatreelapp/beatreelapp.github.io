@@ -821,7 +821,8 @@ async function account(env, route, body, req) {
     return { body: { pro: ACTIVE.includes(sub.status), code } };
   }
   if (route === "/restore") {
-    const code = String(body.code || "").trim().toUpperCase();
+    const raw = String(body.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const code = /^BR[A-Z0-9]{12}$/.test(raw) ? "BR-" + raw.slice(2, 6) + "-" + raw.slice(6, 10) + "-" + raw.slice(10, 14) : "";
     if (!/^BR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) return { status: 404, body: { error: "bad_code" } };
     let row = await b.byCode(code);
     if (!row && OWNER_HASH.includes(await sha(code))) row = await b.owner(code);
