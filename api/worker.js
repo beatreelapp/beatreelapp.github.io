@@ -829,7 +829,7 @@ async function account(env, route, body, req) {
     if (!row) return { status: 404, body: { error: "bad_code" } };
     const st = await subStatus(env, b, row, true);
     if (!ACTIVE.includes(st)) return { status: 402, body: { error: "not_active" } };
-    const r = await b.link(code, did, MAX_DEVICES);
+    const r = await b.link(code, did, row.sub === "owner" ? 20 : MAX_DEVICES);
     if (!r.ok) return { status: 409, body: { error: "device_limit" } };
     return { body: { pro: true, code } };
   }
