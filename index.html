@@ -250,7 +250,7 @@ select.pks{display:none}
 function showErr(t){try{const k=document.getElementById('cv'),x=k.getContext('2d');x.setTransform(1,0,0,1,0,0);x.fillStyle='#000';x.fillRect(0,0,k.width,k.height);x.fillStyle='#ff7b7b';x.font='bold 26px monospace';x.textAlign='left';
   const words=('ERROR: '+t).split(' ');let line='',y=80;words.forEach(w=>{const n=line?line+' '+w:w;if(x.measureText(n).width>k.width-60&&line){x.fillText(line,30,y);y+=34;line=w}else line=n});x.fillText(line,30,y)}catch(_){}
  try{document.getElementById('msg').textContent='Error: '+t}catch(_){}}
-window.addEventListener('error',e=>showErr((e.message||'script error')+(e.lineno?' (line '+e.lineno+')':'')));
+window.addEventListener('error',e=>{const m=e.message||'';if(/ResizeObserver/i.test(m))return;showErr((m||'script error')+(e.lineno?' (line '+e.lineno+')':''))});
 window.addEventListener('unhandledrejection',e=>{try{showErr('promise: '+((e.reason&&e.reason.message)||e.reason))}catch(_){}});
 const W=720,H=1280,GR=800,NB=24,cv=document.getElementById('cv'),CM=cv.getContext('2d'),au=document.getElementById('au'),msg=document.getElementById('msg'),ttl=document.getElementById('ttl');var c=CM;
 const $=id=>document.getElementById(id),mk=(w,h)=>{const o=document.createElement('canvas');o.width=w;o.height=h;return o};
@@ -1182,7 +1182,7 @@ function tplPost(bv){if(!TPL||!bv.src)return;const R=OF;c.save();c.beginPath();c
 (()=>{const q=$('tpl');if(!q)return;TPLS.forEach((n,i)=>{const e=document.createElement('option');e.value=i;e.textContent='Template: '+n;q.appendChild(e)});q.value=TPL;
  q.onchange=()=>{TPL=+q.value;try{localStorage.setItem('br_tpl',TPL)}catch(_){}if(TPL==2)beatScan();const bv=$('bgv');if(TPL!=2&&bv.playbackRate!==1)bv.playbackRate=1;try{TPL&&hit('tpl_'+TPL)}catch(_){}
   if(SJ==10)msg.textContent=TPL?'Template "'+TPLS[TPL]+'" ✓ Press play to see it.':'No template.'}})();
-function songName(){if(!curFile||curVid)return'';return curFile.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').replace(/\s*[\(\[][^\)\]]*(official|lyrics?|audio|video|visuali[sz]er|hd|4k)[^\)\]]*[\)\]]/ig,'').replace(/\s+/g,' ').trim()}
+function songName(){if(!curFile||curVid)return'';const n_=curFile.name.replace(/\.[^.]+$/,'');if(/^(shared|audio|video|\d+|[0-9a-f-]{16,})$/i.test(n_))return(typeof PLT!=='undefined'&&PLT)||'';return curFile.name.replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').replace(/\s*[\(\[][^\)\]]*(official|lyrics?|audio|video|visuali[sz]er|hd|4k)[^\)\]]*[\)\]]/ig,'').replace(/\s+/g,' ').trim()}
 function sceneUI(){document.body.classList.toggle('ed',SJ==10);if(SJ==10){const b_=$('bgv');ofFit(b_.src?b_.videoWidth:1,b_.src?b_.videoHeight:1)}etBtn();if(SJ!=10)etClose();else if($('bgv').src&&SHK!==$('bgv').src)shotScan();if(SJ==10)msg.textContent=$('bgv').src?'Edit ✨ PRO: tap a shot below, then choose the words in "Text".':'Edit ✨ PRO: choose your song, then tap "＋ Add your video" in the middle of the picture.';softUI()}
 var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOPEN=false,SHAUTO='';
 /* ---- shots: the video is cut into shots where the picture changes at once; each shot keeps its own text place ---- */
@@ -1967,7 +1967,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v71';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v72';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
