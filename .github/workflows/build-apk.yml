@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p app/www
           rsync -a --exclude /.git --exclude /.github --exclude /app --exclude /api \
-            --exclude /BeatReel.apk --exclude /diag.html --exclude /sw.js ./ app/www/
+            --exclude /BeatReel.apk --exclude /diag.html --exclude /sw.js --exclude /emoji/anim ./ app/www/
           du -sh app/www
 
       - name: Make the Android project

@@ -154,7 +154,7 @@ select.pks{display:none}
 <div id="storesnote" style="color:#8a9098;font-size:13px;margin-top:12px;line-height:1.6;text-align:center"></div></section>
 <section class="final"><h3>Ready to make yours?</h3><button data-go>Start creating</button></section>
 </div>
-<footer><div style="margin-bottom:12px"><a href="/privacy.html" id="lg1" style="color:#8fcaf3">Privacy</a> &nbsp;&middot;&nbsp; <a href="/terms.html" id="lg2" style="color:#8fcaf3">Terms</a> &nbsp;&middot;&nbsp; <a href="mailto:beatreel.app@gmail.com" style="color:#8fcaf3">Contact</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#8fcaf3" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a> &nbsp;&middot;&nbsp; <a href="https://fonts.google.com/" style="color:#8fcaf3" rel="noopener">Fonts: Google Fonts (SIL OFL / Apache 2.0)</a></div><div style="margin-bottom:12px"><a href="/lyric-video-maker/" style="color:#8fcaf3">Lyric video maker</a> &nbsp;&middot;&nbsp; <a href="/song-to-music-video/" style="color:#8fcaf3">Song to music video</a> &nbsp;&middot;&nbsp; <a href="/auto-captions/" style="color:#8fcaf3">Auto captions</a> &nbsp;&middot;&nbsp; <a href="/fr/clip-video-musique/" style="color:#8fcaf3">Français</a> &nbsp;&middot;&nbsp; <a href="/ar/music-video/" style="color:#8fcaf3">العربية</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your videos are made on your device. Only the Auto (AI) features send audio to our server, which does not keep it.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
+<footer><div style="margin-bottom:12px"><a href="/privacy.html" id="lg1" style="color:#8fcaf3">Privacy</a> &nbsp;&middot;&nbsp; <a href="/terms.html" id="lg2" style="color:#8fcaf3">Terms</a> &nbsp;&middot;&nbsp; <a href="mailto:beatreel.app@gmail.com" style="color:#8fcaf3">Contact</a> &nbsp;&middot;&nbsp; <a href="https://github.com/googlefonts/noto-emoji" style="color:#8fcaf3" rel="noopener">Emoji: Noto by Google (Apache 2.0)</a> &nbsp;&middot;&nbsp; <a href="https://googlefonts.github.io/noto-emoji-animation/" style="color:#8fcaf3" rel="noopener">Animated emoji: Noto by Google (CC BY 4.0)</a> &nbsp;&middot;&nbsp; <a href="https://fonts.google.com/" style="color:#8fcaf3" rel="noopener">Fonts: Google Fonts (SIL OFL / Apache 2.0)</a></div><div style="margin-bottom:12px"><a href="/lyric-video-maker/" style="color:#8fcaf3">Lyric video maker</a> &nbsp;&middot;&nbsp; <a href="/song-to-music-video/" style="color:#8fcaf3">Song to music video</a> &nbsp;&middot;&nbsp; <a href="/auto-captions/" style="color:#8fcaf3">Auto captions</a> &nbsp;&middot;&nbsp; <a href="/fr/clip-video-musique/" style="color:#8fcaf3">Français</a> &nbsp;&middot;&nbsp; <a href="/ar/music-video/" style="color:#8fcaf3">العربية</a></div><div style="max-width:420px;margin:0 auto;line-height:1.6">Your videos are made on your device. Only the Auto (AI) features send audio to our server, which does not keep it.<br>Please only use music you have the right to use.</div><div style="margin-top:10px">&copy; BeatReel</div></footer>
 </div>
 
 <button id="hb" hidden>&larr; Home</button>
@@ -204,7 +204,7 @@ select.pks{display:none}
 <div id="lyp">
 <textarea id="lyt" rows="6" enterkeyhint="enter" autocapitalize="sentences" spellcheck="false" placeholder="Paste the lyrics here, one line per phrase"></textarea>
 <div class="row"><select id="acl"><option value="">Language: Auto</option><option value="arabic">Arabic</option><option value="french">French</option><option value="english">English</option></select></div>
-<div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label></div>
+<div class="row m-video" style="gap:16px;justify-content:center;font:600 14px system-ui,sans-serif"><label><input type="checkbox" id="zmx" checked> 🔍 Auto zoom</label><label><input type="checkbox" id="fxon" checked> ✨ Auto effects</label></div>
 <div class="row"><button id="nlb" type="button">+ New line</button><button class="m-music" id="aut">Auto sync</button></div>
 <div class="row m-music"><button id="ear">Earlier 0.3s</button><button id="lat">Later 0.3s</button></div>
 <div class="row m-music"><button id="syn">Sync by tapping</button><button class="m" id="nxt" hidden>Next line</button></div>
@@ -453,7 +453,8 @@ function zoomEvs(){const key=L.join('|')+'#'+(RNG?RNG.length:0)+'#'+KEY.join(','
   let k=KEY.length===L.length?KEY[i]:-1;if(k<0&&KEY.length!==L.length&&i%3==1){let m=0;ws.forEach((w,j)=>{if(w.length>ws[m].length)m=j});k=ws[m].length>3?m:-1}
   if(k<0)continue;const wt=wordTimes(i,ws),t0=wt[k][0];if(t0-last<2.6)continue;last=t0;ZEV.push([t0,Math.max(t0+.6,se.e)])}
  return ZEV}
-function autoZoom(t){if(SJ==10)return tplZoom(t);if(!ZOOMON||SJ!=4||!L.length)return 1;let z=1;
+function autoZoom(t){const z=autoZoom0(t);return SJ==4?Math.min(1.4,z*fxZoom(t)):z}
+function autoZoom0(t){if(SJ==10)return tplZoom(t);if(!ZOOMON||SJ!=4||!L.length)return 1;let z=1;
  for(const e of zoomEvs()){if(t>=e[0]&&t<e[1]){const u=Math.min(1,(t-e[0])/.2);z*=1+.13*(1-Math.pow(1-u,3));break}if(e[0]>t)break}return Math.min(1.3,z)}
 /* ===== Sung lyric styles (music videos): big words that appear when they are sung ===== */
 var MLOOK=0,MLK='',MLT=null,MS={sty:-1,anim:0};
@@ -628,6 +629,7 @@ function drawLook(i,t,y0,px,alpha,fr){
  const wt=wordTimes(i,ws);let act=-1;for(let k=0;k<ws.length;k++)if(t>=wt[k][0]-.04)act=k;
  const rtl=/[\u0600-\u06FF]/.test(L[i]),up=fr==11&&!rtl,txt=ws.map(w=>up?w.toUpperCase():w),acc=accCol(),key=KEY.length===L.length?KEY[i]:-1;
  c.save();c.font=FONTS[TS.font].f(px);c.direction=rtl?'rtl':'ltr';c.textAlign='left';c.textBaseline='alphabetic';c.lineJoin='round';
+ const fl_=fxLive(),shk=fl_?fxShake(i,t,px):0;if(shk)c.translate(shk,0);const cfx=fl_?fxOf(i,'count'):null;
  const sp=c.measureText(' ').width*(fr==9?1.6:1.15),wd=txt.map(w=>c.measureText(w).width),maxW=W-130,rows=[];let cur=[],cw=0;
  txt.forEach((w,k)=>{const add=(cur.length?sp:0)+wd[k];if(cur.length&&cw+add>maxW){rows.push({ix:cur,w:cw});cur=[];cw=0}cw+=(cur.length?sp:0)+wd[k];cur.push(k)});if(cur.length)rows.push({ix:cur,w:cw});
  const R=rows.slice(0,3),lh=px*1.3;
@@ -636,15 +638,91 @@ function drawLook(i,t,y0,px,alpha,fr){
   r.ix.forEach(k=>{const w=wd[k],x0=rtl?x-w:x,on=k===act,age=t-wt[k][0],said=k<act||on,hot=on||k===key;
    let s=1;if(on){s=age<.09?1+.16*Math.max(0,age)/.09:1.06+.1*Math.max(0,1-(age-.09)/.14)}if(fr==11&&on)s*=1.08;
    const cx=x0+w/2,cy=y-px*.36;c.save();c.translate(cx,cy);c.scale(s,s);c.translate(-cx,-cy);c.globalAlpha=alpha*(fr==10&&!said?.6:1);
-   let fillC='#fff';
+   let fillC='#fff';const tx=cfx&&cfx.w===k?fxCount(txt[k],(t-wt[k][0])/.7):txt[k];
    if(fr==9){if(on){c.shadowColor='rgba(0,0,0,.45)';c.shadowBlur=14;c.shadowOffsetY=5;c.fillStyle=acc;rrp(x0-px*.2,y-px*.9,w+px*.4,px*1.18,px*.24);c.fill();c.shadowBlur=0;c.shadowOffsetY=0;fillC=lum(acc)>.62?'#111':'#fff'}
-    else{c.lineWidth=Math.max(5,px*.15);c.strokeStyle='#000';c.strokeText(txt[k],x0,y);fillC=k===key?acc:'#fff'}}
+    else{c.lineWidth=Math.max(5,px*.15);c.strokeStyle='#000';c.strokeText(tx,x0,y);fillC=k===key?acc:'#fff'}}
    else if(fr==10){fillC=hot?acc:'#fff'}
-   else{c.lineWidth=Math.max(6,px*.2);c.strokeStyle='#000';c.strokeText(txt[k],x0,y);fillC=hot?acc:'#fff'}
+   else{c.lineWidth=Math.max(6,px*.2);c.strokeStyle='#000';c.strokeText(tx,x0,y);fillC=hot?acc:'#fff'}
    if(fillC==='#fff'||fr==11){c.shadowColor='rgba(0,0,0,.55)';c.shadowBlur=8;c.shadowOffsetY=3}
-   c.fillStyle=fillC;c.fillText(txt[k],x0,y);c.restore();
+   c.fillStyle=fillC;c.fillText(tx,x0,y);if(fl_)fxWord(i,k,x0,y,w,px,t,j);c.restore();
    x+=rtl?-(w+sp):(w+sp)})});
  c.restore();c.direction='ltr';c.textAlign='center'}
+/* ===== Auto effects (video captions): an AI editor (Gemini, Groq backup, local rules last) picks animated effects for some words.
+   Kinds: emoji (big animated Noto emoji), count, ring, under, arrow, zoom, shake, check, cross, pin. Frame-exact: everything is a function of au.currentTime. */
+var FXON=true,FXP=[],FXM={},FXK='',FXLR=null,FXOK=false,AEL=null,AEM={},FXZ=null;const FXC='#5ab4f0';
+try{FXON=localStorage.getItem('br_fx')!=='0'}catch(_){}
+function fxKey(){return L.length+':'+L.map(x=>String(x).split(/\s+/).filter(Boolean).length).join(',')}
+function fxLive(){if(!FXON||SJ!=4||!FXP.length)return false;if(L!==FXLR){FXLR=L;FXOK=fxKey()===FXK}return FXOK}
+function fxSet(p){FXP=p||[];FXM={};FXZ=null;FXP.forEach(x=>{(FXM[x.l]||(FXM[x.l]=[])).push(x)});FXK=fxKey();FXLR=null;
+ const cs=[...new Set(FXP.filter(x=>x.k==='emoji').map(x=>x.e))];cs.forEach(c=>aemLoad(c))}
+function fxOf(i,k){const a=FXM[i];if(!a)return null;for(const x of a)if(x.k===k)return x;return null}
+function fxWT(i,w){const ws=String(L[i]||'').split(/\s+/).filter(Boolean);if(!ws.length)return lineSE(i).s;const wt=wordTimes(i,ws);return wt[Math.max(0,Math.min(ws.length-1,w))][0]}
+function fxEase(u){u=Math.max(0,Math.min(1,u));return 1-Math.pow(1-u,3)}
+function fxPop(u){u=Math.max(0,Math.min(1,u));return u<1?1+2.4*Math.pow(u-1,3)+1.4*Math.pow(u-1,2):1}
+/* the Android app does not bundle these files (28 MB): it reads them from the GitHub copy of the site */
+function aeb(){try{return NAT?'https://raw.githubusercontent.com/beatreelapp/beatreelapp.github.io/main/emoji/anim/':'emoji/anim/'}catch(_){return 'emoji/anim/'}}
+function aelGet(){if(AEL)return AEL;AEL=fetch(aeb()+'list.json').then(r=>r.json()).then(a=>Array.isArray(a)?a:[]).catch(()=>[]);return AEL}
+/* animated emoji: decoded once into small bitmaps (ImageDecoder), so preview and the saved video show the same frame */
+function aemLoad(c){if(AEM[c])return AEM[c].p;const o=AEM[c]={f:null,d:null,tot:0,img:null};
+ o.p=(async()=>{try{const r=await fetch(aeb()+c+'.webp');if(!r.ok)throw 0;const buf=await r.arrayBuffer();
+  if(typeof ImageDecoder==='function'){const dec=new ImageDecoder({data:buf,type:'image/webp'});await dec.tracks.ready;const n=dec.tracks.selectedTrack.frameCount,fr=[],du=[];
+   for(let k=0;k<n;k++){const res=await dec.decode({frameIndex:k}),vf=res.image;du.push(Math.max(20,(vf.duration||66000)/1000));fr.push(await createImageBitmap(vf));vf.close()}
+   try{dec.close()}catch(_){}o.f=fr;o.d=du;o.tot=du.reduce((a,b)=>a+b,0)}
+  else{const im=new Image();im.src=URL.createObjectURL(new Blob([buf],{type:'image/webp'}));await im.decode();o.img=im}
+ }catch(e){o.bad=1}})();return o.p}
+function aemFrame(c,ms){const o=AEM[c];if(!o)return null;if(o.f&&o.f.length){let t=Math.max(0,ms)%o.tot;for(let k=0;k<o.f.length;k++){t-=o.d[k];if(t<0)return o.f[k]}return o.f[o.f.length-1]}return o.img}
+function fxReady(){const cs=[...new Set(FXP.filter(x=>x.k==='emoji').map(x=>x.e))];return Promise.race([Promise.all(cs.map(aemLoad)),new Promise(r=>setTimeout(r,8000))])}
+/* local rules when the online editor is not reachable */
+function fxLocal(list){const have=new Set(list.map(x=>x.c.replace(/_fe0f/g,''))),out=[],last={};let le=-9;
+ const no=/^(no|not|never|don'?t|wrong|non|jamais|pas|faux|لا|لن|أبدا|ابدا|خطأ|غلط)$/i,yes=/^(yes|right|correct|exactly|done|oui|exactement|vrai|نعم|أجل|صح|صحيح|بالضبط)$/i;
+ L.forEach((ln,i)=>{const ws=String(ln).split(/\s+/).filter(Boolean);if(!ws.length)return;const add=(w,k,e)=>{if(last[k]===i-1)return false;out.push(e?{l:i,w:w,k:k,e:e}:{l:i,w:w,k:k});last[k]=i;return true};
+  const cw=w=>w.replace(/[.,!?؟،:;"'«»()]/g,'');let n=0;
+  const dj=ws.findIndex(w=>/\d/.test(w));if(dj>=0){add(dj,'count');n++;if(add(dj,'ring'))n++}
+  const nj=ws.findIndex(w=>no.test(cw(w))),yj=ws.findIndex(w=>yes.test(cw(w)));
+  if(n<2&&nj>=0){if(add(nj,'cross'))n++}else if(n<2&&yj>=0){if(add(yj,'check'))n++}
+  if(n<2&&i-le>=2){const e=emojiFor(ln);if(e){const c=emoName(e);if(have.has(c.replace(/_fe0f/g,''))){const a=list.find(x=>x.c.replace(/_fe0f/g,'')===c.replace(/_fe0f/g,''));if(add(Math.max(0,ws.length-1),'emoji',a.c)){le=i;n++}}}}
+  if(!n&&i%3===0){let m=0;ws.forEach((w,j)=>{if(cw(w).length>cw(ws[m]).length)m=j});if(cw(ws[m]).length>3)add(m,i%2?'ring':'under')}});
+ return out}
+async function aiFx(){if(!FXON||SJ!=4||!L.length)return;const key=fxKey(),list=await aelGet();let plan=null,via='local';
+ try{const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),45000);
+  const r=await fetch(API_URL+'/fx',{method:'POST',headers:{'Content-Type':'application/json'},signal:ctl.signal,body:JSON.stringify({job:AIJOB,lines:L.slice(0,160).map(x=>String(x).slice(0,120)),emojis:list.map(x=>x.c+' '+(x.t||''))})});clearTimeout(to);
+  const j=await r.json().catch(()=>null);if(r.ok&&j&&Array.isArray(j.fx)&&j.fx.length){plan=j.fx;via=j.via||'ai'}else bug('fx','http '+r.status+' '+(j&&j.error||''))}catch(e){bug('fx',String(e&&e.message||e).slice(0,80))}
+ if(!plan)plan=fxLocal(list);if(fxKey()!==key||SJ!=4)return;
+ const codes=new Set(list.map(x=>x.c));plan=plan.filter(x=>x.k!=='emoji'||codes.has(x.e));fxSet(plan);
+ try{hit('fx_'+(via==='local'?'local':'ai'))}catch(_){}
+ if(plan.length&&/^Captions ready/.test(msg.textContent))msg.textContent+=' ✨ '+plan.length+' effects added'+(via==='local'?'':' by AI')+'.'}
+function fxZoom(t){if(!fxLive())return 1;if(!FXZ){FXZ=FXP.filter(x=>x.k==='zoom').map(x=>fxWT(x.l,x.w)).sort((a,b)=>a-b)}
+ for(const t0 of FXZ){const u=t-t0;if(u>=0&&u<.6){const b=u<.12?fxEase(u/.12):1-fxEase((u-.12)/.48);return 1+.16*b}if(t0>t)break}return 1}
+/* the animated emoji of a line (replaces the small still emoji) */
+function fxEmoji(i,t,y0c,px,fr,hb,alpha){const x=fxOf(i,'emoji');if(!x)return false;const tw=fxWT(i,x.w)-.08,age=t-tw;if(age<0)return true;
+ const im=aemFrame(x.e,age*1000);if(!im)return true;const S0=Math.min(W*.34,Math.max(px*3.4,210));let S1=S0,cy=y0c-px*(fr==10?1.15:.95)-S0*.5-6;
+ if(hb&&cy-S0/2<hb+8){const top=hb+8,bot=y0c-px*(fr==10?1.15:.95)-4;S1=Math.min(S0,bot-top);cy=top+S1/2}if(hb&&S1<56)return true;
+ const sz=S1*Math.max(.05,fxPop(age/.36));c.save();c.globalAlpha=Math.min(1,alpha,age/.1);c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=18;c.shadowOffsetY=6;
+ c.translate(W/2,cy+Math.sin(age*2.2)*4);c.rotate(Math.sin(age*1.7)*.04);c.drawImage(im,-sz/2,-sz/2,sz,sz);c.restore();return true}
+/* tick, cross and topic tag sit on the video corners (not on the face, not on the words) */
+function fxOver(i,t){const a=FXM[i];if(!a)return;for(const x of a){if(x.k!=='check'&&x.k!=='cross'&&x.k!=='pin')continue;const t0=fxWT(i,x.w)-.05,age=t-t0;if(age<0)continue;
+ if(x.k==='pin'){const d=3.4;if(age>d)continue;const out=age>d-.3?(d-age)/.3:1,inn=fxEase(age/.32);c.save();c.globalAlpha=Math.min(1,out);
+  c.font='800 40px Cairo,system-ui,sans-serif';const tx=String(x.p||''),rtl=/[؀-ۿ]/.test(tx);c.direction=rtl?'rtl':'ltr';const tw=Math.min(VR.w-90,c.measureText(tx).width),pw=tw+56,ph=70,bx=VR.x+22-(1-inn)*(pw+40),by=VR.y+22;
+  c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=14;c.shadowOffsetY=4;c.fillStyle=FXC;rrp(bx,by,pw,ph,35);c.fill();c.shadowBlur=0;c.shadowOffsetY=0;
+  c.fillStyle='#06233a';c.textAlign='center';c.textBaseline='middle';c.fillText(tx,bx+pw/2,by+ph/2+1,tw);c.restore();c.direction='ltr';c.textAlign='center';c.textBaseline='alphabetic';continue}
+ const d=1.15;if(age>d)continue;const out=age>d-.25?(d-age)/.25:1,s=fxPop(age/.3),R=62,cx=VR.x+VR.w-R-26,cy=VR.y+R+26,ok=x.k==='check';
+ c.save();c.globalAlpha=Math.max(0,out);c.translate(cx,cy);c.scale(s,s);c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=18;c.shadowOffsetY=6;c.fillStyle=ok?'#2fbf71':'#e5484d';c.beginPath();c.arc(0,0,R,0,7);c.fill();
+ c.shadowBlur=0;c.shadowOffsetY=0;c.strokeStyle='#fff';c.lineWidth=13;c.lineCap='round';c.lineJoin='round';const u=fxEase((age-.12)/.3);
+ if(u>0){c.beginPath();if(ok){const p=[[-27,2],[-8,22],[29,-20]],L1=Math.hypot(19,20),L2=Math.hypot(37,42),q=u*(L1+L2);c.moveTo(p[0][0],p[0][1]);if(q<=L1)c.lineTo(p[0][0]+19*q/L1,p[0][1]+20*q/L1);else{c.lineTo(p[1][0],p[1][1]);const r=(q-L1)/L2;c.lineTo(p[1][0]+37*r,p[1][1]-42*r)}}
+  else{const a1=Math.min(1,u*2),a2=Math.max(0,u*2-1);c.moveTo(-22,-22);c.lineTo(-22+44*a1,-22+44*a1);if(a2>0){c.moveTo(22,-22);c.lineTo(22-44*a2,-22+44*a2)}}c.stroke()}
+ c.restore()}}
+/* number counter text */
+function fxCount(s,u){return s.replace(/\d[\d,.]*\d|\d/,m=>{const raw=m.replace(/,/g,''),v=parseFloat(raw);if(!isFinite(v))return m;const dec=(raw.split('.')[1]||'').length,cur=v*fxEase(u);return dec?cur.toFixed(dec):String(Math.round(cur))})}
+/* ring / underline / arrow around one word (called inside the word's own transform in drawLook) */
+function fxWord(i,k,x0,y,w,px,t,row){const a=FXM[i];if(!a)return;for(const x of a){if(x.w!==k)continue;const age=t-fxWT(i,x.w);if(age<0)continue;
+ c.save();c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=8;c.shadowOffsetY=3;c.strokeStyle=FXC;c.fillStyle=FXC;c.lineCap='round';c.lineJoin='round';
+ if(x.k==='ring'){const u=fxEase(age/.45),cx=x0+w/2,cy=y-px*.33,rx=w/2+px*.45,ry=px*.8;c.lineWidth=Math.max(8,px*.13);c.beginPath();c.ellipse(cx,cy,rx,ry,-.05,-Math.PI*.6,-Math.PI*.6+Math.PI*2.08*u);c.stroke()}
+ else if(x.k==='under'){const u=fxEase(age/.4),rtl=/[؀-ۿ]/.test(L[i]),yy=y+px*.24;c.lineWidth=Math.max(8,px*.15);c.beginPath();if(rtl){c.moveTo(x0+w,yy);c.lineTo(x0+w-w*u,yy)}else{c.moveTo(x0,yy);c.lineTo(x0+w*u,yy)}c.stroke()}
+ else if(x.k==='arrow'){const u=fxPop(age/.3),b=Math.sin(age*9)*px*.1,cx=x0+w/2,up=row>0,h=px*.95*u,base=up?y+px*.38+b:y-px*1.0-b;c.lineWidth=Math.max(7,px*.13);
+  c.beginPath();if(!up){c.moveTo(cx,base-h);c.lineTo(cx,base-px*.12)}else{c.moveTo(cx,base+h);c.lineTo(cx,base+px*.12)}c.stroke();
+  c.beginPath();const tip=up?base:base,dir=up?1:-1;c.moveTo(cx,tip);c.lineTo(cx-px*.3*u,tip+dir*px*.36*u);c.lineTo(cx+px*.3*u,tip+dir*px*.36*u);c.closePath();c.fill()}
+ c.restore()}}
+function fxShake(i,t,px){const x=fxOf(i,'shake');if(!x)return 0;const u=t-fxWT(i,x.w);if(u<0||u>.45)return 0;return Math.sin(u*62)*px*.12*(1-u/.45)}
 const fill=(id,arr,key,lab)=>{const el=$(id);arr.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent=lab+': '+(Array.isArray(v)?v[0]:(v.n||v));el.appendChild(o)});el.value=TS[key];el.onchange=()=>{TS[key]=+el.value}};
 (()=>{const sy=$('tsy');let o=document.createElement('option');o.value=-1;o.textContent='Style: Auto (AI picks)';sy.appendChild(o);const G={};
  LSTY.forEach((st,i)=>{let g=G[st.g];if(!g){g=G[st.g]=document.createElement('optgroup');g.label=st.g;sy.appendChild(g)}const q=document.createElement('option');q.value=i;q.textContent='Style: '+st.n;g.appendChild(q)});
@@ -736,7 +814,8 @@ function lyr(){let i,pre=false;
  if(an>=6){frac=Math.min(1,Math.max(0,(t-s)/Math.max(.5,(e-s)*.8)))}
  let y0c=y0;const hb=SJ==4?hookB():0;if(SJ==4){if(HV&&TS.pos<3){for(let g=0;g<8;g++){c.font=FONTS[TS.font].f(px);const nn=Math.min(3,wrap(L[i],W-90).length);y0c=(TS.pos==0?VR.y-16:TS.pos==1?VR.y-80:VR.y-150)-px*.45-(nn-1)*px*1.18;
   /* a hook title is on top: smaller words instead of covering it */if(!hb||y0c-px*.75>=hb+10||px<=40)break;px=Math.max(40,Math.round(px*.9))}}else y0c=(HV?VR.y:760)+px*.3}
- if(SJ==4&&!pre){const em_=lineEmo(i);if(em_){const im_=emoImg(em_);if(im_.complete&&im_.naturalWidth){const age=Math.max(0,t-s),u=Math.min(1,age/.32),pp=u<1?1+2.4*Math.pow(u-1,3)+1.4*Math.pow(u-1,2):1,S0=Math.min(W*.24,px*1.9);let S1=S0,cy=y0c-px*(fr==10?1.15:.95)-S0*.55-8;
+ if(SJ==4&&!pre&&fxLive()){fxEmoji(i,t,y0c,px,fr,hb,alpha);fxOver(i,t)}
+ else if(SJ==4&&!pre){const em_=lineEmo(i);if(em_){const im_=emoImg(em_);if(im_.complete&&im_.naturalWidth){const age=Math.max(0,t-s),u=Math.min(1,age/.32),pp=u<1?1+2.4*Math.pow(u-1,3)+1.4*Math.pow(u-1,2):1,S0=Math.min(W*.24,px*1.9);let S1=S0,cy=y0c-px*(fr==10?1.15:.95)-S0*.55-8;
    if(hb&&cy-S0/2<hb+8){const top=hb+8,bot=y0c-px*(fr==10?1.15:.95)-4;S1=Math.min(S0,bot-top);cy=top+S1/2}
    const sz=S1*Math.max(.05,pp);if(!hb||S1>=56){c.save();c.globalAlpha=Math.min(1,alpha,age/.12);c.shadowColor='rgba(0,0,0,.4)';c.shadowBlur=16;c.shadowOffsetY=6;c.translate(W/2,cy);c.rotate(-.05);c.drawImage(im_,-sz/2,-sz/2,sz,sz);c.restore()}}}}
  if(fr>=9){if(!pre)drawLook(i,t,y0c,px,alpha,fr);return}
@@ -1592,7 +1671,7 @@ function drawCaps(){
  capBg(tm);
  let act=null;for(let q=EVS.length-1;q>=0;q--){if(nowT>=EVS[q].s&&nowT<EVS[q].s+EVS[q].d){act=EVS[q];break}}
  let hasE=false;if(L.length){let q2=-1;if(RNG&&RNG.length==L.length&&!syncing){for(let j=0;j<RNG.length;j++)if(nowT>=RNG[j].s-.05&&nowT<=RNG[j].e+.3){q2=j;break}}else q2=curIdx();hasE=q2>=0&&!!L[q2]&&!!emojiFor(L[q2])}
- if(act&&!hasE){drawShape(act,nowT,vx,top*(HV?.42:.34),HV?210:290,['#f5f1e8','#e6be78'])}
+ if(fxLive()){}else if(act&&!hasE){drawShape(act,nowT,vx,top*(HV?.42:.34),HV?210:290,['#f5f1e8','#e6be78'])}
  else{let ii=-1;if(L.length){if(RNG&&RNG.length==L.length&&!syncing){for(let j=0;j<RNG.length;j++)if(nowT>=RNG[j].s-.05&&nowT<=RNG[j].e+.3){ii=j;break}}else ii=curIdx()}
   if(ii>=0&&L[ii]){const e=emojiFor(L[ii]);if(e&&e!==CE_E){CE_E=e;CE_T=nw}else if(!e&&CE_E&&nw-CE_T>6000){CE_E=''}}
   if(CE_E&&!hasE){const age=(nw-CE_T)/1000,pop=Math.min(1,.35+age*3.5)+Math.max(0,.18-age*.5)+bass*.12,sz=(HV?190:260)*pop;
@@ -1882,7 +1961,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v66';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v67';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1991,6 +2070,7 @@ async function aiStyle(text){const lines=L.slice(0,80).map(x=>x.slice(0,80));
   const j=await r.json().catch(()=>null);if(!r.ok||!j||j.error||!Number.isInteger(j.look))throw 0;
   applyLook(j.look,j.color,j.e,j.k,j.mood||null)}catch(_){applyLook(0,0,null,null,'')}}
 $('zmx').onchange=e=>{ZOOMON=e.target.checked};
+$('fxon').checked=FXON;$('fxon').onchange=e=>{FXON=e.target.checked;try{localStorage.setItem('br_fx',FXON?'1':'0')}catch(_){}FXLR=null;if(FXON&&SJ==4&&L.length&&!FXP.length)aiFx()};
 $('alb').onclick=()=>{$('acb').click()};
 $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){msg.textContent=song?'Choose a song first.':'Add a video (or a song) first.';return}
  acBusy=true;const btn=song?$('alb'):$('acb');btn.textContent='Working...';const t0=performance.now();let tick=null;coShow(true);
@@ -2028,6 +2108,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   msg.textContent=(CAPLONG?'Only the first 10 minutes get captions. ':'')+'Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';
   if(song){TS.frame=0;try{$('tr').value=0}catch(_){}MLK='';msg.textContent='Lyrics ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'}
   else if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
+  if(!song){fxSet([]);aiFx()}
  }catch(e){const m=e&&e.message;if(m==='cancel'&&JOB_)coinRefund(JOB_);if(!/^(cancel|nocoins|short)$/.test(m||''))bug('captions',m);msg.textContent=m==='nocoins'?'No AI coins left today. Tap the coin at the top to see when new coins arrive.':m==='cancel'?'Cancelled.':m==='short'?'This clip is too short.':(m==='noworker'||m==='worker')?'This browser cannot run the speech model in the background. Try Chrome.':'Could not make captions: '+String(m||'unknown error').slice(0,120)+'. Check your internet (the model downloads the first time) and try again.';
   if(wasPlaying&&SJ!=10){au.play().catch(()=>{});const v=$('bgv');if(v.src)v.play().catch(()=>{})}}
  finally{if(tick)clearInterval(tick);acBusy=false;asrRej=null;coShow(false);btn.textContent=song?'🎤 Auto lyrics (from song)':'Auto captions (from speech)'}};
@@ -2736,7 +2817,7 @@ async function offlineExport(){
  const bv=$('bgv'),hasV=!!(bv.src),vWas=hasV&&!bv.paused;
  const ui_=(pc,txt)=>{$('xp').textContent=pc+'%';$('xr').style.strokeDashoffset=276.46*(1-pc/100);msg.textContent=txt};
  try{
-  ui_(0,'Loading fonts…');await gfReady();
+  ui_(0,'Loading fonts…');await gfReady();if(SJ==4&&fxLive())await fxReady();
   if(SJ==10&&TPL==2){ui_(0,'Finding the beat…');await beatScan()}
   parse();try{OBC.clear()}catch(_){}
   const dur0=Math.max(.5,CE-CS),N=Math.max(1,Math.floor(dur0*FPS)),dur=N/FPS,nS=Math.floor(dur*SR);

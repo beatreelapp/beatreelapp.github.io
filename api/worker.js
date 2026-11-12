@@ -3,6 +3,7 @@
 //   POST /transcribe  {audio: base64 WAV, language?}         -> Whisper result (text, segments, words): Groq whisper-large-v3 first (secret GROQ_API_KEY, free plan), Cloudflare large-v3-turbo as backup
 //   POST /style       {text, lines, looks, colors, emojis}       -> {mood, look, color, e:[emoji index per line], k:[keyword index per line]}
 //                     (old shape {text, options} still works)
+//   POST /fx         {job?, lines:[text], emojis:["code tags"]}   -> {fx:[{l,w,k,e?,p?}]}  Auto effects director (Gemini, Groq backup)
 //   POST /clips      {job, lines:[[start,end,text],...]}        -> {clips:[{a,b,title}]}  Pro only: best moments (line a to b) + hook title
 //   POST /hit         text body: event name                    -> counts anonymous usage (no IP, no personal data stored)
 //   POST /me      {did}               -> {coins, max, pro, reset}      (AI coins: 3 free per device per day, Pro = unlimited)
@@ -26,7 +27,7 @@ const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 
 const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
 const SITE = "https://beatreelapp.github.io";
 const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
-const EVENTS = ["auto", "hook", "visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok", "tpl_1", "tpl_2"];
+const EVENTS = ["auto", "hook", "visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok", "tpl_1", "tpl_2", "fx_ai", "fx_local"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 // Google Fonts the app offers; picks are counted as "f_<id>" so the menu can show the most used first
 const FONT_IDS = ["dirt", "glitch", "wet", "bang", "mono", "shade", "mark", "audio", "anton", "bebas", "mont", "pop", "archivo", "russo", "lilita", "right", "nsil", "nmint", "spice", "oshade", "fold", "tint", "ramp", "kaln"];
@@ -83,7 +84,7 @@ export default {
         return Response.json({ error: String((e && e.message) || e) }, { status: (e && e.status) || 500, headers: cors });
       }
     }
-    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips" && route !== "/mood" && route !== "/story"))
+    if (req.method !== "POST" || (route !== "/transcribe" && route !== "/style" && route !== "/clips" && route !== "/mood" && route !== "/story" && route !== "/fx"))
       return new Response("BeatReel API OK", { headers: cors });
     if (!ALLOWED.includes(origin))
       return new Response("Forbidden", { status: 403, headers: cors });
@@ -92,7 +93,14 @@ export default {
       // /transcribe needs a paid-for job (one coin). /style is cheap: allowed with a job, or a few times a day per network without one.
       const gate = await bank(env).gate(route, typeof body.job === "string" ? body.job : "", await ipKey(req));
       if (!gate.ok) return Response.json({ error: gate.error }, { status: 402, headers: cors });
-      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : route === "/mood" ? "ai_mood" : route === "/story" ? "ai_story" : "ai_style", ""));
+      ctx.waitUntil(count(env, route === "/transcribe" ? "ai_tr" : route === "/clips" ? "ai_clip" : route === "/mood" ? "ai_mood" : route === "/story" ? "ai_story" : route === "/fx" ? "ai_fx" : "ai_style", ""));
+      if (route === "/fx") {
+        const out = await fxPlan(env, body);
+        ctx.waitUntil(count(env, "fx_" + (out.via || "fail"), ""));
+        if (out._err) ctx.waitUntil(stub(env).err("fx-server", "fx", out._err, "api", "server").catch(() => {}));
+        delete out._err;
+        return Response.json(out, { status: out.error ? 503 : 200, headers: cors });
+      }
       if (route === "/story") {
         const out = await story(env, body);
         if (out._err) ctx.waitUntil(stub(env).err("story-server", "story", out._err, "api", "server").catch(() => {}));
@@ -307,6 +315,70 @@ async function story(env, body) {
   const out = sc.map((x, i) => ({ from: x.from, to: x.to, img: imgs[i] })).filter((x) => x.img);
   if (!out.length) return { error: "draw_failed", _err: "flux: " + errs };
   return { via, look, scenes: out, _err: errs && out.length < sc.length ? "flux partial: " + errs : "" };
+}
+
+
+// Auto effects: an AI "editor" reads the caption lines and picks animated effects for some words
+// (big animated emoji, number counter, ring, underline, arrow, zoom punch, shake, tick, cross, topic tag).
+const FX_KINDS = ["emoji", "count", "ring", "under", "arrow", "zoom", "shake", "check", "cross", "pin"];
+async function fxPlan(env, body) {
+  const lines = Array.isArray(body.lines) ? body.lines.slice(0, 160).map((x) => String(x || "").slice(0, 120)) : [];
+  if (!lines.filter((x) => x.trim()).length) throw bad("lines required");
+  const emo = Array.isArray(body.emojis) ? body.emojis.slice(0, 260).map((x) => String(x || "").slice(0, 60)) : [];
+  const codes = new Set(emo.map((x) => x.split(" ")[0]));
+  const words = lines.map((t) => t.split(/\s+/).filter(Boolean));
+  const prompt =
+    "You are the motion-graphics editor of a short vertical talking video (TikTok / Reels style, like Submagic or CapCut auto effects). " +
+    "Pick animated effects for some spoken words so the video feels edited by a professional, not cluttered.\n" +
+    "EFFECTS (k):\n" +
+    "emoji = a big animated emoji pops next to the captions. Use when a word has a clear picture or a strong feeling. e must be a code from EMOJIS.\n" +
+    "count = the word has a number in digits: it counts up from 0. Only words with digits.\n" +
+    "ring = a circle is drawn around a very important word.\n" +
+    "under = a key word gets underlined.\n" +
+    "arrow = an arrow points at a key word.\n" +
+    "zoom = quick zoom punch into the video on a strong, shocking or funny word.\n" +
+    "shake = the captions shake on a surprising word.\n" +
+    "check = big green tick on yes / right / correct / do this / done.\n" +
+    "cross = big red X on no / wrong / never / don't / mistake.\n" +
+    "pin = a small tag on the video corner with 1-3 words naming the topic (p), in the SAME language as the speech, when a new topic or tip starts. At most 3 in the whole video.\n" +
+    "RULES: about one line out of two or three gets an effect, never every line; first line should get one (a strong start); " +
+    "at most 2 effects on one line and they must be different kinds; never the same kind on two lines in a row; emoji at most on every second line; " +
+    "w = the word number shown in [ ] (start at 0); choose the word that carries the meaning, not small words like the/a/and/de/le/في/و.\n" +
+    'Answer JSON only: {"fx":[{"l":0,"w":3,"k":"count"},{"l":1,"w":5,"k":"emoji","e":"1f631"},{"l":3,"w":0,"k":"pin","p":"..."}]}\n' +
+    "EMOJIS (code: meaning):\n" + emo.join("\n") + "\nLINES:\n" +
+    words.map((ws, i) => i + ": " + ws.map((w, j) => "[" + j + "]" + w).join(" ")).join("\n");
+  let plan = await gemText(env, prompt), via = "gemini", err = "";
+  if (!plan || !Array.isArray(plan.fx)) {
+    via = "llm";
+    try {
+      const out = await llm(env, { messages: [{ role: "user", content: prompt }], max_tokens: 2500, temperature: 0.5 });
+      const mm = /\{[\s\S]*\}/.exec((out && out.response) || "");
+      plan = mm ? JSON.parse(mm[0]) : null;
+    } catch (e) { plan = null; err = String((e && e.message) || e).slice(0, 120); }
+  }
+  if (!plan || !Array.isArray(plan.fx)) return { error: "plan_failed", _err: "fx: no plan " + err };
+  const fx = [], lastK = {}, perLine = {};
+  let pins = 0, lastEmo = -9;
+  const raw = plan.fx.filter((x) => x && typeof x === "object").map((x) => ({ l: Math.trunc(+x.l), w: Math.trunc(+x.w), k: String(x.k || ""), e: String(x.e || ""), p: String(x.p || "").slice(0, 24) }));
+  raw.sort((a, b) => a.l - b.l || a.w - b.w);
+  for (const x of raw) {
+    if (!FX_KINDS.includes(x.k) || !(x.l >= 0 && x.l < lines.length)) continue;
+    const ws = words[x.l];
+    if (!ws.length) continue;
+    if (!(x.w >= 0 && x.w < ws.length)) x.w = 0;
+    const pl = perLine[x.l] || (perLine[x.l] = []);
+    if (pl.length >= 2 || pl.includes(x.k)) continue;
+    if (lastK[x.k] === x.l - 1 && x.k !== "pin") continue;
+    if (x.k === "emoji") { if (!codes.has(x.e) || x.l - lastEmo < 2) continue; lastEmo = x.l; }
+    if (x.k === "count" && !/\d/.test(ws[x.w])) { const j = ws.findIndex((w) => /\d/.test(w)); if (j < 0) continue; x.w = j; }
+    if (x.k === "pin") { if (!x.p.trim() || pins >= 3) continue; pins++; }
+    pl.push(x.k); lastK[x.k] = x.l;
+    const o = { l: x.l, w: x.w, k: x.k };
+    if (x.k === "emoji") o.e = x.e;
+    if (x.k === "pin") o.p = x.p.trim();
+    fx.push(o);
+  }
+  return { via, fx };
 }
 
 // Text AI: Groq first (gpt-oss-120b, stronger, free plan, same GROQ_API_KEY), Cloudflare Llama 3.3 as backup.
