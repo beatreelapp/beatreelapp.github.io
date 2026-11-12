@@ -4,6 +4,8 @@ on:
     workflows: ["Build Android app"]
     types: [completed]
   workflow_dispatch:
+permissions:
+  contents: write
 concurrency:
   group: emu-test
   cancel-in-progress: true
@@ -49,8 +51,11 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: bash .github/emu/test.sh
-      - uses: actions/upload-artifact@v4
+      - name: Save screenshots and logs to branch emu-shots (readable with git)
         if: always()
-        with:
-          name: emu
-          path: shots/
+        run: |
+          mkdir -p /tmp/out && cp -r shots/* /tmp/out/ 2>/dev/null || true
+          cd /tmp/out && git init -q && git checkout -q -b emu-shots
+          git config user.name "github-actions" && git config user.email "github-actions@users.noreply.github.com"
+          git add -A && git commit -qm "virtual phone test ${{ github.run_id }}" || exit 0
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" emu-shots

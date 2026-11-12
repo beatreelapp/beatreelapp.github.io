@@ -16,7 +16,7 @@ if not sock: log("NO DEVTOOLS SOCKET"); sys.exit(1)
 sh(f"adb forward tcp:9222 localabstract:{sock}")
 pages = json.load(urllib.request.urlopen("http://localhost:9222/json"))
 page = next(p for p in pages if p.get("type") == "page")
-ws = websocket.create_connection(page["webSocketDebuggerUrl"], timeout=300)
+ws = websocket.create_connection(page["webSocketDebuggerUrl"], timeout=300, suppress_origin=True)
 n = [0]
 def ev(js, timeout=300):
     n[0] += 1
