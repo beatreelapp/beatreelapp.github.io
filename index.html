@@ -1858,7 +1858,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v63';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v64';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -1993,8 +1993,10 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   if(!res){try{res=await asrRun(pcm.slice(),mdl,opt,onP,onL)}catch(we){if(we.message!=='noworker'&&we.message!=='worker')throw we;msg.textContent='Starting the speech model...';const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');const a=await T.pipeline('automatic-speech-recognition',mdl,{dtype:'q8',device:'wasm',progress_callback:onP});onL();try{res=await a(pcm,Object.assign({return_timestamps:'word'},opt))}catch(e2){res=await a(pcm,Object.assign({return_timestamps:true},opt))}}}
   if(tick){clearInterval(tick);tick=null}
   let lines=groupWords(res.chunks||[],song);
+  /* Whisper invents words on music without singing ("Thank you.", "Thanks for watching"...): drop them */
+  {const all=lines.map(x=>x.t).join(' ').trim(),wc=all.split(/\s+/).filter(Boolean).length;if(song&&wc<=6&&/^[\s.,!♪*-]*(thank(s| you)[^]*|you|bye[^]*|(please )?subscribe[^]*|music|\[?music\]?|silence|merci[^]*|شكرا[^]*|ترجمة[^]*|sous-titr[^]*)[\s.,!♪*-]*$/i.test(all)){lines=[];res.text=''}}
   if(!lines.length&&res.text&&res.text.trim()){lines=[{t:res.text.trim().slice(0,60),s:0,e:Math.max(2,(to-from))}]}
-  if(!lines.length){msg.textContent='No speech was found in this clip.';return}
+  if(!lines.length){msg.textContent=song?'No singing was found (maybe an instrumental song).':'No speech was found in this clip.';return}
   for(let i=0;i<lines.length-1;i++){if(lines[i+1].s-lines[i].e<.5)lines[i].e=lines[i+1].s}
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');tabGo('ly');
   setup();ac.resume();au.currentTime=from;if(SJ!=10){au.play().catch(()=>{});const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
