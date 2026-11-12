@@ -7,11 +7,14 @@ jobs:
       K: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - name: Key present
-        run: '[ -n "$K" ] && echo "key length ${#K}" || echo "NO KEY"'
+        run: |
+          [ -n "$K" ] && echo "key length ${#K}" || echo "NO KEY"
       - name: Flash models this key can use
-        run: curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200" -H "x-goog-api-key: $K" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('error') or [m['name'] for m in d.get('models',[]) if 'flash' in m['name']])"
+        run: |
+          curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200" -H "x-goog-api-key: $K" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('error') or [m['name'] for m in d.get('models',[]) if 'flash' in m['name']])"
       - name: Text test on gemini-flash-latest
-        run: curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" -H "x-goog-api-key: $K" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Say OK"}]}]}' | head -c 600; echo
+        run: |
+          curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" -H "x-goog-api-key: $K" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Say OK"}]}]}' | head -c 600; echo
       - name: Worker /mood with 5 s of test audio
         run: |
           python3 - <<'P'
