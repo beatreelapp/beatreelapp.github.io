@@ -257,9 +257,9 @@ async function mood(env, body) {
 // AI Story: the lyrics become 3-6 scenes (Gemini writes one picture prompt per scene, Groq/Cloudflare text AI as backup),
 // then Cloudflare FLUX draws each picture (free neurons). Needs a coin job. Pictures come back as base64 JPEG.
 const FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell";
-async function gemText(env, prompt) {
+async function gemText(env, prompt, models) {
   if (!env.GEMINI_API_KEY) return null;
-  for (const [m, ms] of GEMINI_MODELS) {
+  for (const [m, ms] of models || GEMINI_MODELS) {
     const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
     try {
       const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent", {
@@ -331,7 +331,7 @@ async function fxPlan(env, body) {
     "You are the motion-graphics editor of a short vertical talking video (TikTok / Reels style, like Submagic or CapCut auto effects). " +
     "Pick animated effects for some spoken words so the video feels edited by a professional, not cluttered.\n" +
     "EFFECTS (k):\n" +
-    "emoji = a big animated emoji pops next to the captions. Use when a word has a clear picture or a strong feeling. e must be a code from EMOJIS.\n" +
+    "emoji = a big animated emoji pops above the captions. Viewers love these: use one on about one line in three (a word with a clear picture, object, action or strong feeling). e must be a code from EMOJIS.\n" +
     "count = the word has a number in digits: it counts up from 0. Only words with digits.\n" +
     "ring = a circle is drawn around a very important word.\n" +
     "under = a key word gets underlined.\n" +
@@ -347,7 +347,7 @@ async function fxPlan(env, body) {
     'Answer JSON only: {"fx":[{"l":0,"w":3,"k":"count"},{"l":1,"w":5,"k":"emoji","e":"1f631"},{"l":3,"w":0,"k":"pin","p":"..."}]}\n' +
     "EMOJIS (code: meaning):\n" + emo.join("\n") + "\nLINES:\n" +
     words.map((ws, i) => i + ": " + ws.map((w, j) => "[" + j + "]" + w).join(" ")).join("\n");
-  let plan = await gemText(env, prompt), via = "gemini", err = "";
+  let plan = await gemText(env, prompt, [["gemini-3.1-flash-lite", 15000], ["gemini-3.5-flash", 24000]]), via = "gemini", err = "";
   if (!plan || !Array.isArray(plan.fx)) {
     via = "llm";
     try {

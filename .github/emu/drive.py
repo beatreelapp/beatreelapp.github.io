@@ -83,5 +83,5 @@ for k, tt in enumerate([0.5, 3.5, 6.5, 9.5]):
 # 4) Auto effects director for real (Gemini, Groq backup): plan for typed caption lines + animated emoji decode
 log("FX", ev("""(async()=>{const list=await aelGet();const lines=['Did you know that 90% of people','leave a video in the first 3 seconds?','The secret is simple: start with a question','never start by introducing yourself','this trick made me 1000 dollars','هل تعرف أن هذا خطأ كبير؟'];
  const t0=performance.now();const r=await fetch(API_URL+'/fx',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lines:lines,emojis:list.map(x=>x.c+' '+(x.t||''))})});
- const j=await r.json().catch(()=>null);const e=(j&&j.fx||[]).find(x=>x.k==='emoji');let dec='';if(e){await aemLoad(e.e);const o=AEM[e.e];dec=o.f?o.f.length+' frames':o.img?'img':'bad'}
+ const j=await r.json().catch(()=>null);const e=(j&&j.fx||[]).find(x=>x.k==='emoji');const c=e?e.e:'1f525';await aemLoad(c);const o=AEM[c];const dec=c+' '+(o.f?o.f.length+' frames':o.img?'img':'bad')
  return 'status '+r.status+' '+Math.round(performance.now()-t0)+'ms list '+list.length+' '+JSON.stringify(j).slice(0,900)+' emoji '+dec})()"""))
