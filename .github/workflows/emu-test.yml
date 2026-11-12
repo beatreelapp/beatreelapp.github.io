@@ -4,6 +4,10 @@ on:
     workflows: ["Build Android app"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      api:
+        description: Android API level (28 = Android 9 like the P20)
+        default: '34'
 permissions:
   contents: write
 concurrency:
@@ -44,7 +48,7 @@ jobs:
       - name: Run the app on a virtual Android phone
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: ${{ inputs.api || 34 }}
           target: google_apis
           arch: x86_64
           ram-size: 4096M

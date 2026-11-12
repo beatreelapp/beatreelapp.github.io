@@ -29,6 +29,19 @@ def ev(js, timeout=300):
             return r.get("result", {}).get("value")
 def shot(name): sh(f"adb exec-out screencap -p > shots/{name}.png")
 
+# Android 9 and older ask for storage when saving: tap "Allow" like the user does
+import threading, re as _re
+def _allow():
+    while True:
+        try:
+            x = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
+            m = _re.search(r'text="(ALLOW|Allow|AUTORISER)"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
+            if m:
+                a, b, c, d2 = map(int, m.groups()[1:])
+                sh(f"adb shell input tap {(a+c)//2} {(b+d2)//2}"); log("PERMISSION DIALOG: tapped", m.group(1))
+        except Exception as e: pass
+        time.sleep(3)
+threading.Thread(target=_allow, daemon=True).start()
 log("APP", ev("APPV+' NAT='+(typeof NAT!=='undefined'&&NAT)"))
 # 1) share the song from "another app" (Android share sheet) and see what the app receives
 ev("window.__SH=null;try{BRN.addListener('shared',d=>{window.__SH=d})}catch(e){window.__SH={err:String(e)}};true")
