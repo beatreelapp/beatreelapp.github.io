@@ -298,7 +298,7 @@ async function story(env, body) {
   const imgs = await Promise.all(sc.map(async (x) => {
     for (let t = 0; t < 2; t++) {
       try {
-        const r = await env.AI.run(FLUX_MODEL, { prompt: (look ? look + ". " : "") + x.prompt + ". Cinematic film still, shallow depth of field, no text, no watermark.", steps: 6, seed: 7 + t });
+        const r = await env.AI.run(FLUX_MODEL, { prompt: (look ? look + ". " : "") + x.prompt + ". Cinematic film still, shallow depth of field, no text, no watermark.", steps: 6 });
         if (r && r.image) return r.image;
       } catch (e) { errs = String((e && e.message) || e).slice(0, 160); }
     }
