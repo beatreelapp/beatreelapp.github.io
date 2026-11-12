@@ -12,19 +12,19 @@ jobs:
       - name: Flash models this key can use
         run: |
           curl -s "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200" -H "x-goog-api-key: $K" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('error') or [m['name'] for m in d.get('models',[]) if 'flash' in m['name']])"
-      - name: Text test on gemini-flash-latest
-        run: |
-          curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" -H "x-goog-api-key: $K" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Say OK"}]}]}' | head -c 600; echo
-      - name: Worker /mood with 5 s of test audio
+      - name: Audio test per model
         run: |
           python3 - <<'P'
-          import base64,io,json,math,struct,wave,urllib.request
+          import base64,io,json,math,os,struct,time,wave,urllib.request
           b=io.BytesIO();w=wave.open(b,'wb');w.setnchannels(1);w.setsampwidth(2);w.setframerate(16000)
-          w.writeframes(b''.join(struct.pack('<h',int(8000*math.sin(2*math.pi*220*i/16000))) for i in range(16000*5)));w.close()
-          body=json.dumps({"audio":base64.b64encode(b.getvalue()).decode(),"scenes":["Car","Aurora calm"],"themes":["Ocean"],"looks":["Chrome","Soft serif"]}).encode()
-          r=urllib.request.Request("https://beatreel-api.renardkatty8.workers.dev/mood",data=body,headers={"Content-Type":"application/json","Origin":"https://beatreelapp.github.io"})
-          try:
-            print(urllib.request.urlopen(r,timeout=60).read()[:600])
-          except Exception as e:
-            print("ERR",e, getattr(e,'read',lambda:b'')()[:600])
+          w.writeframes(b''.join(struct.pack('<h',int(8000*math.sin(2*math.pi*(220+i/400)*i/16000))) for i in range(16000*5)));w.close()
+          a=base64.b64encode(b.getvalue()).decode()
+          for m in ["gemini-3.8-flash","gemini-3.7-flash","gemini-3.5-flash","gemini-2.5-flash","gemini-flash-latest","gemini-3.5-flash-lite","gemini-flash-lite-latest"]:
+            body=json.dumps({"contents":[{"role":"user","parts":[{"inline_data":{"mime_type":"audio/wav","data":a}},{"text":"Describe this sound mood. JSON only: {\"mood\":\"...\",\"energy\":0.0}"}]}],"generationConfig":{"responseMimeType":"application/json","maxOutputTokens":200}}).encode()
+            r=urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"%m,data=body,headers={"Content-Type":"application/json","x-goog-api-key":os.environ["K"]})
+            t=time.time()
+            try:
+              d=json.loads(urllib.request.urlopen(r,timeout=40).read());print(m,"OK",round(time.time()-t,1),"s",json.dumps(d["candidates"][0]["content"]["parts"])[:150])
+            except Exception as e:
+              print(m,"ERR",round(time.time()-t,1),"s",str(e)[:60],getattr(e,'read',lambda:b'')()[:160])
           P
