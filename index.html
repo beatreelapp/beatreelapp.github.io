@@ -2032,7 +2032,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v77';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v78';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2885,10 +2885,13 @@ function vSeq(v,T){const N=T.length,SL=new Array(N),EPS=1/100,AH=6;let p=0,need=
   stop:()=>{stop=true;kick();v.removeEventListener('ended',onEnd);try{v.pause()}catch(_){}},stuck:()=>dead}}
 function seekTo(v,t){return new Promise(res=>{let done=false;const fin=()=>{if(done)return;done=true;v.removeEventListener('seeked',fin);res()};v.addEventListener('seeked',fin);try{v.currentTime=t}catch(_){fin()}setTimeout(fin,2500)})}
 const nap=()=>new Promise(r=>setTimeout(r,0));
+var NATBAD=false,NATRT=false,TRND=0;
+const b64u=s_=>{const b=atob(s_),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u};
+function annexNals(u){const out=[],n=u.length;let i=0,s_=-1;while(i+2<n){if(u[i]===0&&u[i+1]===0&&(u[i+2]===1||(u[i+2]===0&&u[i+3]===1))){const sc=u[i+2]===1?3:4;if(s_>=0)out.push(u.subarray(s_,i));s_=i+sc;i+=sc}else i++}if(s_>=0&&s_<n)out.push(u.subarray(s_,n));return out}
 async function offlineExport(){
  const sup=await offSupport();if(!sup){WHY='unsupported:'+(window.VideoEncoder?'':'noVideoEncoder ')+(window.AudioEncoder?'':'noAudioEncoder ')+(window.isSecureContext?'':'notSecure ')+(window.VideoEncoder&&window.AudioEncoder?'noH264orAudioCodec':'');return 'fallback'}
- const SR=48000,FPS=30,t0=performance.now();
- let started=false,oldQI=QI,oldPN=null,oldDN=null,wl=null,XBASE=0,vseq=null,VTS=null,wasLoop=null;const reWL=()=>{if(document.visibilityState==='visible'&&OFFRUN)try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wl=w).catch(()=>{})}catch(_){}};
+ const SR=48000,FPS=30,t0=performance.now();TRND=0;
+ let natE=null,started=false,oldQI=QI,oldPN=null,oldDN=null,wl=null,XBASE=0,vseq=null,VTS=null,wasLoop=null;const reWL=()=>{if(document.visibilityState==='visible'&&OFFRUN)try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wl=w).catch(()=>{})}catch(_){}};
  const bv=$('bgv'),hasV=!!(bv.src),vWas=hasV&&!bv.paused;
  const ui_=(pc,txt)=>{$('xp').textContent=pc+'%';$('xr').style.strokeDashoffset=276.46*(1-pc/100);msg.textContent=txt};
  try{
@@ -2922,7 +2925,13 @@ async function offlineExport(){
   const mux=new BRMp4.Mux({width:Wq,height:Hq,fps:FPS,avcC:null,audio:null});let verr=null,aerr=null,gotKey=false;
   const softV=sup.v==='soft'||FORCESOFT||window.BR_SOFT===1,softA=sup.a==='soft'||FORCESOFT||window.BR_SOFT===1;
   let venc=null,aenc=null,softE=null;
-  if(!softV){venc=new VideoEncoder({output:(ch,meta)=>{const d=new Uint8Array(ch.byteLength);ch.copyTo(d);if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!mux.o.avcC)mux.o.avcC=new Uint8Array(meta.decoderConfig.description.buffer?meta.decoderConfig.description.buffer.slice(meta.decoderConfig.description.byteOffset,meta.decoderConfig.description.byteOffset+meta.decoderConfig.description.byteLength):meta.decoderConfig.description);try{mux.addVideo(d,ch.timestamp,ch.type==='key')}catch(e){verr=e}},error:e=>{verr=e}});
+  /* Android app: the phone's own H.264 chip (MediaCodec). Any problem -> the old encoders below. */
+  if(NAT&&BRN&&!NATBAD&&window.BR_NONAT!==1){try{const r=await Promise.race([BRN.encStart({w:Wq,h:Hq,fps:FPS,kbps:Wq>=1080?12000:7000}),new Promise((_,j)=>setTimeout(()=>j(new Error('encStart timeout')),8000))]);natE={pend:0,n:0,wake:null,name:r&&r.name||'',tj:0,
+    take(r){if(r&&r.cfg&&!mux.o.avcC){let sps=null,pps=null;annexNals(b64u(r.cfg)).forEach(n=>{const ty=n[0]&31;if(ty===7&&!sps)sps=n;if(ty===8&&!pps)pps=n});if(sps&&pps){const a=new Uint8Array(11+sps.length+pps.length);a.set([1,sps[1],sps[2],sps[3],255,225,sps.length>>8,sps.length&255]);a.set(sps,8);a.set([1,pps.length>>8,pps.length&255],8+sps.length);a.set(pps,11+sps.length);mux.o.avcC=a}}
+     (r&&r.out||[]).forEach(o=>{const nl=annexNals(b64u(o.d)).filter(n=>{const ty=n[0]&31;return ty!==7&&ty!==8&&ty!==9});let len=0;nl.forEach(n=>len+=4+n.length);const d=new Uint8Array(len);let q=0;nl.forEach(n=>{d[q]=n.length>>>24;d[q+1]=(n.length>>16)&255;d[q+2]=(n.length>>8)&255;d[q+3]=n.length&255;d.set(n,q+4);q+=4+n.length});
+      mux.addVideo(d,Math.round(this.n*1e6/FPS),!!o.k);this.n++})}}}catch(e){natE=null;NATBAD=true;try{bug('natenc','start '+String(e&&e.message||e).slice(0,150))}catch(_){}}}
+  if(natE){}
+  else if(!softV){venc=new VideoEncoder({output:(ch,meta)=>{const d=new Uint8Array(ch.byteLength);ch.copyTo(d);if(meta&&meta.decoderConfig&&meta.decoderConfig.description&&!mux.o.avcC)mux.o.avcC=new Uint8Array(meta.decoderConfig.description.buffer?meta.decoderConfig.description.buffer.slice(meta.decoderConfig.description.byteOffset,meta.decoderConfig.description.byteOffset+meta.decoderConfig.description.byteLength):meta.decoderConfig.description);try{mux.addVideo(d,ch.timestamp,ch.type==='key')}catch(e){verr=e}},error:e=>{verr=e}});
   venc.configure({codec:sup.v,width:Wq,height:Hq,bitrate:Wq>=1080?12e6:7e6,framerate:FPS,avc:{format:'avc'}})}
   else{const kb_=Wq>=1080?12000:6500;softE=new BRH264.Enc(Wq,Hq,FPS,kb_);mux.o.avcC=softE.avcC;
    try{
@@ -2957,8 +2966,11 @@ async function offlineExport(){
    if(verr)throw verr;if(aerr)throw aerr;
    XT=CS+f/FPS;XN=XBASE+f*1000/FPS;OFF={d:spec[f],sr:SR};
    if(vseq){VFC=await vseq.get(f);VFT=VTS[f]}else if(vdur){await seekTo(bv,vtAt(f)+.002)}
-   frameBody();
-   if(softE){const id=c.getImageData(0,0,Wq,Hq);
+   {const r0=oldPN();frameBody();TRND+=oldPN()-r0}
+   if(natE){const j0=oldPN(),du=cv.toDataURL('image/jpeg',.93),b6=du.slice(du.indexOf(',')+1);natE.tj+=oldPN()-j0;
+    while(natE.pend>=2){await new Promise(r=>{natE.wake=r;setTimeout(r,15000)});if(verr)throw verr}
+    natE.pend++;BRN.encFrame({d:b6,i:f}).then(r=>{try{natE.take(r)}catch(e){verr=e}},e=>{verr=new Error('natenc '+String(e&&e.message||e).slice(0,120))}).then(()=>{natE.pend--;if(natE.wake){const w_=natE.wake;natE.wake=null;w_()}})}
+   else if(softE){const id=c.getImageData(0,0,Wq,Hq);
     if(OFFWK){const g=(f/15)|0;
      while(WPEND>=OFFWK.length*3){await WWAITP(20000);if(WERR)throw new Error(WERR)}
      if(WERR)throw new Error(WERR);
@@ -2967,22 +2979,25 @@ async function offlineExport(){
    else{const vf=new VideoFrame(cv,{timestamp:Math.round(f*1e6/FPS),duration:Math.round(1e6/FPS)});
    venc.encode(vf,{keyFrame:f%60===0});vf.close();
    while(venc.encodeQueueSize>6){await nap();if(verr)throw verr}}
-   if(f%3===0||vdur||softE){const pc=Math.min(98,5+Math.floor(f/N*93));const secs=(oldPN()-t0)/1000,left=f>10?Math.round(secs/f*(N-f)):0;
+   if(f%3===0||vdur||softE||natE){const pc=Math.min(98,5+Math.floor(f/N*93));const secs=(oldPN()-t0)/1000,left=f>10?Math.round(secs/f*(N-f)):0;
     ui_(pc,'Making your video: '+Math.round(f/FPS)+'s / '+Math.round(dur)+'s'+(left?' (about '+(left>90?Math.round(left/60)+' min':left+' s')+' left)':'')+'. Keep this page open.');await nap()}
   }
   ui_(98,'Finishing the file...');await nap();
   if(OFFWK){while(WPEND>0){await WWAITP(30000);if(WERR)throw new Error(WERR)}WDRAIN();if(WNEXT!==N)throw new Error('missing frames')}
+  if(natE){const w0=oldPN();while(natE.pend>0&&oldPN()-w0<30000){await new Promise(r=>{natE.wake=r;setTimeout(r,500)});if(verr)throw verr}if(verr)throw verr;natE.take(await BRN.encEnd());natE.done=1;if(natE.n!==N)throw new Error('natenc frames '+natE.n+'/'+N)}
   if(venc){await venc.flush();venc.close()}if(aenc){await aenc.flush();aenc.close()}
   if(OFFCAN)throw {cancel:1};
   if(!mux.o.avcC)throw new Error('no video header');
   const hasAudio=!!mux.o.audio;
   const out=mux.finish();
-  blob=new Blob([out],{type:'video/mp4'});ext='mp4';LASTH264=true;LASTENC=softV?'built-in encoder':'fast phone encoder';LASTSECS=Math.round((oldPN()-t0)/1000);try{perf('export','s='+LASTSECS+' clip='+((Math.min(CE,DUR||CE)-CS)||0).toFixed(1)+' mode='+SJ+' enc='+LASTENC+' q='+QI+(SJ==10?' shots='+SH.length+' tr='+SH.filter(q=>q.tx&&q.tx!=='none').length:'')+(SJ==4?' fx='+FXP.length:''))}catch(_){}
+  blob=new Blob([out],{type:'video/mp4'});ext='mp4';LASTH264=true;LASTENC=natE?'phone video chip':softV?'built-in encoder':'fast phone encoder';LASTSECS=Math.round((oldPN()-t0)/1000);try{perf('export','s='+LASTSECS+' clip='+((Math.min(CE,DUR||CE)-CS)||0).toFixed(1)+' mode='+SJ+' enc='+LASTENC+' q='+QI+(SJ==10?' shots='+SH.length+' tr='+SH.filter(q=>q.tx&&q.tx!=='none').length:'')+(SJ==4?' fx='+FXP.length:'')+' draw='+Math.round(TRND/N)+'ms'+(natE?' jpg='+Math.round(natE.tj/N)+'ms chip='+natE.name:''))}catch(_){}
   return await (async()=>{ if(blob.size<20000)throw new Error('empty');ui_(100,'Done. Saving...');return 'ok'})();
  }catch(e){
   if(e&&e.cancel){msg.textContent='Cancelled.';return 'cancel'}
+  if(natE)NATBAD=true;
   console.warn('fast export failed',e);return 'error:'+((e&&e.message)||e)
  }finally{
+  if(natE&&!natE.done){try{BRN.encAbort().catch(()=>{})}catch(_){}}
   if(started&&oldPN){try{XN=XBASE;XT=CS;OFF={d:new Uint8Array(1024),sr:SR};frameBody()}catch(_){}}
   if(oldPN){try{delete performance.now}catch(_){performance.now=oldPN}Date.now=oldDN;try{delete au.currentTime}catch(_){}}
   if(OFFWK){OFFWK.forEach(w=>{try{w.terminate()}catch(_){}});OFFWK=null}
@@ -3000,6 +3015,7 @@ $('rec').onclick=async()=>{
  if(SJ==10&&!(CPRO||PRO)){openPro();return}
  if($('fm').value!=='webm'){
   let r=await offlineExport();
+  if(r!=='ok'&&r!=='cancel'&&r!=='fallback'&&NATBAD&&!NATRT){NATRT=true;try{bug('natenc',String(r).slice(0,150))}catch(_){}msg.textContent='Switching to the built-in encoder...';r=await offlineExport()}
   if(r!=='ok'&&r!=='cancel'&&r!=='fallback'&&!FORCESOFT){const sp=await offSupport();if(sp&&(sp.v!=='soft'||sp.a!=='soft')){FORCESOFT=true;msg.textContent='Switching to the built-in encoder...';r=await offlineExport()}}
   if(r==='ok'){$('save').onclick();return}
   if(r==='cancel')return;

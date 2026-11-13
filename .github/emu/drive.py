@@ -94,6 +94,10 @@ while time.time() - t0 < 600:
     time.sleep(4)
 shot("4_after_save")
 log("ERRORS", ev("JSON.stringify((window.ERRS||[]).slice(-5))"))
+# the saved file must be a real H.264 MP4 made by the phone's encoder (MediaCodec), and it must play
+log("NATENC", ev("""(async()=>{const o={enc:LASTENC,secs:LASTSECS,ext:ext,size:blob.size,natbad:NATBAD};try{const v=document.createElement('video');v.muted=true;v.src=URL.createObjectURL(blob);
+ await new Promise((r,j)=>{v.onloadeddata=r;v.onerror=()=>j(new Error('decode error '+(v.error&&v.error.code)));setTimeout(()=>j(new Error('load timeout')),15000)});o.w=v.videoWidth;o.h=v.videoHeight;o.dur=+v.duration.toFixed(2);
+ v.currentTime=Math.min(2,v.duration/2);await new Promise(r=>{v.onseeked=r;setTimeout(r,5000)});const c2=document.createElement('canvas');c2.width=72;c2.height=128;const x=c2.getContext('2d');x.drawImage(v,0,0,72,128);const p=x.getImageData(0,0,72,128).data;let s=0,mn=255,mx=0;for(let i=0;i<p.length;i+=4){const g=p[i]+p[i+1]+p[i+2];s+=g;mn=Math.min(mn,g/3);mx=Math.max(mx,g/3)}o.avg=Math.round(s/(p.length/4)/3);o.min=Math.round(mn);o.max=Math.round(mx)}catch(e){o.err=String(e&&e.message||e)}return JSON.stringify(o)})()"""))
 log("SHARE ROW", ev("JSON.stringify({uri:LASTURI,row:!$('shr').hidden,btns:[...$('shr').querySelectorAll('button')].map(b=>b.textContent),save:!$('save').hidden,pv:!$('pv').hidden})"))
 log("SHARE APPS", ev("BRN.shareApps().then(r=>JSON.stringify((r.apps||[]).map(a=>a.id+':'+(a.icon||'').length)))"))
 log("SHARE MORE", ev("BRN.share({uri:LASTURI}).then(()=>'opened').catch(e=>'ERR '+e)")); time.sleep(3); shot("4b_share_sheet"); sh("adb shell input keyevent 4"); time.sleep(2)

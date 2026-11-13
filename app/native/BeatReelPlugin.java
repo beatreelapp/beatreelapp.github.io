@@ -16,7 +16,16 @@ import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.database.Cursor;
+import android.graphics.BitmapFactory;
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
 import android.media.MediaScannerConnection;
+import android.opengl.EGL14;
+import android.opengl.EGLExt;
+import android.opengl.GLES20;
+import android.opengl.GLUtils;
+import android.view.Surface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -45,6 +54,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -52,6 +64,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *  - save a finished video to the gallery (Movies/BeatReel)
  *  - receive a song or video shared from another app ("Share" -> BeatReel)
  *  - a notification when a video is saved while the app is in the background
+ *  - make the video with the phone's own H.264 chip (MediaCodec), like native editors do
  *  - share the saved video straight to TikTok, Instagram, WhatsApp... (like CapCut)
  */
 @CapacitorPlugin(
@@ -358,6 +371,226 @@ public class BeatReelPlugin extends Plugin {
         } catch (Exception e) {
             call.reject(String.valueOf(e));
         }
+    }
+
+    // ---- video encoder of the phone (MediaCodec, hardware when the phone has it) ----
+    // The page sends each finished picture (JPEG); it is drawn with OpenGL on the encoder's input surface
+    // with an exact time stamp, and the H.264 data goes back to the page, which writes the MP4 as before.
+    private MediaCodec enc;
+    private Surface encSurf;
+    private android.opengl.EGLDisplay eDpy = EGL14.EGL_NO_DISPLAY;
+    private android.opengl.EGLContext eCtx = EGL14.EGL_NO_CONTEXT;
+    private android.opengl.EGLSurface eSurf = EGL14.EGL_NO_SURFACE;
+    private int glProg, glTex, encW, encH, encFps, glAP, glAT;
+    private boolean texInit, cfgSent;
+    private Bitmap encBmp;
+    private byte[] encCfg;
+    private FloatBuffer quad;
+    private final MediaCodec.BufferInfo encInfo = new MediaCodec.BufferInfo();
+
+    @PluginMethod
+    public void encStart(PluginCall call) {
+        encRelease();
+        try {
+            encW = call.getInt("w", 720);
+            encH = call.getInt("h", 1280);
+            encFps = call.getInt("fps", 30);
+            int kbps = call.getInt("kbps", 7000);
+            MediaFormat f = MediaFormat.createVideoFormat("video/avc", encW, encH);
+            f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+            f.setInteger(MediaFormat.KEY_BIT_RATE, kbps * 1000);
+            f.setInteger(MediaFormat.KEY_FRAME_RATE, encFps);
+            f.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+            enc = MediaCodec.createEncoderByType("video/avc");
+            enc.configure(f, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            encSurf = enc.createInputSurface();
+            enc.start();
+            // OpenGL on the encoder surface
+            eDpy = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
+            int[] ver = new int[2];
+            if (!EGL14.eglInitialize(eDpy, ver, 0, ver, 1)) throw new RuntimeException("egl init");
+            int[] attr = { EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8, EGL14.EGL_BLUE_SIZE, 8,
+                EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT, 0x3142 /* EGL_RECORDABLE_ANDROID */, 1, EGL14.EGL_NONE };
+            android.opengl.EGLConfig[] cfg = new android.opengl.EGLConfig[1];
+            int[] n = new int[1];
+            if (!EGL14.eglChooseConfig(eDpy, attr, 0, cfg, 0, 1, n, 0) || n[0] < 1) throw new RuntimeException("egl config");
+            eCtx = EGL14.eglCreateContext(eDpy, cfg[0], EGL14.EGL_NO_CONTEXT, new int[] { EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL14.EGL_NONE }, 0);
+            if (eCtx == null || eCtx == EGL14.EGL_NO_CONTEXT) throw new RuntimeException("egl context");
+            eSurf = EGL14.eglCreateWindowSurface(eDpy, cfg[0], encSurf, new int[] { EGL14.EGL_NONE }, 0);
+            if (eSurf == null || eSurf == EGL14.EGL_NO_SURFACE) throw new RuntimeException("egl surface");
+            if (!EGL14.eglMakeCurrent(eDpy, eSurf, eSurf, eCtx)) throw new RuntimeException("egl current");
+            int vs = shader(GLES20.GL_VERTEX_SHADER, "attribute vec4 aP;attribute vec2 aT;varying vec2 vT;void main(){gl_Position=aP;vT=aT;}");
+            int fs = shader(GLES20.GL_FRAGMENT_SHADER, "precision mediump float;varying vec2 vT;uniform sampler2D uS;void main(){gl_FragColor=texture2D(uS,vT);}");
+            glProg = GLES20.glCreateProgram();
+            GLES20.glAttachShader(glProg, vs);
+            GLES20.glAttachShader(glProg, fs);
+            GLES20.glLinkProgram(glProg);
+            int[] ok = new int[1];
+            GLES20.glGetProgramiv(glProg, GLES20.GL_LINK_STATUS, ok, 0);
+            if (ok[0] == 0) throw new RuntimeException("gl link");
+            glAP = GLES20.glGetAttribLocation(glProg, "aP");
+            glAT = GLES20.glGetAttribLocation(glProg, "aT");
+            int[] t = new int[1];
+            GLES20.glGenTextures(1, t, 0);
+            glTex = t[0];
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, glTex);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+            // x, y, u, v : the first row of the picture is the top of the video
+            float[] q = { -1, -1, 0, 1,  1, -1, 1, 1,  -1, 1, 0, 0,  1, 1, 1, 0 };
+            quad = ByteBuffer.allocateDirect(q.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+            quad.put(q).position(0);
+            texInit = false;
+            cfgSent = false;
+            encCfg = null;
+            JSObject r = new JSObject();
+            r.put("name", enc.getName());
+            call.resolve(r);
+        } catch (Throwable e) {
+            encRelease();
+            call.reject("encStart " + e);
+        }
+    }
+
+    private static int shader(int type, String src) {
+        int s = GLES20.glCreateShader(type);
+        GLES20.glShaderSource(s, src);
+        GLES20.glCompileShader(s);
+        int[] ok = new int[1];
+        GLES20.glGetShaderiv(s, GLES20.GL_COMPILE_STATUS, ok, 0);
+        if (ok[0] == 0) throw new RuntimeException("gl shader " + GLES20.glGetShaderInfoLog(s));
+        return s;
+    }
+
+    @PluginMethod
+    public void encFrame(PluginCall call) {
+        try {
+            if (enc == null) { call.reject("no encoder"); return; }
+            String d = call.getString("d", "");
+            int i = call.getInt("i", 0);
+            byte[] jpg = Base64.decode(d, Base64.DEFAULT);
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inMutable = true;
+            o.inPreferredConfig = Bitmap.Config.ARGB_8888;
+            Bitmap b = null;
+            if (encBmp != null) {
+                o.inBitmap = encBmp;
+                try { b = BitmapFactory.decodeByteArray(jpg, 0, jpg.length, o); } catch (IllegalArgumentException ex) { b = null; }
+            }
+            if (b == null) { o.inBitmap = null; b = BitmapFactory.decodeByteArray(jpg, 0, jpg.length, o); }
+            if (b == null) { call.reject("bad picture"); return; }
+            encBmp = b;
+            if (!EGL14.eglMakeCurrent(eDpy, eSurf, eSurf, eCtx)) throw new RuntimeException("egl current");
+            GLES20.glViewport(0, 0, encW, encH);
+            GLES20.glUseProgram(glProg);
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, glTex);
+            if (!texInit) { GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, b, 0); texInit = true; }
+            else GLUtils.texSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, b);
+            quad.position(0);
+            GLES20.glVertexAttribPointer(glAP, 2, GLES20.GL_FLOAT, false, 16, quad);
+            GLES20.glEnableVertexAttribArray(glAP);
+            quad.position(2);
+            GLES20.glVertexAttribPointer(glAT, 2, GLES20.GL_FLOAT, false, 16, quad);
+            GLES20.glEnableVertexAttribArray(glAT);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
+            int ge = GLES20.glGetError();
+            if (ge != GLES20.GL_NO_ERROR) throw new RuntimeException("gl error " + ge);
+            EGLExt.eglPresentationTimeANDROID(eDpy, eSurf, i * 1000000000L / encFps);
+            if (!EGL14.eglSwapBuffers(eDpy, eSurf)) throw new RuntimeException("egl swap");
+            call.resolve(encDrain(false));
+        } catch (Throwable e) {
+            call.reject("encFrame " + e);
+        }
+    }
+
+    private JSObject encDrain(boolean end) {
+        JSArray out = new JSArray();
+        int idle = 0;
+        while (true) {
+            int ix = enc.dequeueOutputBuffer(encInfo, end ? 10000 : 0);
+            if (ix == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                if (!end || ++idle > 500) break;
+                continue;
+            }
+            if (ix == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                try {
+                    MediaFormat nf = enc.getOutputFormat();
+                    ByteBuffer a = nf.getByteBuffer("csd-0"), b2 = nf.getByteBuffer("csd-1");
+                    if (a != null) {
+                        byte[] x = new byte[a.remaining() + (b2 != null ? b2.remaining() : 0)];
+                        int n0 = a.remaining();
+                        a.duplicate().get(x, 0, n0);
+                        if (b2 != null) b2.duplicate().get(x, n0, b2.remaining());
+                        encCfg = x;
+                    }
+                } catch (Exception ignored) { }
+                continue;
+            }
+            if (ix < 0) continue;
+            idle = 0;
+            ByteBuffer bb = enc.getOutputBuffer(ix);
+            if (bb != null && encInfo.size > 0) {
+                byte[] a = new byte[encInfo.size];
+                bb.position(encInfo.offset);
+                bb.get(a, 0, encInfo.size);
+                if ((encInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) { if (encCfg == null) encCfg = a; }
+                else {
+                    JSObject o = new JSObject();
+                    o.put("d", Base64.encodeToString(a, Base64.NO_WRAP));
+                    o.put("t", encInfo.presentationTimeUs);
+                    o.put("k", (encInfo.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0);
+                    out.put(o);
+                }
+            }
+            boolean eos = (encInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
+            enc.releaseOutputBuffer(ix, false);
+            if (eos) break;
+        }
+        JSObject r = new JSObject();
+        r.put("out", out);
+        if (encCfg != null && !cfgSent) { r.put("cfg", Base64.encodeToString(encCfg, Base64.NO_WRAP)); cfgSent = true; }
+        return r;
+    }
+
+    @PluginMethod
+    public void encEnd(PluginCall call) {
+        try {
+            if (enc == null) { call.reject("no encoder"); return; }
+            enc.signalEndOfInputStream();
+            JSObject r = encDrain(true);
+            encRelease();
+            call.resolve(r);
+        } catch (Throwable e) {
+            encRelease();
+            call.reject("encEnd " + e);
+        }
+    }
+
+    @PluginMethod
+    public void encAbort(PluginCall call) {
+        encRelease();
+        call.resolve();
+    }
+
+    private void encRelease() {
+        try { if (enc != null) { try { enc.stop(); } catch (Exception ignored) { } enc.release(); } } catch (Exception ignored) { }
+        enc = null;
+        try {
+            if (eDpy != EGL14.EGL_NO_DISPLAY) {
+                EGL14.eglMakeCurrent(eDpy, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
+                if (eSurf != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(eDpy, eSurf);
+                if (eCtx != EGL14.EGL_NO_CONTEXT) EGL14.eglDestroyContext(eDpy, eCtx);
+            }
+        } catch (Exception ignored) { }
+        eSurf = EGL14.EGL_NO_SURFACE;
+        eCtx = EGL14.EGL_NO_CONTEXT;
+        eDpy = EGL14.EGL_NO_DISPLAY;
+        try { if (encSurf != null) encSurf.release(); } catch (Exception ignored) { }
+        encSurf = null;
+        encBmp = null;
     }
 
     // ---- notification ----
