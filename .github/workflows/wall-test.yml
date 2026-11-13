@@ -1,0 +1,27 @@
+name: wall-test
+# Temporary: one real call to the Live wallpaper server route (no secrets used).
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          A=https://beatreel-api.renardkatty8.workers.dev
+          O="Origin: https://beatreelapp.github.io"
+          D=walltest-0000-0000-0000-000000000001
+          echo "PEEK $(curl -sS -H "$O" -H 'Content-Type: application/json' -d "{\"did\":\"$D\",\"peek\":1}" $A/wall)"
+          echo "BAD $(curl -sS -H "$O" -H 'Content-Type: application/json' -d "{\"did\":\"$D\",\"text\":\"naked woman\"}" $A/wall | cut -c1-200)"
+          curl -sS -o r.json -w 'HTTP %{http_code} %{time_total}s\n' -H "$O" -H 'Content-Type: application/json' -d "{\"did\":\"$D\",\"text\":\"شخص وحيد فوق سطح عمارة، سماء حمراء، أسلوب رسم بالحبر\"}" $A/wall
+          python3 - <<'PY'
+          import json,base64
+          j=json.load(open('r.json'));img=j.pop('img',None);print('RES',json.dumps(j)[:400],'img',len(img or ''))
+          if img: open('out.jpg','wb').write(base64.b64decode(img))
+          PY
+          echo "PEEK2 $(curl -sS -H "$O" -H 'Content-Type: application/json' -d "{\"did\":\"$D\",\"peek\":1}" $A/wall)"
+          if [ -f out.jpg ]; then
+            mkdir b && cd b && git init -q && git checkout -q -b wall-test && cp ../out.jpg . && git add out.jpg
+            git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -q -m "wall test picture"
+            git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" wall-test
+          fi
