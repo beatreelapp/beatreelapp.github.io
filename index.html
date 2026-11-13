@@ -2032,7 +2032,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v82';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v83';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -3126,6 +3126,8 @@ function pkSync(){document.querySelectorAll('.pk').forEach(k=>{const v=k._src.va
 #edtl .emu canvas{display:block;width:100%!important;height:100%!important;border-radius:5px;flex:none;min-width:0}
 #edtl .emu.none{width:auto;padding:0 12px;background:#22262c;color:#9aa3ad;font:600 12px/22px system-ui,sans-serif;white-space:nowrap;cursor:pointer;border:1px dashed #30343b;box-shadow:none}
 #edtl .emu.on{outline:2px solid #fff;z-index:2}
+#edtl .emu.grab{outline:3px solid #e9c46a}
+#edtl .emu{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #edtl .emn{position:absolute;left:4px;top:3px;font:600 10px/16px system-ui,sans-serif;color:#e8eaed;background:rgba(6,35,58,.7);padding:0 4px;border-radius:5px;pointer-events:none;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis}
 #edtl .eov{position:absolute;top:83px;height:20px;border-radius:5px;background:#3b2f14;box-shadow:inset 0 0 0 1px rgba(233,196,106,.5);display:flex;align-items:center;gap:4px;overflow:visible;color:#e9c46a;font:600 10px system-ui,sans-serif;white-space:nowrap}
 #edtl .eov canvas{width:18px!important;height:18px!important;border-radius:3px;flex:none;margin-left:1px}
@@ -3319,7 +3321,9 @@ function clKOf(s,src){src=src||0;const L=clList();for(let k=0;k<L.length;k++)if(
 function edT(){return au.src?au.currentTime:(CS||0)+EDPOS}
 function edVT(t){const d=clDur();if(!d)return 0;return clSrc(Math.max(0,t-(CS||0)))}
 function edOut(){const n=clLen();if(!n)return 0;const o=Math.max(0,edT()-(CS||0));return((o%n)+n)%n}
-function edGo(o){const n=clLen();o=Math.max(0,Math.min(Math.max(0,n-.02),o));if(au.src){let t=(CS||0)+o;if(t>=CE-.03)t=Math.max(CS||0,CE-.05);au.currentTime=t}else EDPOS=o}
+function edEnd(){const n=clLen();return au.src&&!curVid&&CE<1e6?Math.max(n,CE-(CS||0)):n}
+function edPos(){const m=edEnd();if(!m)return 0;return Math.max(0,Math.min(m,edT()-(CS||0)))}
+function edGo(o){const n=edEnd();o=Math.max(0,Math.min(Math.max(0,n-.02),o));if(au.src){let t=(CS||0)+o;if(t>=CE-.03)t=Math.max(CS||0,CE-.05);au.currentTime=t}else EDPOS=o}
 function edVV(){return EDVV==null?(curVid?1:0):EDVV}
 function edSnap(){EDUNDO.push(JSON.stringify({cl:clList(),cs:CS,ce:CE,au:au.src}));if(EDUNDO.length>40)EDUNDO.shift()}
 function edSet(L){CL=L.map(q=>({a:q.a,b:q.b,sp:q.sp||1,src:q.src||0}));OBC.clear();edTL();edClock()}
@@ -3385,6 +3389,12 @@ function edClock(){if(SJ!=10||!curVid||!$('bgv').src)return;const n=clLen();if(!
 function edMusicDel(){if(curVid){msg.textContent='There is no song. Tap ＋ Add music to add one.';return}au.pause();EDMSEL=false;
  if(vidFile){loadAudio(vidFile,'Music removed ✓ Your video\'s own sound is used.');curVid=true;EDVV=null}else{msg.textContent='Music removed.'}edTL()}
 function edBest(){if(curVid||!DUR){msg.textContent='Add a song first.';return}edSnap();CUSER=1;hookUse(Math.max(5,Math.round(CE-CS)));edTL()}
+/* cut the song at the red line: 0 = remove what is before it, 1 = remove what is after it, 2 = end the song with the last clip */
+function edMuCut(m){if(curVid||!DUR)return;au.pause();const p=edPos(),len=CE-CS,n=clLen();
+ if(m===0){if(p<.3||p>len-.5){msg.textContent='Slide the strip so the red line is where the music should start.';return}edSnap();CS=CS+p;CUSER=1;HKA=0;try{clipUI()}catch(_){}edTL();edGo(0);msg.textContent='Music cut ✓ It now starts at '+edFmt(CS)+' of the song.'}
+ else if(m===1){if(p<.5||p>len-.3){msg.textContent='Slide the strip so the red line is where the music should stop.';return}edSnap();CE=CS+p;CUSER=1;try{clipUI()}catch(_){}edTL();edGo(Math.max(0,p-.05));msg.textContent='Music cut ✓ It now lasts '+(CE-CS).toFixed(1)+' s.'}
+ else{if(Math.abs(len-n)<.05){msg.textContent='The music already ends with the video.';return}if(CS+n>DUR+.05){msg.textContent='The song is shorter than the video from here. Slide the music to an earlier part first.';return}edSnap();CE=Math.min(DUR,CS+Math.min(n,maxLen()));CUSER=1;try{clipUI()}catch(_){}edTL();edGo(Math.min(p,CE-CS-.05));msg.textContent='Music ends with the video ✓ ('+(CE-CS).toFixed(1)+' s)'}
+ try{hit('ed_mcut')}catch(_){}}
 /* ---- images on top (layer) ---- */
 function edPickOvl(rep){let i=$('edof');if(!i){i=document.createElement('input');i.type='file';i.id='edof';i.accept='image/*';i.hidden=true;document.body.appendChild(i);
   i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)edAddOvl(f,i._rep);i.value=''}}
@@ -3437,7 +3447,7 @@ function edTL(){const tl=$('edtl');if(!tl)return;const ph=$('edph');tl.innerHTML
  for(let k=1;k<SH.length;k++){const s=SH[k].s,ck=clKOf(s,0);if(ck<0||s-L[ck].a<.05)continue;const b=document.createElement('button');b.type='button';const on=SH[k].tx&&SH[k].tx!=='none';
   b.className='trb'+(on?' on':'');b.textContent=on?'◆':'+';b.setAttribute('aria-label','Transition '+k);b.dataset.s=s;b.onclick=e=>{e.stopPropagation();ETRK=k;au.pause();edShow('tr',1)};tk.appendChild(b)}
  sc.addEventListener('scroll',()=>{if(EDTRIM||EDPINCH||EDDRAG)return;if(Math.abs(sc.scrollLeft-EDPROG)<1.5)return;EDPROG=sc.scrollLeft;if(!au.paused)au.pause();edGo(sc.scrollLeft/edPPS())},{passive:true});
- sc.addEventListener('touchstart',e=>{if(!au.paused)au.pause();if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];EDPINCH={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,p:edPPS(),o:edOut()}}},{passive:true});
+ sc.addEventListener('touchstart',e=>{if(!au.paused)au.pause();if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];EDPINCH={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,p:edPPS(),o:edPos()}}},{passive:true});
  sc.addEventListener('touchmove',e=>{if(!EDPINCH||e.touches.length<2)return;e.preventDefault();const a=e.touches[0],b=e.touches[1];EPPS=Math.max(6,Math.min(260,EDPINCH.p*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/EDPINCH.d));edLay(0,EDPINCH.o)},{passive:false});
  const pe=e=>{if(EDPINCH&&(!e.touches||e.touches.length<2)){const o=EDPINCH.o;EDPINCH=null;edLay(1,o)}};sc.addEventListener('touchend',pe);sc.addEventListener('touchcancel',pe);
  edLay(1);edBar();edUI();EDSIG=edSig()}
@@ -3450,7 +3460,7 @@ function edLay(draw,o){const tl=$('edtl'),sc=$('edsc'),tk=$('edtk');if(!tl||!sc|
  tk.querySelectorAll('.eov').forEach(el=>{const v=OVL[+el.dataset.i];if(!v)return;el.style.left=(pad+v.o0*pps)+'px';el.style.width=Math.max(24,(v.o1-v.o0)*pps-2)+'px'});
  tk.querySelectorAll('.trb').forEach(b=>{const oo=clOut(+b.dataset.s,0);b.style.left=(pad+oo*pps-12)+'px'});
  const se=$('edse');if(se){if(ml&&ml<n-.05){se.style.display='';se.style.left=(pad+ml*pps)+'px';se.style.width=((n-ml)*pps)+'px'}else se.style.display='none'}
- const oo=o!=null?o:edOut();EDPROG=Math.round(oo*pps);sc.scrollLeft=EDPROG;EDPROG=sc.scrollLeft}
+ const oo=o!=null?o:edPos();EDPROG=Math.round(oo*pps);sc.scrollLeft=EDPROG;EDPROG=sc.scrollLeft}
 /* white handles: c = video clip (trim), m = music (start/end of the song part), o = image on top (when it shows) */
 function edHandle(h,kind,k,side){h.addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();au.pause();
   const T={kind:kind,k:k,side:side,x0:e.clientX,t:0,snap:JSON.stringify({cl:clList(),cs:CS,ce:CE,au:au.src})};
@@ -3473,19 +3483,22 @@ function edHandle(h,kind,k,side){h.addEventListener('pointerdown',e=>{e.stopProp
   else{EDDRAG=null;edTL()}};
  h.addEventListener('pointerup',up);h.addEventListener('pointercancel',up)}
 /* drag the selected music bar: slides the song under the video (which part of the song plays) */
-function edMuDrag(mu){mu.style.touchAction='none';let T=null;
- mu.addEventListener('pointerdown',e=>{if(e.target.classList.contains('eh'))return;au.pause();T={x0:e.clientX,cs:CS,ce:CE,mv:false,snap:JSON.stringify({cl:clList(),cs:CS,ce:CE,au:au.src})};try{mu.setPointerCapture(e.pointerId)}catch(_){}});
- mu.addEventListener('pointermove',e=>{if(!T)return;const dx=e.clientX-T.x0;if(!T.mv&&Math.abs(dx)<8)return;if(!T.mv){T.mv=true;EDDRAG={kind:'mb'};mu._drag=true}e.preventDefault();
+function edMuDrag(mu){let T=null,tm=0;
+ mu.addEventListener('contextmenu',e=>e.preventDefault());
+ mu.addEventListener('pointerdown',e=>{if(e.target.classList.contains('eh'))return;const id=e.pointerId,x0=e.clientX;clearTimeout(tm);T=null;mu._x=x0;
+  tm=setTimeout(()=>{au.pause();T={x0:mu._x,cs:CS,ce:CE,mv:false,snap:JSON.stringify({cl:clList(),cs:CS,ce:CE,au:au.src})};EDDRAG={kind:'mb'};mu._drag=true;mu.classList.add('grab');try{mu.setPointerCapture(id)}catch(_){}try{navigator.vibrate&&navigator.vibrate(15)}catch(_){}msg.textContent='Now slide left or right to choose the part of the song.'},380)});
+ mu.addEventListener('pointermove',e=>{if(!T){if(Math.abs(e.clientX-(mu._x||0))>10)clearTimeout(tm);return}e.preventDefault();const dx=e.clientX-T.x0;if(Math.abs(dx)>3)T.mv=true;
   const len=T.ce-T.cs;let s=T.cs-dx/edPPS();s=Math.max(0,Math.min((DUR||T.ce)-len,s));CS=s;CE=s+len;CUSER=1;HKA=0;try{clipUI()}catch(_){}
   const cn=mu.querySelector('canvas');if(cn)edWave(cn,len*edPPS());msg.textContent='Music starts at '+edFmt(CS)+' of the song'});
- const up=()=>{if(!T)return;const t=T;T=null;if(t.mv){EDDRAG=null;if(CS!==t.cs){EDUNDO.push(t.snap);try{hit('ed_mmove')}catch(_){}}setTimeout(()=>{mu._drag=false},50);edTL();edGo(edOut())}};
+ mu.addEventListener('touchmove',e=>{if(T&&e.cancelable)e.preventDefault()},{passive:false});
+ const up=()=>{clearTimeout(tm);if(!T)return;const t=T;T=null;EDDRAG=null;mu.classList.remove('grab');if(CS!==t.cs){EDUNDO.push(t.snap);try{hit('ed_mmove')}catch(_){}}setTimeout(()=>{mu._drag=false},80);edTL();edGo(edPos())};
  mu.addEventListener('pointerup',up);mu.addEventListener('pointercancel',up)}
 /* tool row under the timeline: changes with what is selected (big finger-size buttons, scrolls sideways) */
 function edBar(){let r=$('edct');const has=$('bgv').src&&clDur()>0;if(!r){r=document.createElement('div');r.id='edct';const ex=$('edtl').closest('.exp');ex.parentNode.insertBefore(r,ex.nextSibling);
   const sb=document.createElement('div');sb.id='edsub';r.parentNode.insertBefore(sb,r.nextSibling)}
  const sb=$('edsub');r.hidden=!has||!$('edpn').hidden;sb.hidden=r.hidden||!EDSUB;if(r.hidden)return;const L=clList(),B=[];
  const bt=(id,tx,fn,dis)=>B.push([id,tx,fn,dis]);
- if(EDMSEL&&!curVid){bt('edmr','🔄 Replace',()=>$('f').click());bt('edmb','✨ Best part',edBest);bt('edmv','🔊 Volume '+Math.round(EDMUV*100)+'%',()=>{EDSUB=EDSUB==='mv'?'':'mv';edBar()});bt('edmd','🗑 Delete',edMusicDel)}
+ if(EDMSEL&&!curVid){bt('edmc1','✂️ Cut before',()=>edMuCut(0));bt('edmc2','✂️ Cut after',()=>edMuCut(1));bt('edmf','⇔ Video length',()=>edMuCut(2));bt('edmb','✨ Best part',edBest);bt('edmr','🔄 Replace',()=>$('f').click());bt('edmv','🔊 Volume '+Math.round(EDMUV*100)+'%',()=>{EDSUB=EDSUB==='mv'?'':'mv';edBar()});bt('edmd','🗑 Delete',edMusicDel);bt('edund','↩ Undo',edUndo,!EDUNDO.length)}
  else if(EDOSEL>=0&&OVL[EDOSEL]){bt('edor','🔄 Replace',()=>edPickOvl(true));bt('edod','🗑 Delete',()=>{const o=OVL.splice(EDOSEL,1)[0];try{URL.revokeObjectURL(o.url)}catch(_){}EDOSEL=-1;edTL();msg.textContent='Image removed ✓'})}
  else if(CLSEL>=0&&L[CLSEL]){const n=CLSEL+1;bt('edspl','✂️ Split',edSplit);bt('eddel','🗑 Delete',edDel,L.length<2);bt('edcp','⧉ Copy',edCopy);
   bt('edsp','⏩ Speed '+(L[CLSEL].sp||1)+'x',()=>{EDSUB=EDSUB==='sp'?'':'sp';edBar()},SRCS[L[CLSEL].src||0]&&SRCS[L[CLSEL].src].t==='i');
@@ -3528,7 +3541,7 @@ function edPick(k){SHSEL=k;const q=SH[k],bv=$('bgv');au.pause();if(q){const mt=q
 function edLoop(){requestAnimationFrame(edLoop);if(!EDON)return;const bv=$('bgv'),d=bv.duration,t=edT(),cs=CS||0;
  const f=x=>{x=Math.max(0,x);return Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0')};$('edtm').textContent=f(t-cs)+' / '+f(CE>1e6?0:(CE||0)-cs);
  $('edpl').textContent=au.paused?'▶':'❚❚';{const m=$('edmsg'),tx=msg.textContent||'';if(m.textContent!==tx)m.textContent=tx}
- const sc=$('edsc');if(sc&&!EDTRIM&&!EDPINCH&&bv.src&&d>0){const x=Math.round(edOut()*edPPS());if(Math.abs(sc.scrollLeft-x)>1.5){EDPROG=x;sc.scrollLeft=x;EDPROG=sc.scrollLeft}}
+ const sc=$('edsc');if(sc&&!EDTRIM&&!EDPINCH&&bv.src&&d>0){const x=Math.round(edPos()*edPPS());if(Math.abs(sc.scrollLeft-x)>1.5){EDPROG=x;sc.scrollLeft=x;EDPROG=sc.scrollLeft}}
  if(SH.length>1&&bv.src&&d>0&&!EDTRIM&&!EDSN){const vt=edVT(t);for(let k=0;k<SH.length;k++)if(vt>=SH[k].s&&vt<SH[k].e){if(k!==SHSEL){SHSEL=k;edUI()}break}}}
 /* ===== Edit: transitions between shots. None by default; chosen per cut with the + buttons on the timeline.
    Drawn on the phone from the live picture + a copy of the last picture before the cut (never two videos at once). ===== */
