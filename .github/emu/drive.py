@@ -123,3 +123,18 @@ log("FX", ev("""(async()=>{const list=await aelGet();const lines=['Did you know 
  const t0=performance.now();const r=await fetch(API_URL+'/fx',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lines:lines,emojis:list.map(x=>x.c+' '+(x.t||''))})});
  const j=await r.json().catch(()=>null);const e=(j&&j.fx||[]).find(x=>x.k==='emoji');const c=e?e.e:'1f525';await aemLoad(c);const o=AEM[c];const dec=c+' '+(o.f?o.f.length+' frames':o.img?'img':'bad')
  return 'status '+r.status+' '+Math.round(performance.now()-t0)+'ms list '+list.length+' '+JSON.stringify(j).slice(0,900)+' emoji '+dec})()"""))
+
+# 5) Edit timeline (CapCut style): the video saved above goes into Edit, split / delete / undo, a photo clip, an image on top, export
+log("EDIT", ev("""(async()=>{try{const vf=new File([blob],'made.mp4',{type:'video/mp4'});
+ EDIT=true;setMode('music');SJ=10;sceneUI();$('vf').onchange({target:{files:[vf],value:''}});
+ for(let i=0;i<120&&!(clDur()>0&&!SHBUSY&&SHK===$('bgv').src);i++)await new Promise(r=>setTimeout(r,500));
+ const o={dur:+clDur().toFixed(2),shots:SH.length,edon:EDON};edGo(2);edSplit();o.split=CL.length;CLSEL=0;edTL();edDel();o.del=CL.length;edUndo();o.undo=CL.length;
+ const c2=document.createElement('canvas');c2.width=400;c2.height=500;const x=c2.getContext('2d');x.fillStyle='#ee77cc';x.fillRect(0,0,400,500);
+ const pb=await new Promise(r=>c2.toBlob(r,'image/png'));CLSEL=-1;edAddMedia(new File([pb],'p.png',{type:'image/png'}),false);await new Promise(r=>setTimeout(r,1500));o.clips=CL.map(q=>q.src+':'+cW(q).toFixed(1));
+ edAddOvl(new File([pb],'o.png',{type:'image/png'}));await new Promise(r=>setTimeout(r,1000));o.ovl=OVL.length;
+ au.pause();CE=Math.min(DUR||CE,CS+9);clipUI();o.len=+clLen().toFixed(2);o.ce=+(CE-CS).toFixed(2);return JSON.stringify(o)}catch(e){return 'ERR '+(e&&e.stack||e)}})()""", 200))
+shot("6_edit_timeline")
+log("EDIT EXPORT", ev("""(async()=>{const t0=performance.now();let r;try{r=await offlineExport()}catch(e){r='ERR '+e}const o={r:r,secs:Math.round((performance.now()-t0)/1000),enc:LASTENC,size:blob&&blob.size};
+ try{const v=document.createElement('video');v.muted=true;v.src=URL.createObjectURL(blob);await new Promise((a,b)=>{v.onloadeddata=a;v.onerror=b;setTimeout(b,15000)});o.dur=+v.duration.toFixed(2);
+  const st=clStart(CL.findIndex(q=>q.src>0))+1;v.currentTime=st;await new Promise(a=>{v.onseeked=a;setTimeout(a,5000)});const c2=document.createElement('canvas');c2.width=72;c2.height=128;const x=c2.getContext('2d');x.drawImage(v,0,0,72,128);const p=x.getImageData(36,64,1,1).data;o.photoPx=[p[0],p[1],p[2]];o.at=+st.toFixed(2)}catch(e){o.err=String(e)}
+ return JSON.stringify(o)})()""", 600))
