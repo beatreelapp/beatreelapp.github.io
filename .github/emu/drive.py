@@ -124,6 +124,10 @@ log("FX", ev("""(async()=>{const list=await aelGet();const lines=['Did you know 
  const j=await r.json().catch(()=>null);const e=(j&&j.fx||[]).find(x=>x.k==='emoji');const c=e?e.e:'1f525';await aemLoad(c);const o=AEM[c];const dec=c+' '+(o.f?o.f.length+' frames':o.img?'img':'bad')
  return 'status '+r.status+' '+Math.round(performance.now()-t0)+'ms list '+list.length+' '+JSON.stringify(j).slice(0,900)+' emoji '+dec})()"""))
 
+# the app may be in the background after the Back key above: videos only play when it is in front
+sh("adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n io.github.beatreelapp.twa.test/io.github.beatreelapp.twa.MainActivity"); time.sleep(4)
+log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
+log("VISIBLE", ev("document.visibilityState"))
 # 5) Edit timeline (CapCut style): the video saved above goes into Edit, split / delete / undo, a photo clip, an image on top, export
 log("EDIT", ev("""(async()=>{try{const vf=new File([blob],'made.mp4',{type:'video/mp4'});
  EDIT=true;setMode('music');SJ=10;sceneUI();$('vf').onchange({target:{files:[vf],value:''}});
