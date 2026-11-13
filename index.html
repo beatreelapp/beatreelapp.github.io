@@ -2032,7 +2032,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v78';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v79';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2386,7 +2386,7 @@ $('syn').onclick=()=>{RNG=null;parse();if(!L.length||!au.src){msg.textContent='P
  setup();ac.resume();S=[];syncing=true;au.currentTime=CS;au.play();$('nxt').hidden=false;msg.textContent='Tap "Next line" when each line starts.'};
 $('nxt').onclick=()=>{S.push(au.currentTime);if(S.length>=L.length){syncing=false;$('nxt').hidden=true;msg.textContent='Synced.'}};
 let CAN=false,WL=null,PT,rc,chunks=[],blob=null,ext='webm',recording=false,MP4OK=false,LASTH264=true,SLOW=false,FFI=null;
-try{MP4OK=!!(window.MediaRecorder&&(MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')||MediaRecorder.isTypeSupported('video/mp4')));$('fm').value=MP4OK?'mp4':'webm'}catch(_){}
+try{MP4OK=!!(window.MediaRecorder&&(MediaRecorder.isTypeSupported('video/mp4;codecs=avc1,mp4a.40.2')||MediaRecorder.isTypeSupported('video/mp4')));/* always try the MP4 export first (own encoders / phone chip); WebM only if everything else fails */$('fm').value='mp4'}catch(_){}
 const legacyRec=()=>{
  if(recording){CAN=true;au.pause();rc&&rc.state!=='inactive'&&rc.stop();return}
  if(!au.src){msg.textContent='Choose a song first.';return}
