@@ -1401,11 +1401,12 @@ function ofLoad(F){if(!F||!F.u)return Promise.resolve();if(OFP[F.id])return OFP[
  try{OFI=Math.max(0,Math.min(OFS.length-1,+(localStorage.getItem('br_ofo')||0)||0))}catch(_){OFI=0}el.value=OFI;if(OFI)ofLoad(OFS[OFI]);
  el.onchange=()=>{OFI=+el.value;try{localStorage.setItem('br_ofo',OFI)}catch(_){}const F=OFS[OFI];if(F.u){ofLoad(F);gfHit(F)}}})();
 var OBC=new Map();
-function orbitDraw(ch,sh,t,out,force){const ES_=SJ==10?edSty():null,LS=ES_&&ES_.t==='L'?LSTY[ES_.i]||LSTY[0]:null,OF_=ES_&&ES_.t==='O'?OFS[ES_.i]:(OFS[OFI]||OFS[0]);if(!LS&&OF_.u&&!OF_.ok)ofLoad(OF_);const on=!LS&&!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif',FN=z=>LS?LS.f.replace('PX',z):z+'px '+ff;
- let Q=orbitQ(sh),zS=sh.f&&!sh.nf?Math.max(.35,Math.min(3,sh.sz||1)):1,fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)*zS),gap,wd,tot;/* Size makes the letters bigger, the curve grows with them (same bend) */
- for(;;){c.font=FN(fs);gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(!sh.f&&(sh.part==='head'||sh.part==='left'||sh.part==='right'||sh.part==='hand')){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
- if(t!=null&&!force&&(fs<34*Math.min(1,zS)||tot>Q.len*1.02))return false;
- if(t!=null&&!force){/* letters must stay inside the video frame, else normal text */let d0=Math.max(0,Math.min(Q.len-tot,Q.mid-tot/2));const m=fs*.45;for(let k=0;k<ch.length;k+=2){const p=orbitAt(Q,d0+wd[k]/2);d0+=wd[k]+gap+(k+1<ch.length?wd[k+1]+gap:0);if(p[0]<OF.x+m||p[0]>OF.x+OF.w-m||p[1]<OF.y+m||p[1]>OF.y+OF.h-m)return false}}/* too long for this place: the line is shown as normal text instead of tiny letters */
+function orbitDraw(ch,sh,t,out,force,opt){const ES_=SJ==10?edSty():null,LS=ES_&&ES_.t==='L'?LSTY[ES_.i]||LSTY[0]:null,OF_=ES_&&ES_.t==='O'?OFS[ES_.i]:(OFS[OFI]||OFS[0]);if(!LS&&OF_.u&&!OF_.ok)ofLoad(OF_);const on=!LS&&!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif',FN=z=>LS?LS.f.replace('PX',z):z+'px '+ff;
+ let Q=opt?opt.Q:orbitQ(sh),zS=sh.f&&!sh.nf?Math.max(.35,Math.min(3,sh.sz||1)):1,fs=Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)*zS),gap,wd,tot;/* Size makes the letters bigger, the curve grows with them (same bend) */
+ if(opt){fs=opt.fs;c.font=FN(fs);gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1)}
+ else for(;;){c.font=FN(fs);gap=fs*.07;wd=ch.map(x=>c.measureText(x[0]).width);tot=wd.reduce((a,b)=>a+b,0)+gap*(ch.length-1);if(tot<=Q.len*.95)break;if(fs<=22){if(!sh.f&&(sh.part==='head'||sh.part==='left'||sh.part==='right'||sh.part==='hand')){Q=orbitQ(sh,'both');if(tot<=Q.len*.95)break}if(fs<=18)break}fs-=2}
+ if(t!=null&&!force&&!opt&&(fs<34*Math.min(1,zS)||tot>Q.len*1.02))return false;
+ if(t!=null&&!force&&!opt){/* letters must stay inside the video frame, else normal text */let d0=Math.max(0,Math.min(Q.len-tot,Q.mid-tot/2));const m=fs*.45;for(let k=0;k<ch.length;k+=2){const p=orbitAt(Q,d0+wd[k]/2);d0+=wd[k]+gap+(k+1<ch.length?wd[k+1]+gap:0);if(p[0]<OF.x+m||p[0]>OF.x+OF.w-m||p[1]<OF.y+m||p[1]>OF.y+OF.h-m)return false}}/* too long for this place: the line is shown as normal text instead of tiny letters */
  let d=Q.mid-tot/2;d=Math.max(0,Math.min(Q.len-tot,d));c.save();c.textAlign='center';c.textBaseline='middle';c.lineJoin='round';
  for(let k=0;k<ch.length;k++){const w=wd[k],m=d+w/2;d+=w+gap;if(ch[k][0]===' ')continue;const u=t==null?1:(t-ch[k][1])/.15;if(u<=0)continue;
   const p=orbitAt(Q,m),sc=1+.55*(1-eOut(cl01(u)));c.save();c.translate(p[0],p[1]);c.rotate(p[2]);c.scale(sc,sc);c.globalAlpha=Math.min(1,u*3)*out;
@@ -1415,7 +1416,38 @@ function orbitDraw(ch,sh,t,out,force){const ES_=SJ==10?edSty():null,LS=ES_&&ES_.
   else{c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=10;c.shadowOffsetY=3;c.lineWidth=Math.max(4,fs*.14);c.strokeStyle='#000';c.strokeText(ch[k][0],0,0);
   c.shadowColor='rgba(0,0,0,0)';c.fillStyle='#fff';c.fillText(ch[k][0],0,0)}c.restore()}
  c.restore()}
-function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return true;if(/[؀-ۿ]/.test(L[i]))return false;const sh=shotLive(shotNow());if(sh.part==='straight')return false;
+/* ===== Edit: a shape the user made never turns into straight text and never shrinks.
+   A line too long for it goes on a second, parallel curve behind it (away from the face); longer lines show two curves, then the next two.
+   Each pair disappears 0.3 s after its last sung word, at the next line, or when the shot changes. ===== */
+function orbitFs(sh){const ES_=SJ==10?edSty():null,LS=ES_&&ES_.t==='L'?LSTY[ES_.i]||LSTY[0]:null,OF_=ES_&&ES_.t==='O'?OFS[ES_.i]:(OFS[OFI]||OFS[0]),on=!LS&&!!(OF_.u&&OF_.ok),ff=on?'"BRO '+OF_.id+'","Anton",Impact,sans-serif':'"Anton",Impact,sans-serif',zS=sh.f&&!sh.nf?Math.max(.35,Math.min(3,sh.sz||1)):1;
+ return{fs:Math.round(48*([.75,1,1.2,1.4,1.6][TS.size]||1)*(on?OF_.k:1)*zS),FN:z=>LS?LS.f.replace('PX',z):z+'px '+ff}}
+function orbitPar(Q,sh,off){const P=Q.P,n=P.length;if(n<2)return Q;let ref=null,line=false;
+ if(sh.c&&Q.ax!=null)ref=[Q.ax,Q.ay];else{const a=P[0],b=P[n-1],cm=[(a[0]+b[0])/2,(a[1]+b[1])/2],am=orbitAt(Q,Q.len/2);if(Math.hypot(cm[0]-am[0],cm[1]-am[1])<6)line=true;else ref=cm}
+ const mk=sg=>{const R=[];for(let i=0;i<n;i++){const p=P[Math.max(0,i-1)],q=P[Math.min(n-1,i+1)];let tx=q[0]-p[0],ty=q[1]-p[1];const l=Math.hypot(tx,ty)||1;tx/=l;ty/=l;let nx=-ty,ny=tx;
+   if(line){if(ny>0||(Math.abs(ny)<1e-3&&nx>0)){nx=-nx;ny=-ny}}else if(nx*(P[i][0]-ref[0])+ny*(P[i][1]-ref[1])<0){nx=-nx;ny=-ny}R.push([P[i][0]+nx*off*sg,P[i][1]+ny*off*sg])}
+  const C=[0];for(let i=1;i<n;i++)C.push(C[i-1]+Math.hypot(R[i][0]-R[i-1][0],R[i][1]-R[i-1][1]));return{P:R,C:C,len:C[n-1],mid:C[n-1]/2}};
+ let O=mk(1);const m=orbitAt(O,O.len/2),pad=off*.4;if(m[0]<OF.x+pad||m[0]>OF.x+OF.w-pad||m[1]<OF.y+pad||m[1]>OF.y+OF.h-pad)O=mk(-1);return O}
+/* words -> groups that fit the curve at the chosen size (never a word cut in two), balanced */
+function orbitGroups(words,widthOf,cap){const W_=words.map(widthOf),sp=widthOf(' ');
+ const split=lim=>{const out=[];let cur=[],cw=0;for(let k=0;k<words.length;k++){const add=(cur.length?sp:0)+W_[k];if(cur.length&&cw+add>lim(out.length)){out.push(cur);cur=[];cw=0}cw+=(cur.length?sp:0)+W_[k];cur.push(k)}if(cur.length)out.push(cur);return out};
+ const base=split(()=>cap),m=base.length;if(m<2)return base;
+ /* same number of curves, but the words shared more evenly */const tot=W_.reduce((a,b)=>a+b,0)+sp*(words.length-1),tg=tot/m,bal=split(n=>n<m-1?Math.min(cap,tg*1.12):cap);
+ const fits=g=>g.every(o=>{let w=0;o.forEach((k,j)=>w+=(j?sp:0)+W_[k]);return w<=cap||o.length===1});return bal.length===m&&fits(bal)?bal:base}
+var OPS=new Map();
+function orbitPages(i,sh){const ws=L[i].split(/\s+/).filter(Boolean),lo_=(()=>{const e=edSty();return e.t==='L'&&(LSTY[e.i]||{}).low})(),up=ws.map(w=>lo_?w.toLowerCase():w.toUpperCase()),F=orbitFs(sh),Q=shapeQ(sh);
+ c.save();c.font=F.FN(F.fs);const gap=F.fs*.07,wOf=w=>{let s_=0;for(const ch of w)s_+=c.measureText(ch).width+gap;return s_};const G=orbitGroups(up,wOf,Q.len*.95);c.restore();
+ const pages=[];for(let k=0;k<G.length;k+=2)pages.push(G.slice(k,k+2));return{ws:ws,up:up,F:F,Q:Q,pages:pages}}
+function orbitLyr2(i,sh){const t=au.currentTime,o=orbitPages(i,sh),wt=wordTimes(i,o.ws),n=o.ws.length;let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
+ const si=SH.indexOf(shotNow());
+ for(let p=0;p<o.pages.length;p++){const pg=o.pages[p],first=pg[0][0],lastW=pg[pg.length-1][pg[pg.length-1].length-1],st=wt[first][0]-.05,nx=p+1<o.pages.length?wt[o.pages[p+1][0][0]][0]-.05:nextS-.02,en=Math.min(nx,wt[lastW][1]+.3);
+  if(t<st||t>=en+.15)continue;
+  /* a shot change hides the words that started in another shot */const pk=i+'|'+p+'|'+L[i];let sh0=OPS.get(pk);if(sh0==null){sh0=si;OPS.set(pk,si)}if(sh0!==si)return true;
+  const out=t>en?cl01(1-(t-en)/.15):1;
+  pg.forEach((grp,gi)=>{const ch=[];grp.forEach((k,j)=>{const w=o.up[k],a=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-a));for(let q=0;q<w.length;q++)ch.push([w[q],a+d*q/w.length]);if(j<grp.length-1)ch.push([' ',a+d])});
+   const Qg=gi===0?o.Q:orbitPar(o.Q,sh,o.F.fs*1.15);orbitDraw(ch,sh,t,out,true,{Q:Qg,fs:o.F.fs})});
+  return true}
+ return true}
+function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)return true;if(/[؀-ۿ]/.test(L[i]))return false;const sh=shotLive(shotNow());if(sh.part==='straight')return false;if(sh.part==='shape')return orbitLyr2(i,sh);
  const t=au.currentTime,wt=wordTimes(i,ws),se=lineSE(i),n=ws.length;let nextS=Infinity;if(i+1<L.length){try{nextS=lineSE(i+1).s}catch(_){}}
  const te=Math.min(nextS,Math.max(se.e,wt[n-1][1]+.8));if(t>te+.05)return true;
  const ch=[],lo_=(()=>{const e=edSty();return e.t==='L'&&(LSTY[e.i]||{}).low})();ws.forEach((w,k)=>{w=lo_?w.toLowerCase():w.toUpperCase();const a=wt[k][0],d=Math.max(.12,Math.min(.5,wt[k][1]-a));for(let j=0;j<w.length;j++)ch.push([w[j],a+d*j/w.length]);if(k<n-1)ch.push([' ',a+d])});
@@ -1424,6 +1456,7 @@ function orbitLyr(i){let ws=L[i].split(/\s+/).filter(Boolean);if(!ws.length)retu
  const r=orbitDraw(ch,sh,t,cl01((te-t)/.25),kn===true);if(kn==null)OBC.set(ck,r!==false);return r!==false}
 /* while Edit text is open and paused, show a whole line so the place can be judged */
 function orbitShow(){const sh=shotLive(shotNow());let s=(L.find(x=>x&&!/[؀-ۿ]/.test(x))||'YOUR LYRICS HERE').toUpperCase();if(sh.part==='straight'){c.save();c.textAlign='center';c.font='44px "Anton",Impact,sans-serif';c.lineWidth=6;c.strokeStyle='#000';c.lineJoin='round';c.textBaseline='middle';c.font='40px "Anton",Impact,sans-serif';let z=s.slice(0,34);while(c.measureText(z).width>OF.w-60&&z.length>4)z=z.slice(0,-2);c.strokeText(z,W/2,OF.y+OF.h-62);c.fillStyle='#fff';c.fillText(z,W/2,OF.y+OF.h-62);c.restore();return}
+ if(sh.part==='shape'){const li=L.findIndex(x=>x&&!/[؀-ۿ]/.test(x));if(li>=0){const o=orbitPages(li,sh),pg=o.pages[0]||[];pg.forEach((grp,gi)=>{const ch=[];grp.forEach((k,j)=>{for(const q of o.up[k])ch.push([q,0]);if(j<grp.length-1)ch.push([' ',0])});orbitDraw(ch,sh,null,1,true,{Q:gi===0?o.Q:orbitPar(o.Q,sh,o.F.fs*1.15),fs:o.F.fs})});return}}
  orbitDraw([...s].map(x=>[x,0]),sh,null,1)}
 /* ---- Edit text panel ---- */
 const PARTS=[['eyes','👀 Eyes'],['hand','✋ Hand'],['feet','👣 Feet'],['head','⌒ Head'],['left','◜ Left'],['right','◝ Right'],['both','∩ Both sides'],['edge','▭ Frame edge'],['straight','▬ Normal text']];
@@ -1999,7 +2032,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v76';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v77';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
