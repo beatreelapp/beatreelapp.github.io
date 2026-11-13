@@ -119,6 +119,12 @@ public class BeatReelPlugin extends Plugin {
                         if (n != null && n.length() > 0) name = n;
                     }
                 } catch (Exception ignored) {}
+                // tell the page right away which editor to open (it shows it and hides the start screen while the file is copied)
+                JSObject pr = new JSObject();
+                pr.put("name", name);
+                pr.put("mime", mime == null ? "" : mime);
+                if (want != null) pr.put("want", want);
+                notifyListeners("prep", pr, false);
                 File dir = new File(getContext().getCacheDir(), "shared");
                 if (dir.exists()) {
                     File[] old = dir.listFiles();

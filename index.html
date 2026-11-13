@@ -2077,7 +2077,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v84';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v85';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2360,13 +2360,24 @@ const ADS={top:''}; // paste ad HTML (e.g. an AdSense <ins> block) between the q
 })();
 try{if(!NAT&&'serviceWorker' in navigator&&location.protocol.indexOf('http')==0)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}catch(_){}
 /* Android app: a song or video shared from another app ("Share" -> BeatReel) */
-if(NAT&&BRN){const onShared=async d=>{try{if(!d||d.error||!d.path){if(d&&d.error)bug('share',d.error);return}
-  msg.textContent='Opening the shared file...';const r=await fetch(Capacitor.convertFileSrc(d.path));const b=await r.blob();
+if(NAT&&BRN){
+ /* the native start screen stays on top until the chosen file is in the editor, then the page hides it (no flash of the empty editor). prep = the file is still being copied: only switch the mode behind the start screen */
+ const natHide=()=>{try{requestAnimationFrame(()=>requestAnimationFrame(()=>{try{BRN.hideHome()}catch(_){}}))}catch(_){}};
+ const shKind=d=>d.want==='edit'?'edit':(d.want==='video'||(!d.want&&(/^video\//.test(d.mime||'')||/\.(mp4|mov|webm|3gp|mkv)$/i.test(d.name||''))))?'video':'music';
+ const shMode=k=>{if(k==='edit'){EDIT=true;setMode('music');SJ=10;$('cs').style.display='none';sceneUI()}
+  else if(k==='video')setMode('video');
+  else{EDIT=false;setMode('music');SJ=+$('sj').value||0;if(SJ==3&&drawSpace_reset)drawSpace_reset();$('cs').style.display=SJ?'none':'';sceneUI()}};
+ const onPrep=d=>{try{if(d&&!d.error){shMode(shKind(d));msg.textContent='Opening the file...'}}catch(e){bug('share',String(e&&e.message||e))}};
+ const onShared=async d=>{try{if(!d||d.error||!d.path){if(d&&d.error)bug('share',d.error);natHide();return}
+  msg.textContent='Opening the file...';const r=await fetch(Capacitor.convertFileSrc(d.path));const b=await r.blob();
   const ty=d.mime||b.type||'',f=new File([b],d.name||'shared',{type:ty});const h=document.getElementById('home');if(h&&!h.classList.contains('off'))document.querySelector('#home .pill').click();
-  if(d.want==='edit'){EDIT=true;setMode('music');SJ=10;$('cs').style.display='none';sceneUI();$('f').onchange({target:{files:[f],value:''}})}
-  else if(d.want==='video'||(!d.want&&(/^video\//.test(ty)||/\.(mp4|mov|webm|3gp|mkv)$/i.test(f.name)))){setMode('video');$('vf').onchange({target:{files:[f],value:''}})}
-  else{EDIT=false;setMode('music');SJ=+$('sj').value||0;if(SJ==3&&drawSpace_reset)drawSpace_reset();$('cs').style.display=SJ?'none':'';sceneUI();$('f').onchange({target:{files:[f],value:''}})}
-  hit('share_in')}catch(e){bug('share',String(e&&e.message||e));msg.textContent='Could not open the shared file.'}};
+  const k=shKind({want:d.want,mime:ty,name:f.name});shMode(k);
+  /* hide the start screen once the file shows in the editor (or after 2.5 s at most) */
+  const el=k==='video'?$('bgv'):au;let dn=0;const go=()=>{if(dn)return;dn=1;natHide()};
+  try{el.addEventListener(k==='video'?'loadeddata':'loadedmetadata',()=>setTimeout(go,150),{once:true})}catch(_){}setTimeout(go,2500);
+  $(k==='video'?'vf':'f').onchange({target:{files:[f],value:''}});
+  hit('share_in')}catch(e){bug('share',String(e&&e.message||e));msg.textContent='Could not open the file.';natHide()}};
+ try{BRN.addListener('prep',onPrep)}catch(e){bug('share',String(e))}
  try{BRN.addListener('shared',d=>setTimeout(()=>onShared(d),300))}catch(e){bug('share',String(e))}}
 
 /* Convert the recorded file to H.264 + AAC MP4 (what TikTok, CapCut and the gallery expect).

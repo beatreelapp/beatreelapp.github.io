@@ -37,7 +37,8 @@ public class MainActivity extends BridgeActivity {
         picker = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), r -> {
             if (r.getResultCode() == Activity.RESULT_OK && r.getData() != null && r.getData().getData() != null) {
                 Uri u = r.getData().getData();
-                hideHome();
+                // keep the start screen until the editor is ready (the page hides it), so the empty editor never flashes
+                hideLater(12000);
                 BeatReelPlugin p = plugin();
                 if (p != null) p.deliver(u, r.getData().getType(), want);
             }
@@ -52,7 +53,7 @@ public class MainActivity extends BridgeActivity {
                 i.addCategory(Intent.CATEGORY_OPENABLE);
                 try { picker.launch(i); } catch (Exception e) { Toast.makeText(MainActivity.this, "No file app found", Toast.LENGTH_LONG).show(); }
             }
-            public void web(String js) { hideHome(); evalJs(js, null); }
+            public void web(String js) { hideLater(1500); evalJs(js + READY, null); }
             public void eval(String js, ValueCallback<String> cb) { evalJs(js, cb); }
             public void soon(String what) { Toast.makeText(MainActivity.this, what, Toast.LENGTH_SHORT).show(); }
             public void openVideo(Uri u) {
@@ -126,12 +127,22 @@ public class MainActivity extends BridgeActivity {
         runOnUiThread(() -> {
             if (home == null) return;
             evalJs("try{au.pause();document.getElementById('bgv').pause()}catch(e){}", null);
+            waitHide = false;
             home.setVisibility(android.view.View.VISIBLE);
             home.refresh();
         });
     }
 
     public void hideHome() {
-        runOnUiThread(() -> { if (home != null) home.setVisibility(android.view.View.GONE); });
+        runOnUiThread(() -> { waitHide = false; if (home != null) home.setVisibility(android.view.View.GONE); });
+    }
+
+    // the page hides the start screen itself after it has drawn the editor (two frames); this is only a safety net
+    static final String READY = ";try{requestAnimationFrame(function(){requestAnimationFrame(function(){BRN.hideHome()})})}catch(e){}";
+    boolean waitHide = false;
+
+    void hideLater(long ms) {
+        waitHide = true;
+        if (home != null) home.postDelayed(() -> { if (waitHide) hideHome(); }, ms);
     }
 }
