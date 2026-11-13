@@ -1,0 +1,21 @@
+name: read-dbg
+# Manual: prints the app's anonymous speed reports and problem reports (no secrets printed; the key is a hash of a secret).
+on: workflow_dispatch
+jobs:
+  r:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          G: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          K=$(printf '%s|dbg' "$G" | sha256sum | cut -d' ' -f1)
+          curl -sS "https://beatreel-api.renardkatty8.workers.dev/dbg?k=$K" > d.json
+          python3 - <<'PY'
+          import json,datetime
+          d=json.load(open('d.json'))
+          t=lambda ms: datetime.datetime.utcfromtimestamp(ms/1000).strftime('%m-%d %H:%M')
+          print('== PERF ==')
+          for r in d.get('perf',[]): print('PERF',t(r['ts']),r['v'],r['w'],r['m'],'|',r['ua'])
+          print('== ERRORS ==')
+          for r in d.get('errs',[]): print('ERR',t(r['ts']),r['v'],r['w'],r['m'][:200],'|',r['ua'])
+          PY

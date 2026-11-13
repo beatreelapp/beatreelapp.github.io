@@ -5,6 +5,8 @@
 //                     (old shape {text, options} still works)
 //   POST /fx         {job?, lines:[text], emojis:["code tags"]}   -> {fx:[{l,w,k,e?,p?}]}  Auto effects director (Gemini, Groq backup)
 //   POST /clips      {job, lines:[[start,end,text],...]}        -> {clips:[{a,b,title}]}  Pro only: best moments (line a to b) + hook title
+//   POST /perf        {w, m, v, ua}                            -> anonymous speed report (what, seconds, sizes, phone model)
+//   GET  /dbg?k=      read-only speed + problem reports for the read-dbg workflow
 //   POST /hit         text body: event name                    -> counts anonymous usage (no IP, no personal data stored)
 //   POST /me      {did}               -> {coins, max, pro, reset}      (AI coins: 3 free per device per day, Pro = unlimited)
 //   POST /job     {did}               -> {job, coins} or 402 no_coins  (one coin = one Auto captions / Auto lyrics run)
@@ -64,6 +66,22 @@ export default {
       const ip = await ipKey(req);
       ctx.waitUntil(stub(env).err(ip, String(j.w || "").slice(0, 40), String(j.m || "").slice(0, 400), String(j.v || "").slice(0, 10), String(j.ua || "").slice(0, 80)).catch(() => {}));
       return new Response(null, { status: 204, headers: cors });
+    }
+    // speed reports from the app (anonymous: what, seconds, video size, phone model, app version; never a picture or a file)
+    if (route === "/perf" && req.method === "POST") {
+      if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
+      let j = {};
+      try { j = JSON.parse((await req.text()).slice(0, 1500)); } catch (_) {}
+      const ip = await ipKey(req);
+      ctx.waitUntil(stub(env).perf(ip, String(j.w || "").slice(0, 30), String(j.m || "").slice(0, 300), String(j.v || "").slice(0, 10), String(j.ua || "").slice(0, 80)).catch(() => {}));
+      return new Response(null, { status: 204, headers: cors });
+    }
+    // read-only debug data for the developer workflow (key = SHA-256 of a GitHub secret, never in the code)
+    if (route === "/dbg" && req.method === "GET") {
+      const k = url.searchParams.get("k") || "";
+      if (!env.GEMINI_API_KEY || k !== (await sha(env.GEMINI_API_KEY + "|dbg"))) return new Response("Forbidden", { status: 403 });
+      const st = stub(env);
+      return Response.json({ perf: await st.perfs(), errs: (await st.errs()).map((r) => ({ ts: r.ts, w: r.w, m: r.m, v: r.v, ua: r.ua })) });
     }
     if (route === "/hit" && req.method === "POST") {
       if (!ALLOWED.includes(origin)) return new Response(null, { status: 204, headers: cors });
@@ -556,6 +574,8 @@ export class Stats extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS c (day TEXT, ev TEXT, n INTEGER, PRIMARY KEY (day, ev))");
     this.sql.exec("CREATE TABLE IF NOT EXISTS errs (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, w TEXT, m TEXT, v TEXT, ua TEXT, u TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS errip (ip TEXT, day TEXT, n INTEGER, PRIMARY KEY (ip, day))");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS perf (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, w TEXT, m TEXT, v TEXT, ua TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS perfip (ip TEXT, day TEXT, n INTEGER, PRIMARY KEY (ip, day))");
   }
   // app problems: max 30 per network per day, only the last 60 are kept
   err(ip, w, m, v, ua) {
@@ -568,6 +588,17 @@ export class Stats extends DurableObject {
     this.sql.exec("DELETE FROM errs WHERE id <= (SELECT MAX(id) FROM errs) - 60");
   }
   errs() { return this.sql.exec("SELECT ts, w, m, v, ua, u FROM errs ORDER BY id DESC LIMIT 50").toArray(); }
+  // speed reports: max 100 per network per day, the last 300 are kept
+  perf(ip, w, m, v, ua) {
+    const day = new Date().toISOString().slice(0, 10);
+    const r = this.sql.exec("SELECT n FROM perfip WHERE ip = ? AND day = ?", ip, day).toArray()[0];
+    if (r && r.n >= 100) return;
+    this.sql.exec("INSERT INTO perfip (ip, day, n) VALUES (?, ?, 1) ON CONFLICT (ip, day) DO UPDATE SET n = n + 1", ip, day);
+    this.sql.exec("DELETE FROM perfip WHERE day < ?", day);
+    this.sql.exec("INSERT INTO perf (ts, w, m, v, ua) VALUES (?, ?, ?, ?, ?)", Date.now(), w, m, v, ua);
+    this.sql.exec("DELETE FROM perf WHERE id <= (SELECT MAX(id) FROM perf) - 300");
+  }
+  perfs() { return this.sql.exec("SELECT ts, w, m, v, ua FROM perf ORDER BY id DESC LIMIT 120").toArray(); }
   add(ev, cc) {
     const day = new Date().toISOString().slice(0, 10);
     const up = "INSERT INTO c (day, ev, n) VALUES (?, ?, 1) ON CONFLICT (day, ev) DO UPDATE SET n = n + 1 WHERE n < 1000000";

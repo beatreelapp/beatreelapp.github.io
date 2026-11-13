@@ -1189,14 +1189,15 @@ var EDIT=false,OH={x:.5,y:.3,r:.13},OHT=0,SH=[],SHK='',SHBUSY=false,SHSEL=0,ETOP
 function shotDef(){return{part:'shape',x:OH.x,y:OH.y,r:OH.r,f:'head',k:-100,a:0,c:false,sz:1,dx:0,dy:0,nx:.5,ny:.5}}
 function shotNow(){if(!SH.length)return shotDef();const t=vCT();for(const q of SH)if(t>=q.s&&t<q.e)return q;return SH[SH.length-1]}
 function coverDraw(x,v,S){const vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;const g=vidGeom(v,OF.w,OF.h),k=S/OF.w;const ox=(OF.w-g.dw)/2+VPX*g.mx,oy=(OF.h-g.dh)/2+VPY*g.my;x.drawImage(v,ox*k,oy*k,g.dw*k,g.dh*k)}
-async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.src&&SH.length)return;SHBUSY=true;const key=v.src;
+var SST=0;
+async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.src&&SH.length)return;SHBUSY=true;const key=v.src;SST=performance.now();
  /* the preview video itself is used (phones like the P20 cannot decode two videos at once) */
  let out=null,why='';const wasLoop=v.loop;
  try{if(!(v.readyState>=2))await new Promise((res,rej)=>{const ok=()=>{v.removeEventListener('loadeddata',ok);res()};v.addEventListener('loadeddata',ok);setTimeout(()=>rej(new Error('load timeout')),20000)});
   const dur=Math.min(isFinite(v.duration)?v.duration:0,180);if(!(dur>0))throw new Error('duration '+v.duration);
   if(SJ==10){scanVeil(v);SCP=0;SCL='Finding the shots…'}
   /* Edit: ONE pass finds the shots AND the person (it used to be two passes). The body finder loads while the video is read. */
-  const body=SJ==10,BT=[],bStep=dur>90?1:dur>45?.8:.6,berr={n:0};let M=null,mpE='';
+  const body=false/* person finder removed: minutes on weak phones; the user places the shapes */,BT=[],bStep=dur>90?1:dur>45?.8:.6,berr={n:0};let M=null,mpE='';
   if(body){Promise.race([mpLoad(),new Promise((_,j)=>setTimeout(()=>j(new Error('timeout 30s')),30000))]).then(m=>{M=m}).catch(e=>{mpE=String((e&&e.message)||e)})}
   const sm=document.createElement('canvas');sm.width=sm.height=32;const x=sm.getContext('2d',{willReadFrequently:true}),S=[];
   const grab=t=>{x.drawImage(v,0,0,32,32);const d=x.getImageData(0,0,32,32).data,h=new Float32Array(48);let br=0;for(let i=0;i<d.length;i+=4){h[d[i]>>4]++;h[16+(d[i+1]>>4)]++;h[32+(d[i+2]>>4)]++;br+=d[i]+d[i+1]+d[i+2]}const o={t:t,h:h,br:br/(1024*765)};if(S.length%4===0){const th=document.createElement('canvas');th.width=th.height=80;try{coverDraw(th.getContext('2d'),v,80);o.th=th}catch(_){}}S.push(o)};
@@ -1235,7 +1236,8 @@ async function shotScan(){const v=$('bgv');if(!v.src||SHBUSY)return;if(SHK===v.s
  finally{try{v.playbackRate=1;v.loop=wasLoop}catch(_){}SHBUSY=false}
  if(why.trim())try{bug('shots',why.trim())}catch(_){}
  if($('bgv').src!==key){SCV=null;return}SH=out;SHK=key;SHSEL=0;
- if(SJ==10&&TRKK!==key){SHBUSY=true;SCL='Finding the person…';SCP=.3;try{await bodyScan(key)}catch(e){try{bug('body',String((e&&e.message)||e))}catch(_){}}finally{SHBUSY=false}if($('bgv').src!==key){SCV=null;return}shotAuto()}
+ if(SJ==10){TRK=[];TRKK=key;shotAuto()}
+ try{const v_=$('bgv');perf('shots','s='+((performance.now()-SST)/1000).toFixed(1)+' dur='+(v_.duration||0).toFixed(1)+' res='+v_.videoWidth+'x'+v_.videoHeight+' n='+SH.length+(why.trim()?' why='+why.trim().slice(0,60):''))}catch(_){}
  SCV=null;
  try{v.loop=wasLoop;v.playbackRate=1;v.currentTime=0;if(!ETOPEN&&SJ!=10)v.play().catch(()=>{})}catch(_){}
  if(SJ==10){const na=SH.filter(q=>q.trk).length;msg.textContent=na?'Words placed automatically ✨ on the person'+(SH.length>1?' in '+na+' of '+SH.length+' shots (normal text in the others)':'')+'. Change it in "Text".':SH.length>1?'Found '+SH.length+' shots ✓ Tap a shot, then choose the words in "Text".':'Ready ✓ Choose the words in "Text", then press ▶.';
@@ -1978,6 +1980,10 @@ function brCode(v){const r=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 var LASTURI='';
 async function dlBlob(blob,name){if(NAT&&BRN){const r=await natSave(blob,name.replace(/(\.\w+)$/,'_'+Date.now()+'$1'));LASTURI=r&&r.uri||'';return 'gallery'}
  const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},4000);return 'download'}
+/* anonymous speed report (what, seconds, sizes, phone model, app version): the developer reads them, no screenshots needed */
+function perf(w,m){try{if(!LIVE)return;const ua=navigator.userAgent||'',dv=(/Android [\d.]+; ?([^;)]*)/.exec(ua)||[])[0]||(/iPhone|iPad|Windows|Mac OS X|Linux/.exec(ua)||[''])[0],cr=(/(Chrome|Firefox|Version)\/(\d+)/.exec(ua)||[]).slice(1).join(' ');
+ fetch(API_URL+'/perf',{method:'POST',body:JSON.stringify({w:String(w).slice(0,30),m:String(m).slice(0,300)+(typeof NAT!=='undefined'&&NAT?' app':' web'),v:typeof APPV!=='undefined'?APPV:'?',ua:(dv+' · '+cr+' · '+(navigator.hardwareConcurrency||'?')+'cpu '+(navigator.deviceMemory||'?')+'GB').slice(0,80)}),keepalive:true,mode:'no-cors'}).catch(()=>{})}catch(_){}}
+addEventListener('load',()=>{setTimeout(()=>{try{perf('start','s='+(performance.now()/1000).toFixed(1))}catch(_){}},500)});
 const BUGS=new Set();
 function bug(where,m){try{if(!LIVE||BUGS.size>=10)return;const k=where+'|'+String(m).slice(0,80);if(BUGS.has(k))return;BUGS.add(k);
  const ua=navigator.userAgent||'',dv=(/Android [\d.]+; ?([^;)]*)/.exec(ua)||[])[0]||(/iPhone|iPad|Windows|Mac OS X|Linux/.exec(ua)||[''])[0],cr=(/(Chrome|Firefox|Version)\/(\d+)/.exec(ua)||[]).slice(1).join(' ');
@@ -1993,7 +1999,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v75';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v76';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2137,6 +2143,7 @@ $('acb').onclick=async()=>{if(acBusy)return;const f=curFile,song=SJ!=4;if(!f){ms
   L=lines.map(x=>x.t);RNG=lines.map(x=>({s:x.s+from,e:x.e+from}));RW=lines.map(x=>(x.w||[]).map(p=>[p[0]+from,p[1]+from]));EMJ=[];KEY=[];S=[];$('lyt').value=L.join('\n');tabGo('ly');
   setup();ac.resume();au.currentTime=from;if(SJ!=10){au.play().catch(()=>{});const v=$('bgv');if(v.src){v.currentTime=0;v.play().catch(()=>{})}}
   CAPR={f:f,a:from,b:to};
+  try{perf(song?'lyrics':'captions','s='+((performance.now()-t0)/1000).toFixed(1)+' len='+((to-from)||0).toFixed(1)+' lines='+L.length+' via='+(viaCloud?'cloud':'phone'))}catch(_){}
   msg.textContent=(CAPLONG?'Only the first 10 minutes get captions. ':'')+'Captions ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).';
   if(song){TS.frame=0;try{$('tr').value=0}catch(_){}MLK='';msg.textContent='Lyrics ready ('+L.length+' lines). Play it and check. You can fix any word in the Lyrics box (keep the same number of lines).'}
   else if(viaCloud)aiStyle(L.join('\n'));else applyLook(0,0,null,null,'')
@@ -2937,7 +2944,7 @@ async function offlineExport(){
   if(!mux.o.avcC)throw new Error('no video header');
   const hasAudio=!!mux.o.audio;
   const out=mux.finish();
-  blob=new Blob([out],{type:'video/mp4'});ext='mp4';LASTH264=true;LASTENC=softV?'built-in encoder':'fast phone encoder';LASTSECS=Math.round((oldPN()-t0)/1000);
+  blob=new Blob([out],{type:'video/mp4'});ext='mp4';LASTH264=true;LASTENC=softV?'built-in encoder':'fast phone encoder';LASTSECS=Math.round((oldPN()-t0)/1000);try{perf('export','s='+LASTSECS+' clip='+((Math.min(CE,DUR||CE)-CS)||0).toFixed(1)+' mode='+SJ+' enc='+LASTENC+' q='+QI+(SJ==10?' shots='+SH.length+' tr='+SH.filter(q=>q.tx&&q.tx!=='none').length:'')+(SJ==4?' fx='+FXP.length:''))}catch(_){}
   return await (async()=>{ if(blob.size<20000)throw new Error('empty');ui_(100,'Done. Saving...');return 'ok'})();
  }catch(e){
   if(e&&e.cancel){msg.textContent='Cancelled.';return 'cancel'}
@@ -3155,7 +3162,7 @@ function edPanel(p){const pn=$('edpn');edRestore();edMove($('cvw'),$('eds'));pn.
  else if(p==='tx'){H_('<div class="lb">STYLE</div><div id="edst"></div><div class="lb">SHAPE</div><div class="r" id="edsh"></div>'+
   '<div class="sl"><svg viewBox="0 0 30 20" style="width:26px;height:18px;stroke:#9aa3ad;fill:none;stroke-width:2.4"><path d="M3 17 Q15 -5 27 17"/></svg><input type="range" id="edk" min="-100" max="100" step="1"><svg viewBox="0 0 30 20" style="width:26px;height:18px;stroke:#9aa3ad;fill:none;stroke-width:2.4"><path d="M3 3 Q15 25 27 3"/></svg></div>'+
   '<div class="sl"><span>Size</span><input type="range" id="edz" min="35" max="300" step="1"></div><div class="sl"><span>Turn</span><input type="range" id="eda" min="-90" max="90" step="1"></div>'+
-  '<div class="lb">STICK TO</div><div class="r" id="edf"></div><div class="r"><button id="edall">Same for all shots</button><button id="edmg">Merge with previous</button><button id="edrs">↺ Reset</button></div>'+
+  '<div class="lb" id="edfl">STICK TO</div><div class="r" id="edf"></div><div class="r"><button id="edall">Same for all shots</button><button id="edmg">Merge with previous</button><button id="edrs">↺ Reset</button></div>'+
   '<div class="lb">WORDS</div><div class="r"><button id="edal2">🎤 Auto lyrics (from song)</button></div><div id="edly"></div><div class="lb">TITLE</div><div id="edtt"></div>');
   edStyles();
   $('edsh').innerHTML=EDSHP.map(x=>'<button type="button" data-s="'+x[0]+'">'+x[2]+'<span>'+x[1]+'</span></button>').join('');
@@ -3191,6 +3198,7 @@ function edUI(soft){if(!EDON)return;const q=SH[SHSEL];
  if(q&&$('edk')&&!soft)$('edk').value=q.k||0;if(q&&$('edz'))$('edz').value=Math.round((q.sz||1)*100);if(q&&$('eda'))$('eda').value=q.a||0;
  const ef=$('edf');if(ef)ef.querySelectorAll('[data-f]').forEach(b=>{const f=b.getAttribute('data-f');b.classList.toggle('on',!!q&&q.part!=='straight'&&f===q.f);b.style.display=f==='head'||f==='none'||(q&&q.has&&q.has[f])?'':'none'});
  if($('edmg'))$('edmg').disabled=SHSEL<1;
+ {const tr_=TRK&&TRK.length>0;if($('edf'))$('edf').style.display=tr_?'':'none';if($('edfl'))$('edfl').style.display=tr_?'':'none'}
  const tp=$('edtp');if(tp)tp.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',+b.getAttribute('data-t')===TPL));
  const bg=$('edbg');if(bg)bg.querySelectorAll('[data-b]').forEach(b=>b.style.outline=+b.getAttribute('data-b')===OBG?'3px solid #5ab4f0':'none');
  if($('edw0')){$('edw0').classList.toggle('on',$('obw').value==='0');$('edw1').classList.toggle('on',$('obw').value==='1')}
