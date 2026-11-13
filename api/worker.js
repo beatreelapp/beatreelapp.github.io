@@ -28,7 +28,7 @@ const JOB_TR_MAX = 22; // about 10 minutes of audio (30 s parts) per Auto captio
 const FREE_COINS = 3, IP_DAY_CAP = 15, STYLE_FREE_CAP = 60, JOB_TTL = 30 * 60 * 1000, JOB_CALLS = 120, MAX_DEVICES = 3;
 const PRICE_EUR_CENTS = 499, TAX_CODE = "txcd_10103001", STRIPE_VERSION = "2026-04-22.dahlia";
 const SITE = "https://beatreelapp.github.io";
-const ACCT_ROUTES = ["/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
+const ACCT_ROUTES = ["/wall", "/yt", "/me", "/job", "/refund", "/checkout", "/claim", "/restore", "/portal"];
 const EVENTS = ["auto", "hook", "visit", "dev", "new", "app", "start", "export_music", "export_cap", "apk", "ai_tr", "ai_style", "pro_new", "clip", "ai_clip", "yt", "yt_ok", "tpl_1", "tpl_2", "fx_ai", "fx_local", "share_tiktok", "share_instagram", "share_whatsapp", "share_youtube", "share_facebook", "share_snapchat", "share_more", "tr_none", "tr_auto", "tr_fade", "tr_blur", "tr_zoom", "tr_whip", "tr_flash", "tr_shake", "tr_spin", "tr_glitch", "tr_leak"];
 const ALLOWED = ["https://beatreelapp.github.io"];
 // Google Fonts the app offers; picks are counted as "f_<id>" so the menu can show the most used first
@@ -634,6 +634,7 @@ const LABELS = [
   ["mood_fail", "  ↳ فشل (التطبيق اختار وحده)"],
   ["auto", "فيديو تلقائي من أغنية"],
   ["ai_story", "قصص AI (صور من الكلمات)"],
+  ["ai_wall", "خلفيات حية AI"],
   ["pro_new", "اشتراكات Pro جديدة"],
 ];
 
@@ -792,6 +793,52 @@ async function ytProxy(req, url, cors, origin) {
   return new Response(r.body, { status: r.status, headers: out });
 }
 
+// Live wallpaper: the user's idea (any language) becomes ONE picture (text AI writes the picture prompt and picks the
+// moving effect, Cloudflare FLUX draws it); the app adds the motion itself. Own limits, not coins:
+// free = 2 tries per device ever, Pro = 2 a day, owner = 5 a day. A failed try is given back.
+const WALL_FREE = 2, WALL_PRO = 2, WALL_OWNER = 5, WALL_IP_FREE = 6;
+const WALL_FX = ["embers", "dust", "rain", "snow", "stars", "fog"];
+async function wall(env, b, did, row, body, req) {
+  const kind = row ? (/^owner/.test(row.sub || "") ? "owner" : "pro") : "free", ip = await ipKey(req);
+  const max = kind === "owner" ? WALL_OWNER : kind === "pro" ? WALL_PRO : WALL_FREE;
+  if (body.peek) return { body: { kind, max, left: await b.wallLeft(did, kind, ip, max) } };
+  const text = String(body.text || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  if (text.length < 2) return { status: 400, body: { error: "text_required" } };
+  const use = await b.wallUse(did, kind, ip, max);
+  if (!use.ok) return { status: 402, body: { error: kind === "free" ? "free_used" : "day_used", kind, max, left: 0, reset: resetIn() } };
+  const back = async () => { try { await b.wallUndo(did, kind, ip); } catch (_) {} };
+  const ask =
+    "A user of a music video app typed an idea for a phone wallpaper (any language): \"" + text.replace(/"/g, "'") + "\"\n" +
+    "Write ONE picture prompt in English for an image model. Vertical wallpaper, the subject in the upper middle, a calmer darker area at the bottom " +
+    "(song lyrics are drawn there), strong mood, limited colour palette, beautiful and detailed. Keep the user's idea and style words. " +
+    "No text or letters in the picture. Never a real or famous person, never a known character, brand or logo: replace them with an original one. " +
+    "If the idea is sexual, nude, or graphic gore, answer {\"ok\":false}. " +
+    "Also pick the gentle moving effect that fits best, one of: " + WALL_FX.join(", ") + ". Answer JSON only:\n" +
+    '{"ok":true,"prompt":"...","fx":"embers"}';
+  let plan = await gemText(env, ask, GEMINI_MODELS.slice(0, 2)), via = "gemini";
+  if (!plan || typeof plan !== "object" || (plan.ok !== false && !plan.prompt)) {
+    via = "llm";
+    try {
+      const out = await llm(env, { messages: [{ role: "user", content: ask }], max_tokens: 500, temperature: 0.7 });
+      const mm = /\{[\s\S]*\}/.exec((out && out.response) || "");
+      plan = mm ? JSON.parse(mm[0]) : null;
+    } catch (_) { plan = null; }
+  }
+  if (plan && plan.ok === false) { await back(); return { status: 400, body: { error: "not_allowed" } }; }
+  if (!plan || !plan.prompt) { await back(); await stub(env).err("wall-server", "wall", "no prompt from text AI", "api", "server").catch(() => {}); return { status: 503, body: { error: "busy" } }; }
+  const fx = WALL_FX.includes(plan.fx) ? plan.fx : "dust";
+  let img = null, errs = "";
+  for (let t = 0; t < 2 && !img; t++) {
+    try {
+      const r = await env.AI.run(FLUX_MODEL, { prompt: String(plan.prompt).slice(0, 700) + ". Vertical phone wallpaper, subject in the upper middle, no text, no letters, no watermark.", steps: 8 });
+      if (r && r.image) img = r.image;
+    } catch (e) { errs = String((e && e.message) || e).slice(0, 200); }
+  }
+  if (!img) { await back(); await stub(env).err("wall-server", "wall", "flux: " + errs, "api", "server").catch(() => {}); return { status: 503, body: { error: "busy", detail: errs.slice(0, 120) } }; }
+  await count(env, "ai_wall", "");
+  return { body: { img, fx, via, kind, max, left: use.left } };
+}
+
 async function account(env, route, body, req) {
   const b = bank(env);
   if (route === "/refund") { await b.refund(String(body.job || "")); return { body: { ok: true } }; }
@@ -802,6 +849,7 @@ async function account(env, route, body, req) {
     const st = await subStatus(env, b, row, force);
     return ACTIVE.includes(st) ? row : null;
   };
+  if (route === "/wall") return wall(env, b, did, await proRow(false), body, req);
   if (route === "/yt") return yt(env, b, did, !!(await proRow(false)), body, req);
   if (route === "/me") {
     const pro = await proRow(false);
@@ -893,6 +941,8 @@ export class Bank extends DurableObject {
     q.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)");
     q.exec("CREATE TABLE IF NOT EXISTS yt (did TEXT, day TEXT, n INTEGER, PRIMARY KEY (did, day))");
     q.exec("CREATE TABLE IF NOT EXISTS ytfree (k TEXT PRIMARY KEY)");
+    q.exec("CREATE TABLE IF NOT EXISTS wall (did TEXT, day TEXT, n INTEGER, PRIMARY KEY (did, day))");
+    q.exec("CREATE TABLE IF NOT EXISTS wallfree (k TEXT PRIMARY KEY, n INTEGER)");
     q.exec("CREATE TABLE IF NOT EXISTS ytm (month TEXT PRIMARY KEY, n INTEGER, f INTEGER DEFAULT 0)");
   }
   ytCan(did, pro, ip) {
@@ -917,6 +967,23 @@ export class Bank extends DurableObject {
     if (month) this.sql.exec("UPDATE ytm SET n = MAX(0, n - 1), f = MAX(0, f - ?) WHERE month = ?", pro ? 0 : 1, today().slice(0, 7));
     if (pro) this.sql.exec("UPDATE yt SET n = MAX(0, n - 1) WHERE did = ? AND day = ?", did, today());
     else { this.sql.exec("DELETE FROM ytfree WHERE k = ?", "d:" + did); this.sql.exec("DELETE FROM ytfree WHERE k = ?", "i:" + ip); }
+  }
+  // live wallpaper tries: free = per device for ever (and a cap per network), Pro / owner = per day
+  wallN(k) { const r = this.one("SELECT n FROM wallfree WHERE k = ?", k); return r ? r.n : 0; }
+  wallLeft(did, kind, ip, max) {
+    if (kind === "free") return this.wallN("i:" + ip) >= WALL_IP_FREE ? 0 : Math.max(0, max - this.wallN("d:" + did));
+    const r = this.one("SELECT n FROM wall WHERE did = ? AND day = ?", did, today()); return Math.max(0, max - (r ? r.n : 0));
+  }
+  wallUse(did, kind, ip, max) {
+    const left = this.wallLeft(did, kind, ip, max);
+    if (left <= 0) return { ok: false };
+    if (kind === "free") ["d:" + did, "i:" + ip].forEach((k) => this.sql.exec("INSERT INTO wallfree (k, n) VALUES (?, 1) ON CONFLICT (k) DO UPDATE SET n = n + 1", k));
+    else this.sql.exec("INSERT INTO wall (did, day, n) VALUES (?, ?, 1) ON CONFLICT (did, day) DO UPDATE SET n = n + 1", did, today());
+    return { ok: true, left: left - 1 };
+  }
+  wallUndo(did, kind, ip) {
+    if (kind === "free") ["d:" + did, "i:" + ip].forEach((k) => this.sql.exec("UPDATE wallfree SET n = MAX(0, n - 1) WHERE k = ?", k));
+    else this.sql.exec("UPDATE wall SET n = MAX(0, n - 1) WHERE did = ? AND day = ?", did, today());
   }
   one(q, ...a) { const r = this.sql.exec(q, ...a).toArray(); return r[0] || null; }
   clean() {
