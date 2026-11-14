@@ -161,10 +161,7 @@ public class GalleryView extends FrameLayout {
         // taps go through the grid itself (a click listener on each tile missed the first tile on the P20)
         grid.setOnItemClickListener((a, v, pos, id) -> { if (pos >= 0 && pos < shown.size()) tap(shown.get(pos)); });
         grid.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        grid.setOnTouchListener((v, e) -> {
-            if (e.getAction() == android.view.MotionEvent.ACTION_UP) android.util.Log.i("BRGAL", "up x=" + (int) e.getX() + " y=" + (int) e.getY() + " pos=" + grid.pointToPosition((int) e.getX(), (int) e.getY()) + " kids=" + grid.getChildCount() + " first=" + grid.getFirstVisiblePosition());
-            return false;
-        });
+
         body.addView(grid, new LayoutParams(-1, -1));
         list = new ListView(getContext());
         list.setDivider(null);
@@ -273,7 +270,6 @@ public class GalleryView extends FrameLayout {
 
     void tap(Item it) {
         int k = indexOf(it);
-        android.util.Log.i("BRGAL", "tap " + it.name + " was=" + k + " sel=" + sel.size());
         if (multi) {
             if (k >= 0) sel.remove(k); else sel.add(it);
         } else {
@@ -337,16 +333,24 @@ public class GalleryView extends FrameLayout {
         } catch (Exception ignored) { }
     }
 
+    /** A grid tile whose height always follows its own width (9:14), so every tile has the same size and place. */
+    static class Tile extends FrameLayout {
+        Tile(Context c) { super(c); }
+        @Override protected void onMeasure(int w, int h) {
+            int ww = MeasureSpec.getSize(w);
+            super.onMeasure(MeasureSpec.makeMeasureSpec(ww, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(ww * 14 / 9, MeasureSpec.EXACTLY));
+        }
+    }
+
     class GridAd extends BaseAdapter {
         public int getCount() { return "m".equals(tab) ? 0 : shown.size(); }
         public Object getItem(int i) { return shown.get(i); }
         public long getItemId(int i) { return i; }
         public View getView(int i, View cv, ViewGroup parent) {
             FrameLayout f;
-            int w = (parent.getWidth() > 0 ? parent.getWidth() : getResources().getDisplayMetrics().widthPixels) - dp(16) - dp(8);
-            int tw = w / 3, th = tw * 14 / 9;
             if (cv == null) {
-                f = new FrameLayout(getContext());
+                f = new Tile(getContext());
+                f.setLayoutParams(new AbsListView.LayoutParams(-1, -2));
                 f.setBackground(round(CARD, 0, 8));
                 f.setClipToOutline(true);
                 ImageView iv = new ImageView(getContext());
@@ -366,7 +370,6 @@ public class GalleryView extends FrameLayout {
                 View ring = new View(getContext());
                 f.addView(ring, new LayoutParams(-1, -1));
             } else f = (FrameLayout) cv;
-            f.setLayoutParams(new AbsListView.LayoutParams(-1, th));
             final Item it = shown.get(i);
             ImageView iv = (ImageView) f.getChildAt(0);
             TextView d = (TextView) f.getChildAt(1);
