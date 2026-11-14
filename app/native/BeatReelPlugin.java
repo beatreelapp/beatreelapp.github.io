@@ -153,6 +153,70 @@ public class BeatReelPlugin extends Plugin {
         }).start();
     }
 
+    /** The page's file buttons open BeatReel's own gallery: kind video|media|image|music, multi, target = input id. */
+    @PluginMethod
+    public void gallery(PluginCall call) {
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).openGallery(call.getString("kind", "video"), Boolean.TRUE.equals(call.getBoolean("multi", false)), call.getString("target", "vf"));
+        call.resolve();
+    }
+
+    /** Several files for one page input (gallery or file picker). Copied in the background, then event "picked". */
+    public void deliverMany(final java.util.List<Uri> us, final java.util.List<String> mimes, final String target) {
+        if (us == null || us.isEmpty()) {
+            JSObject d = new JSObject();
+            d.put("target", target);
+            d.put("files", new JSArray());
+            notifyListeners("picked", d, false);
+            return;
+        }
+        JSObject pr = new JSObject();
+        pr.put("target", target);
+        pr.put("n", us.size());
+        notifyListeners("pickprep", pr, false);
+        new Thread(() -> {
+            JSArray arr = new JSArray();
+            String err = null;
+            try {
+                ContentResolver cr = getContext().getContentResolver();
+                File dir = new File(getContext().getCacheDir(), "picked");
+                if (dir.exists()) {
+                    File[] old = dir.listFiles();
+                    if (old != null) for (File f : old) f.delete();
+                }
+                dir.mkdirs();
+                for (int k = 0; k < us.size(); k++) {
+                    Uri u = us.get(k);
+                    try {
+                        String mime = mimes != null && k < mimes.size() ? mimes.get(k) : null;
+                        String crMime = cr.getType(u);
+                        if (crMime != null) mime = crMime;
+                        String name = "file";
+                        try (Cursor c = cr.query(u, new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
+                            if (c != null && c.moveToFirst()) { String n = c.getString(0); if (n != null && n.length() > 0) name = n; }
+                        } catch (Exception ignored) {}
+                        String safe = name.replaceAll("[^A-Za-z0-9._ -]", "_");
+                        File out = new File(dir, System.currentTimeMillis() + "_" + k + "_" + safe);
+                        try (InputStream in = cr.openInputStream(u); OutputStream os = new FileOutputStream(out)) {
+                            byte[] b = new byte[1 << 16];
+                            int n;
+                            while ((n = in.read(b)) > 0) os.write(b, 0, n);
+                        }
+                        JSObject f = new JSObject();
+                        f.put("path", out.getAbsolutePath());
+                        f.put("name", name);
+                        f.put("mime", mime == null ? "" : mime);
+                        arr.put(f);
+                    } catch (Exception e) { err = String.valueOf(e); }
+                }
+            } catch (Exception e) { err = String.valueOf(e); }
+            JSObject d = new JSObject();
+            d.put("target", target);
+            d.put("files", arr);
+            if (err != null) d.put("error", err);
+            notifyListeners("picked", d, false);
+        }).start();
+    }
+
     /** The editor page asks for the native start screen (its "Home" button), or hides it (tests). */
     @PluginMethod
     public void showHome(PluginCall call) {

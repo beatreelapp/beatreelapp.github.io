@@ -12,7 +12,7 @@ const must = (ok, what) => { if (!ok) { console.error('PATCH FAILED: ' + what); 
 
 // 1. native code
 fs.mkdirSync(PKG, { recursive: true });
-for (const f of ['MainActivity.java', 'BeatReelPlugin.java', 'HomeView.java']) fs.copyFileSync(`native/${f}`, `${PKG}/${f}`);
+for (const f of ['MainActivity.java', 'BeatReelPlugin.java', 'HomeView.java', 'GalleryView.java']) fs.copyFileSync(`native/${f}`, `${PKG}/${f}`);
 // fonts for the native start screen (Audiowide, SIL OFL)
 fs.mkdirSync(`${SRC}/assets/fonts`, { recursive: true });
 for (const f of fs.readdirSync('native/assets/fonts')) fs.copyFileSync(`native/assets/fonts/${f}`, `${SRC}/assets/fonts/${f}`);
@@ -23,6 +23,12 @@ let m = fs.readFileSync(mp, 'utf8');
 const perms = [
   '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />',
   '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
+  // BeatReel's own gallery (videos, photos, songs inside the app)
+  '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />',
+  '<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />',
+  '<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />',
+  '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />',
+  '<uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />',
 ];
 for (const p of perms) if (!m.includes(p)) m = m.replace('</manifest>', `    ${p}\n</manifest>`);
 // apps we can share the finished video to (Android 11+ hides other apps unless they are listed here)

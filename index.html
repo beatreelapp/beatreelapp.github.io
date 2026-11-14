@@ -2077,7 +2077,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v86';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v87';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -2379,6 +2379,18 @@ if(NAT&&BRN){
   hit('share_in')}catch(e){bug('share',String(e&&e.message||e));msg.textContent='Could not open the file.';natHide()}};
  try{BRN.addListener('prep',onPrep)}catch(e){bug('share',String(e))}
  try{BRN.addListener('shared',d=>setTimeout(()=>onShared(d),300))}catch(e){bug('share',String(e))}}
+/* Android app: the page's file buttons open BeatReel's own gallery (videos, photos, songs inside the app, like CapCut).
+   The click on the hidden file input is stopped and the native gallery opens; the chosen files come back as event 'picked'. */
+if(NAT&&BRN){
+ const GAL={f:['music',0],mf:['music',0],cvi:['image',0],vf:['video',0],edaf:['media',1],edof:['image',0]};
+ document.addEventListener('click',e=>{const t=e.target;if(!t||t.tagName!=='INPUT'||t.type!=='file'||!GAL[t.id])return;
+  e.preventDefault();e.stopPropagation();const g=GAL[t.id];try{BRN.gallery({kind:g[0],multi:!!g[1]&&!t._rep,target:t.id})}catch(err){bug('gallery',String(err))}},true);
+ try{BRN.addListener('pickprep',d=>{try{msg.textContent=d.n>1?'Opening '+d.n+' files…':'Opening the file…'}catch(_){}})}catch(_){}
+ try{BRN.addListener('picked',async d=>{try{if(d&&d.error)bug('picked',String(d.error).slice(0,200));const el=$(d&&d.target);const L=(d&&d.files)||[];if(!el||!L.length){if(d&&d.error)msg.textContent='Could not open the file.';return}
+  const fs=[];for(const x of L){const r=await fetch(Capacitor.convertFileSrc(x.path));const b=await r.blob();fs.push(new File([b],x.name||'file',{type:x.mime||b.type||''}))}
+  if(d.target==='edaf'&&fs.length>1){let k=0;const nx=()=>{if(k>=fs.length){msg.textContent='Added ✓ '+fs.length+' clips.';return}const f=fs[k++];edAddMedia(f,false,undefined,()=>setTimeout(nx,50))};nx()}
+  else if(el.onchange)el.onchange({target:{files:fs,value:''}});
+  hit('gal_'+d.target)}catch(e){bug('picked',String(e&&e.message||e));msg.textContent='Could not open the file.'}})}catch(e){bug('gallery',String(e))}}
 
 /* Convert the recorded file to H.264 + AAC MP4 (what TikTok, CapCut and the gallery expect).
    Runs on the device with ffmpeg.wasm, downloaded the first time (about 30 MB). */
@@ -3211,6 +3223,9 @@ function pkSync(){document.querySelectorAll('.pk').forEach(k=>{const v=k._src.va
 #edct[hidden]{display:none}
 #edct button{flex:0 0 auto;min-width:96px;padding:10px 12px!important;font:600 14px system-ui,sans-serif!important}
 #edct button:disabled{opacity:.4}
+/* small glossy blue words on the dark tool buttons (the user's choice, Nov 14 2026) */
+#edct button,#edsub button{background-color:#1c1f24!important;background-image:linear-gradient(180deg,#e4f5ff 0%,#8fd0ff 42%,#3a98d8 56%,#7cc6f7 100%),linear-gradient(#1c1f24,#1c1f24)!important;-webkit-background-clip:text,padding-box!important;background-clip:text,padding-box!important;color:transparent!important;-webkit-text-fill-color:transparent;border:1px solid #30343b!important;font:600 13px system-ui,sans-serif!important;letter-spacing:.2px}
+#edsub button.on{border-color:#5ab4f0!important;background-image:linear-gradient(180deg,#e4f5ff 0%,#8fd0ff 42%,#3a98d8 56%,#7cc6f7 100%),linear-gradient(#16222d,#16222d)!important}
 #edtl canvas{height:44px;width:auto;flex:1 1 0;min-width:0;object-fit:cover;border-radius:4px;outline:0;display:block;cursor:pointer;aspect-ratio:auto;background:#222}
 #edtl canvas.on{outline:2px solid #5ab4f0;outline-offset:-2px}
 #edtl .trb{position:absolute;top:17px;width:24px;height:24px;padding:0;border-radius:12px;background:#30343b;color:#e8eaed;border:2px solid #111315;font:700 15px/20px system-ui,sans-serif;z-index:3;box-shadow:0 1px 4px rgba(0,0,0,.5)}
@@ -3403,12 +3418,12 @@ function edPickMedia(rep){let i=$('edaf');if(!i){i=document.createElement('input
   i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)edAddMedia(f,i._rep);i.value=''}}
  i._rep=rep;i.value='';i.click()}
 function edThumbOf(el,w,h){const cn=document.createElement('canvas');cn.width=80;cn.height=80;const x=cn.getContext('2d'),s=Math.max(80/w,80/h);try{x.drawImage(el,(80-w*s)/2,(80-h*s)/2,w*s,h*s)}catch(_){}return cn}
-function edAddMedia(f,rep,asImg){const unk=!/^(image|video)\//.test(f.type||'')&&!/\.(jpe?g|png|webp|gif|bmp|mp4|mov|m4v|webm|3gp|mkv)$/i.test(f.name||'');if(unk&&asImg==null){const t=new Image(),u=URL.createObjectURL(f);t.onload=()=>{URL.revokeObjectURL(u);edAddMedia(f,rep,true)};t.onerror=()=>{URL.revokeObjectURL(u);edAddMedia(f,rep,false)};t.src=u;return}
+function edAddMedia(f,rep,asImg,cb){const unk=!/^(image|video)\//.test(f.type||'')&&!/\.(jpe?g|png|webp|gif|bmp|mp4|mov|m4v|webm|3gp|mkv)$/i.test(f.name||'');if(unk&&asImg==null){const t=new Image(),u=URL.createObjectURL(f);t.onload=()=>{URL.revokeObjectURL(u);edAddMedia(f,rep,true,cb)};t.onerror=()=>{URL.revokeObjectURL(u);edAddMedia(f,rep,false,cb)};t.src=u;return}
  const img=asImg!=null?asImg:/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name||'');const url=URL.createObjectURL(f);au.pause();msg.textContent='Adding '+(img?'photo':'video')+'…';
  const done=S=>{const k=SRCS.length;SRCS.push(S);const L=edCopyL(),ln=img?3:Math.min(S.d,60);edSnap();
   const q={a:0,b:img?Math.max(.5,rep&&CLSEL>=0?cW(L[CLSEL]):ln):ln,sp:1,src:k};if(rep&&CLSEL>=0){L[CLSEL]=q}else{const at=CLSEL>=0?CLSEL+1:L.length;L.splice(at,0,q);CLSEL=at}
-  EDMSEL=false;EDOSEL=-1;edSet(L);edGo(clStart(CLSEL));msg.textContent=(rep?'Replaced ✓ ':'Added ✓ ')+(img?'Photo':'Video')+' is clip '+(CLSEL+1)+'.';try{hit(img?'ed_photo':'ed_video')}catch(_){}};
- const fail=w=>{msg.textContent='This '+(img?'photo':'video')+' could not be opened on this phone. Try another file.';try{URL.revokeObjectURL(url)}catch(_){}try{bug('ed_add',w+' '+(f.type||'')+' '+(f.name||'').slice(-12))}catch(_){}};
+  EDMSEL=false;EDOSEL=-1;edSet(L);edGo(clStart(CLSEL));msg.textContent=(rep?'Replaced ✓ ':'Added ✓ ')+(img?'Photo':'Video')+' is clip '+(CLSEL+1)+'.';try{hit(img?'ed_photo':'ed_video')}catch(_){}if(cb)cb(true)};
+ const fail=w=>{msg.textContent='This '+(img?'photo':'video')+' could not be opened on this phone. Try another file.';try{URL.revokeObjectURL(url)}catch(_){}try{bug('ed_add',w+' '+(f.type||'')+' '+(f.name||'').slice(-12))}catch(_){}if(cb)cb(false)};
  if(img){const im=new Image();im.onload=()=>{const S={t:'i',el:im,url:url,d:60,name:f.name||'photo',sh:Object.assign({s:0,e:1e9},shotDef(),{part:'straight'})};S.th=edThumbOf(im,im.naturalWidth,im.naturalHeight);done(S)};im.onerror=()=>fail('img');im.src=url;return}
  const v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload='auto';v.style.cssText='position:absolute;width:2px;height:2px;opacity:.01;pointer-events:none;left:0;top:0';document.body.appendChild(v);
  let ok=false;const to=setTimeout(()=>{if(!ok){v.remove();fail('timeout')}},20000);
