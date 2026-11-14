@@ -962,7 +962,7 @@ var ERRN=0;
 function frame(){requestAnimationFrame(frame);if(typeof OFFX!=='undefined'&&OFFX)return;try{frameBody()}catch(e){ERRN++;try{cv.width=cv.width}catch(_){}showErr(((e&&e.message)||String(e))+' [frame]')}}
 function frameBody(){
  analyse();
- {const bvv=document.getElementById('bgv');HV=!!(bvv.src&&bvv.readyState>=2&&bvv.videoWidth);SS=HV?.62:1;TY=HV?51:0;const nb=performance.now(),dt=Math.min(.05,(nb-BT)/1000);BT=nb;FD.push(dt*1000);if(FD.length>60)FD.shift();c=CM;PLS=PLON()&&SJ!=6&&SJ!=11;if(PLS){plMk();c=PSX}const KK=(PLS?PSC.width:cv.width)/W;c.setTransform(KK,0,0,KK,0,0);BM=Math.min(1,Math.max(BM*Math.pow(.003,dt),fl*1.7));
+ {const bvv=document.getElementById('bgv');HV=!!(bvv.src&&bvv.readyState>=2&&bvv.videoWidth);SS=HV?.62:1;TY=HV?51:0;const nb=performance.now(),dt=Math.min(.05,(nb-BT)/1000);BT=nb;FD.push(dt*1000);if(FD.length>60)FD.shift();c=CM;PLS=PLON()&&SJ!=6&&SJ!=11&&SJ!=12&&SJ!=13;if(PLS){plMk();c=PSX}const KK=(PLS?PSC.width:cv.width)/W;c.setTransform(KK,0,0,KK,0,0);BM=Math.min(1,Math.max(BM*Math.pow(.003,dt),fl*1.7));
   const I=(SJ==4||SJ>=5)?0:BOOM[BI][1];BZ=1+I*BM;BSX=I?Math.sin(nb/41)*I*55*BM:0;BSY=I?Math.cos(nb/33)*I*55*BM:0;
   c.save();c.translate(W/2+BSX,H/2+BSY);c.scale(BZ,BZ);c.translate(-W/2,-H/2)
   if(FD.length>=60&&!isRec&&QI<2&&nb-QL>4000){const av=FD.reduce((x,y)=>x+y,0)/FD.length;if(av>42){setQ(QI+1);QL=nb;FD=[];msg.textContent='Lowered quality for smoother playback.'}}}
@@ -1004,7 +1004,7 @@ function frameBody(){
   else if(SJ==10){if(!(EDSN>0&&edDrawX(R))){vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,.01);tplPost(bv);try{trFx(R,vCT())}catch(_){}}try{trClip(R)}catch(_){}try{edOvl()}catch(_){}}
   else vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,.28)}
  else if(vHeld&&bv.src&&!bv.error){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);c.drawImage(VHOLD,VR.x,VR.y);vBorder()}
- if(PLON()){if(PLS)plBlur();SFT.card()}else if(!curVid&&SJ<5)drawRhythm();
+ if(PLON()){if(PLS)plBlur();else if(SJ==12||SJ==13){c.fillStyle='rgba(4,6,10,.28)';c.fillRect(-80,-80,W+160,H+160)}SFT.card()}else if(!curVid&&SJ<5)drawRhythm();
  if(SJ==10)orbitTitle();else if(SJ==4&&ttl.value.trim())hookDraw(ttl.value.trim());else{let fs=64,t=ttl.value.toUpperCase()||' ';c.textAlign='center';
  do{c.font='bold '+fs+'px system-ui,sans-serif';fs-=4}while(c.measureText(t).width>W-60&&fs>24);
  c.fillStyle='#ffebf5';c.fillText(t,W/2,100)}
@@ -1509,7 +1509,7 @@ setInterval(plUI,700);
 (()=>{const b=$('pnam');if(!b)return;b.onclick=async()=>{const a=await modal('<h3>Song name</h3><p>Both are optional. Leave empty to show nothing.</p><input id="mpt" placeholder="Song name" autocomplete="off" style="text-align:left;font:600 15px system-ui,sans-serif;letter-spacing:0" value="'+clEsc(PLT)+'"><input id="mpa" placeholder="Artist" autocomplete="off" style="text-align:left;font:600 15px system-ui,sans-serif;letter-spacing:0" value="'+clEsc(PLA)+'"><button class="pri" data-a="ok">OK</button><button data-a="close">Cancel</button>');
  if(a!=='ok')return;plSet('t',($('mpt').value||'').trim().slice(0,60));plSet('a',($('mpa').value||'').trim().slice(0,60));plUI()}})();
 /* Player look on every music scene: the scene becomes a soft blurred background, the player card (cover, name, progress) on top, lyrics below */
-function PLON(){return SJ!=4&&SJ!=10&&SJ!=12&&SJ!=13&&!EDIT}
+function PLON(){return SJ!=4&&SJ!=10&&!EDIT}/* AI Story (12) and Live wallpaper (13) also show the player card (cover + optional name), over their sharp picture */
 /* Player look: the scene is drawn on a small canvas (cheap) and stretched to the full frame = soft blur. No read-back of the big canvas (light for the P20) */
 var PLS=false,PSC=null,PSX=null,PSB=null;
 function plMk(){if(!PSC){PSC=document.createElement('canvas');PSC.width=90;PSC.height=160;PSX=PSC.getContext('2d');PSB=document.createElement('canvas');PSB.width=90;PSB.height=160}}
@@ -2077,7 +2077,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v90';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v91';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
