@@ -161,6 +161,10 @@ public class GalleryView extends FrameLayout {
         // taps go through the grid itself (a click listener on each tile missed the first tile on the P20)
         grid.setOnItemClickListener((a, v, pos, id) -> { if (pos >= 0 && pos < shown.size()) tap(shown.get(pos)); });
         grid.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        grid.setOnTouchListener((v, e) -> {
+            if (e.getAction() == android.view.MotionEvent.ACTION_UP) android.util.Log.i("BRGAL", "up x=" + (int) e.getX() + " y=" + (int) e.getY() + " pos=" + grid.pointToPosition((int) e.getX(), (int) e.getY()) + " kids=" + grid.getChildCount() + " first=" + grid.getFirstVisiblePosition());
+            return false;
+        });
         body.addView(grid, new LayoutParams(-1, -1));
         list = new ListView(getContext());
         list.setDivider(null);
@@ -269,6 +273,7 @@ public class GalleryView extends FrameLayout {
 
     void tap(Item it) {
         int k = indexOf(it);
+        android.util.Log.i("BRGAL", "tap " + it.name + " was=" + k + " sel=" + sel.size());
         if (multi) {
             if (k >= 0) sel.remove(k); else sel.add(it);
         } else {

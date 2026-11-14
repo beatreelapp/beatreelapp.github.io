@@ -87,8 +87,9 @@ for tabname in ["Videos", "Photos"]:
     T, x = tiles(); log("GRID " + tabname + " tiles", len(T))
     for i in range(min(2, len(T))):
         b1, a1, c1, d1 = T[i]; sh(f"adb shell input tap {(a1+c1)//2} {(b1+d1)//2}"); time.sleep(1.2)
-        _, x = tiles(); log("GRID " + tabname + " tap tile", i + 1, "->", hint_of(x))
+        time.sleep(1); _, x = tiles(); log("GRID " + tabname + " tap tile", i + 1, T[i], "->", hint_of(x))
 shot("0h_grid")
+log("GRID LOGCAT", sh("adb logcat -d -s BRGAL:I | tail -20"))
 log("GRID ADD", tap_text(["Add \\(4\\)", "Add \\([0-9]+\\)"])); time.sleep(3)
 ev("BRN.showHome();true"); time.sleep(2)
 log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
