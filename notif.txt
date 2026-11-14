@@ -1,0 +1,4 @@
+      AppSettings: io.github.beatreelapp.twa.test (10192) importance=DEFAULT userSet=false
+Restored without uid:
+
+  Notification listeners:

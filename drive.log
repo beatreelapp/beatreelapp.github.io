@@ -1,0 +1,45 @@
+APP v92 NAT=true
+STILL {"auPaused":true,"bgv":false,"curFile":false,"home":"none","mcs":"none"}
+WELCOME NEXT Next
+WELCOME SKIP Skip
+CLIP SOON Clipping
+GALLERY OPEN Music
+PERMISSION DIALOG: tapped Allow
+GALLERY SHOWN True song listed: True
+GALLERY PICK Test Song
+GALLERY USE Use this song
+GALLERY RESULT {"song":"test-song.mp3","mode":"music","edit":false}
+PERMISSION DIALOG: tapped Allow all
+GRID Videos tiles 5
+GRID Videos tap tile 1 (134, 8, 106, 286) -> 1 picked
+GRID Videos tap tile 2 (134, 110, 208, 286) -> 2 picked
+GRID Photos tiles 5
+GRID Photos tap tile 1 (134, 8, 106, 286) -> 3 picked
+GRID Photos tap tile 2 (134, 110, 208, 286) -> 4 picked
+GRID ADD Add \(4\)
+HIDE HOME hidden
+SHARE INTENT Starting: Intent { act=android.intent.action.SEND typ=audio/mpeg flg=0x1 cmp=io.github.beatreelapp.twa.test/io.github.beatreelapp.twa.MainActivity (has extras) }
+
+SHARE RECEIVED {"path":"/data/user/0/io.github.beatreelapp.twa.test/cache/shared/1794684380835_test-song.mp3","name":"test-song.mp3","mime":"audio/mpeg"} | curFile: test-song.mp3 1281551
+[0s] MSG: ✨ Scene "Soft: Aurora" (calm, ethereal, dreamlike song) and best part ready. Lyrics: No singing was found (maybe an instrumental song).
+STATE {"SJ":5,"CS":38,"CE":68,"lines":0,"lyrics":[],"gemini":{"mood":"calm, ethereal, dreamlike","model":"gemini-3.1-flash-lite","why":"The ambient, ethereal soundscape calls for a calm, dreamy visual like the aurora scene combined with glass lettering.","scene":4},"look":"Glass","player":true,"title":"Test Song","artist":"BeatReel Bot"}
+DOWNLOAD clicked
+[0s] MSG: Preparing the audio...
+[4s] MSG: Making your video: 1s / 6s (about 29 s left). Keep this page open.
+[8s] MSG: Making your video: 2s / 6s (about 13 s left). Keep this page open.
+[12s] MSG: Making your video: 4s / 6s (about 6 s left). Keep this page open.
+[16s] MSG: Making your video: 6s / 6s (about 1 s left). Keep this page open.
+[20s] MSG: Saved in your gallery (Movies/BeatReel) (made in 18 s, phone video chip).
+ERRORS []
+NATENC {"enc":"phone video chip","secs":18,"ext":"mp4","size":5149856,"natbad":false,"w":720,"h":1280,"dur":6.02,"avg":36,"min":2,"max":255}
+SHARE ROW {"uri":"content://media/external_primary/video/media/1000000026","row":true,"btns":["YouTube","More"],"save":false,"pv":false}
+SHARE APPS ["youtube:5994"]
+SHARE MORE opened
+HOME AFTER SAVE shown
+HIDE HOME hidden
+STORY skipped
+FX status 200 1674ms list 175 {"via":"gemini","fx":[{"l":0,"w":4,"k":"count"},{"l":2,"w":0,"k":"pin","p":"Hook Strategy"},{"l":2,"w":3,"k":"under"},{"l":3,"w":0,"k":"cross"},{"l":4,"w":1,"k":"emoji","e":"1f929"},{"l":4,"w":4,"k":"count"},{"l":5,"w":4,"k":"cross"}]} emoji 1f929 30 frames
+HIDE HOME hidden
+VISIBLE visible
+EDIT {"dur":6.02,"shots":1,"edon":true,"split":2,"del":1,"undo":2,"clips":["0:2.0","0:4.0","1:3.0"],"ovl":1,"len":9.02,"ce":9}
+EDIT EXPORT {"r":"ok","secs":20,"enc":"phone video chip","size":5377158,"dur":9,"photoPx":[219,97,194],"at":7.02}

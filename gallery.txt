@@ -1,0 +1,2 @@
+total 5036
+-rwxrwx--- 1 u0_a172 media_rw 5149856 2026-11-14 19:26 beatreel_video_1794684409071.mp4
