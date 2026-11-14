@@ -66,6 +66,31 @@ log("GALLERY SHOWN", "Choose a song" in _g, "song listed:", "Test Song" in _g)
 log("GALLERY PICK", tap_text(["Test Song"])); time.sleep(1); log("GALLERY USE", tap_text(["Use this song"])); time.sleep(10); shot("0g_after_gallery")
 log("GALLERY RESULT", ev("JSON.stringify({song:curFile&&curFile.name,mode:MODE,edit:EDIT})"))
 ev("BRN.showHome();true"); time.sleep(2)
+# gallery grid: the FIRST tile must be pickable (bug on the P20 in v87), then the second
+def tiles():
+    import re as _r
+    x = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
+    g = _r.search(r'class="android.widget.GridView"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
+    if not g: return [], x
+    gx0, gy0, gx1, gy1 = map(int, g.groups())
+    out = []
+    for m in _r.finditer(r'class="android.widget.FrameLayout"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x):
+        a1, b1, c1, d1 = map(int, m.groups())
+        if b1 >= gy0 and d1 <= gy1 + 5 and (c1 - a1) < (gx1 - gx0) / 2: out.append((b1, a1, c1, d1))
+    return sorted(set(out)), x
+def hint_of(x):
+    import re as _r
+    m = _r.search(r'text="([0-9]+ picked|Tap to pick[^"]*)"', x); return m.group(1) if m else None
+ev("BRN.gallery({kind:'media',multi:true,target:'edaf'});true"); time.sleep(5)
+for tabname in ["Videos", "Photos"]:
+    if tabname == "Photos": tap_text(["Photos"]); time.sleep(3)
+    T, x = tiles(); log("GRID " + tabname + " tiles", len(T))
+    for i in range(min(2, len(T))):
+        b1, a1, c1, d1 = T[i]; sh(f"adb shell input tap {(a1+c1)//2} {(b1+d1)//2}"); time.sleep(1.2)
+        _, x = tiles(); log("GRID " + tabname + " tap tile", i + 1, "->", hint_of(x))
+shot("0h_grid")
+log("GRID ADD", tap_text(["Add \\(4\\)", "Add \\([0-9]+\\)"])); time.sleep(3)
+ev("BRN.showHome();true"); time.sleep(2)
 log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
 # 1) share the song from "another app" (Android share sheet) and see what the app receives
 ev("window.__SH=null;try{BRN.addListener('shared',d=>{window.__SH=d})}catch(e){window.__SH={err:String(e)}};true")

@@ -158,6 +158,9 @@ public class GalleryView extends FrameLayout {
         grid.setSelector(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         gridAd = new GridAd();
         grid.setAdapter(gridAd);
+        // taps go through the grid itself (a click listener on each tile missed the first tile on the P20)
+        grid.setOnItemClickListener((a, v, pos, id) -> { if (pos >= 0 && pos < shown.size()) tap(shown.get(pos)); });
+        grid.setOverScrollMode(View.OVER_SCROLL_NEVER);
         body.addView(grid, new LayoutParams(-1, -1));
         list = new ListView(getContext());
         list.setDivider(null);
@@ -166,6 +169,7 @@ public class GalleryView extends FrameLayout {
         list.setSelector(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         listAd = new ListAd();
         list.setAdapter(listAd);
+        list.setOnItemClickListener((a, v, pos, id) -> { if (pos >= 0 && pos < shown.size()) tap(shown.get(pos)); });
         body.addView(list, new LayoutParams(-1, -1));
         empty = text("", 14, MUTED, false);
         empty.setGravity(Gravity.CENTER);
@@ -383,7 +387,6 @@ public class GalleryView extends FrameLayout {
                 g.setStroke(dp(3), ACC);
                 ring.setBackground(g);
             } else ring.setBackground(null);
-            f.setOnClickListener(v -> tap(it));
             return f;
         }
     }
@@ -426,7 +429,6 @@ public class GalleryView extends FrameLayout {
             GradientDrawable g = round(CARD, on ? ACC : LINE, 12);
             android.graphics.drawable.InsetDrawable ins = new android.graphics.drawable.InsetDrawable(g, 0, dp(3), 0, dp(3));
             row.setBackground(ins);
-            row.setOnClickListener(v -> tap(it));
             return row;
         }
     }
