@@ -58,7 +58,7 @@ log("WELCOME NEXT", tap_text(["Next"])); time.sleep(1); shot("0c_welcome2")
 log("WELCOME SKIP", tap_text(["Skip"])); time.sleep(2); shot("0d_home")
 log("CLIP SOON", tap_text(["Clipping"])); time.sleep(1); shot("0e_soon")
 # BeatReel's own gallery (v87): Music on the start screen -> access dialog (auto Allow) -> in-app song list -> pick -> editor
-log("GALLERY OPEN", tap_text(["Music"])); time.sleep(7); shot("0f_gallery")
+log("GALLERY OPEN", tap_text(["Music"])); time.sleep(4); shot("0f_gallery_a"); time.sleep(5); shot("0f_gallery")
 _g = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
 log("GALLERY SHOWN", "Choose a song" in _g, "song listed:", "Test Song" in _g)
 log("GALLERY PICK", tap_text(["Test Song"])); time.sleep(1); log("GALLERY USE", tap_text(["Use this song"])); time.sleep(10); shot("0g_after_gallery")
@@ -110,13 +110,6 @@ log("SHARE APPS", ev("BRN.shareApps().then(r=>JSON.stringify((r.apps||[]).map(a=
 log("SHARE MORE", ev("BRN.share({uri:LASTURI}).then(()=>'opened').catch(e=>'ERR '+e)")); time.sleep(3); shot("4b_share_sheet"); sh("adb shell input keyevent 4"); time.sleep(2)
 log("HOME AFTER SAVE", ev("BRN.showHome().then(()=>'shown')")); time.sleep(3); shot("4c_home_videos")
 sh("adb shell input keyevent 4"); time.sleep(1); shot("4d_after_back")
-# BeatReel's own gallery (v87): Music on the start screen -> access dialog (auto Allow) -> in-app song list -> pick -> editor
-log("GALLERY OPEN", tap_text(["Music"])); time.sleep(7); shot("0f_gallery")
-_g = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
-log("GALLERY SHOWN", "Choose a song" in _g, "song listed:", "Test Song" in _g)
-log("GALLERY PICK", tap_text(["Test Song"])); time.sleep(1); log("GALLERY USE", tap_text(["Use this song"])); time.sleep(10); shot("0g_after_gallery")
-log("GALLERY RESULT", ev("JSON.stringify({song:curFile&&curFile.name,mode:MODE,edit:EDIT})"))
-ev("BRN.showHome();true"); time.sleep(2)
 log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
 
 # 3) AI Story for real (Gemini plan + Cloudflare FLUX pictures), with typed lyrics
@@ -144,13 +137,6 @@ log("FX", ev("""(async()=>{const list=await aelGet();const lines=['Did you know 
 
 # the app may be in the background after the Back key above: videos only play when it is in front
 sh("adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n io.github.beatreelapp.twa.test/io.github.beatreelapp.twa.MainActivity"); time.sleep(4)
-# BeatReel's own gallery (v87): Music on the start screen -> access dialog (auto Allow) -> in-app song list -> pick -> editor
-log("GALLERY OPEN", tap_text(["Music"])); time.sleep(7); shot("0f_gallery")
-_g = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
-log("GALLERY SHOWN", "Choose a song" in _g, "song listed:", "Test Song" in _g)
-log("GALLERY PICK", tap_text(["Test Song"])); time.sleep(1); log("GALLERY USE", tap_text(["Use this song"])); time.sleep(10); shot("0g_after_gallery")
-log("GALLERY RESULT", ev("JSON.stringify({song:curFile&&curFile.name,mode:MODE,edit:EDIT})"))
-ev("BRN.showHome();true"); time.sleep(2)
 log("HIDE HOME", ev("BRN.hideHome().then(()=>'hidden')")); time.sleep(1)
 log("VISIBLE", ev("document.visibilityState"))
 # 5) Edit timeline (CapCut style): the video saved above goes into Edit, split / delete / undo, a photo clip, an image on top, export
