@@ -272,8 +272,7 @@ async function mood(env, body) {
   return { error: "gemini_failed", src: "none", _err: last.slice(0, 300) };
 }
 
-// AI Story: the lyrics become 3-6 scenes (Gemini writes one picture prompt per scene, Groq/Cloudflare text AI as backup),
-// then Cloudflare FLUX draws each picture (free neurons). Needs a coin job. Pictures come back as base64 JPEG.
+// Cloudflare FLUX draws the pictures (free neurons). Pictures come back as base64 JPEG.
 const FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 async function gemText(env, prompt, models) {
   if (!env.GEMINI_API_KEY) return null;
@@ -293,48 +292,63 @@ async function gemText(env, prompt, models) {
   }
   return null;
 }
+// Dark Auto (replaces the old 3-6 picture AI Story, same route and coin): Gemini LISTENS to ~30 s of the song and reads the
+// lyrics, then writes ONE dark, night, cinematic picture prompt with NO people; FLUX draws it; the app makes the motion.
+// Answer keeps a one-item "scenes" list so older app versions still show it.
 async function story(env, body) {
-  const lines = Array.isArray(body.lines) ? body.lines.slice(0, 60).map((x) => String(x || "").slice(0, 120)) : [];
-  if (lines.filter((x) => x.trim()).length < 2) throw bad("lyrics required");
-  const prompt =
-    "You direct a short vertical music video for these song lyrics. Split the lines into 3 to 6 scenes in order " +
-    "(every line belongs to exactly one scene; scenes follow the meaning). Write ONE picture prompt in English per scene. " +
-    "All pictures must look like stills from the same film: same main character (describe them the same way every time, adult, not a real or famous person), " +
-    "same place style, same colour grade. Cinematic, realistic, calm and adult, soft natural light, vertical composition with the subject in the upper middle, " +
-    "empty darker area at the bottom for lyrics. No text, no letters, no logos, nothing violent, sexual or scary. Answer JSON only:\n" +
-    '{"look":"one sentence: film look shared by all pictures","scenes":[{"from":0,"to":2,"prompt":"..."}]}\n' +
-    "from/to are line numbers (inclusive).\nLYRICS:\n" + lines.map((t, i) => i + ": " + t).join("\n");
-  let plan = await gemText(env, prompt), via = "gemini";
-  if (!plan || !Array.isArray(plan.scenes)) {
+  const lines = Array.isArray(body.lines) ? body.lines.slice(0, 60).map((x) => String(x || "").slice(0, 120)).filter((x) => x.trim()) : [];
+  const audio = typeof body.audio === "string" && body.audio.length < 4_000_000 ? body.audio : "";
+  if (!audio && lines.length < 2) throw bad("song or lyrics required");
+  const ask =
+    "You are the art director of a lyric video app. " + (audio ? "Listen to this part of the song" : "Read these song lyrics") +
+    (audio && lines.length ? " and read its lyrics" : "") + ". Design ONE background picture for the whole song.\n" +
+    "RULES: dark and moody, night or deep shadows, cinematic and realistic like a film still, calm and adult. " +
+    "ABSOLUTELY NO people: no person, no human figure, no silhouette, no face, no hands, no crowd. Places, nature, weather, objects, light only " +
+    "(examples: rainy city street at night, empty road in fog, dark sea under the moon, forest in mist, lonely lit window, car lights in the rain). " +
+    "Match the song's mood, story and energy. Vertical composition, main interest in the upper middle, a darker calmer area at the bottom for lyrics. " +
+    "No text, no letters, no logos. Also pick the gentle moving effect that fits best, one of: " + WALL_FX.join(", ") + ". Answer JSON only:\n" +
+    '{"prompt":"English picture prompt","fx":"rain","mood":"2-4 words"}' +
+    (lines.length ? "\nLYRICS:\n" + lines.join("\n") : "");
+  let plan = null, via = "gemini", last = "";
+  if (audio && env.GEMINI_API_KEY) {
+    for (const [m, ms] of GEMINI_MODELS) {
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
+      try {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent", {
+          method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+          body: JSON.stringify({ contents: [{ role: "user", parts: [{ inline_data: { mime_type: "audio/wav", data: audio } }, { text: ask }] }],
+            generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 2000, thinkingConfig: { thinkingLevel: "low" } } }),
+        });
+        if (!r.ok) { last = "gemini " + m + " " + r.status; continue; }
+        const j = await r.json().catch(() => null);
+        const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts.filter((p) => !p.thought).map((p) => p.text || "").join("");
+        const mm = /\{[\s\S]*\}/.exec(txt || "");
+        if (mm) { plan = JSON.parse(mm[0]); if (plan && plan.prompt) break; }
+      } catch (e) { last = "gemini " + m + " " + String((e && e.message) || e).slice(0, 80); } finally { clearTimeout(to); }
+    }
+  }
+  if ((!plan || !plan.prompt) && lines.length) { via = "gemini-text"; plan = await gemText(env, ask, GEMINI_MODELS.slice(0, 2)); }
+  if ((!plan || !plan.prompt) && lines.length) {
     via = "llm";
     try {
-      const out = await llm(env, { messages: [{ role: "user", content: prompt }], max_tokens: 1500, temperature: 0.7 });
+      const out = await llm(env, { messages: [{ role: "user", content: ask }], max_tokens: 500, temperature: 0.7 });
       const mm = /\{[\s\S]*\}/.exec((out && out.response) || "");
       plan = mm ? JSON.parse(mm[0]) : null;
     } catch (_) { plan = null; }
   }
-  if (!plan || !Array.isArray(plan.scenes) || !plan.scenes.length) return { error: "plan_failed", _err: "no plan from " + via };
-  const look = String(plan.look || "").slice(0, 300), n = lines.length;
-  let sc = plan.scenes.slice(0, 6).map((x) => ({ from: Math.max(0, Math.min(n - 1, +x.from || 0)), to: Math.max(0, Math.min(n - 1, +x.to || 0)), prompt: String(x.prompt || "").slice(0, 600) })).filter((x) => x.prompt);
-  sc.sort((a, b) => a.from - b.from);
-  if (!sc.length) return { error: "plan_failed", _err: "empty scenes" };
-  sc[0].from = 0;
-  for (let i = 0; i < sc.length; i++) sc[i].to = i + 1 < sc.length ? Math.max(sc[i].from, sc[i + 1].from - 1) : n - 1;
-  let errs = "";
-  const imgs = await Promise.all(sc.map(async (x) => {
-    for (let t = 0; t < 2; t++) {
-      try {
-        const r = await env.AI.run(FLUX_MODEL, { prompt: (look ? look + ". " : "") + x.prompt + ". Cinematic film still, shallow depth of field, no text, no watermark.", steps: 6 });
-        if (r && r.image) return r.image;
-      } catch (e) { errs = String((e && e.message) || e).slice(0, 160); }
-    }
-    return null;
-  }));
-  const out = sc.map((x, i) => ({ from: x.from, to: x.to, img: imgs[i] })).filter((x) => x.img);
-  if (!out.length) return { error: "draw_failed", _err: "flux: " + errs };
-  return { via, look, scenes: out, _err: errs && out.length < sc.length ? "flux partial: " + errs : "" };
+  if (!plan || !plan.prompt) return { error: "plan_failed", _err: "no plan " + last };
+  const fx = WALL_FX.includes(plan.fx) ? plan.fx : "fog";
+  const pr = String(plan.prompt).slice(0, 650) +
+    ". Dark cinematic night photograph, moody low-key lighting, deep shadows, empty scene with no people, no human figure, no silhouette, vertical, no text, no watermark.";
+  let img = null, errs = "";
+  for (let t = 0; t < 2 && !img; t++) {
+    try { const r = await env.AI.run(FLUX_MODEL, { prompt: pr, steps: 8 }); if (r && r.image) img = r.image; }
+    catch (e) { errs = String((e && e.message) || e).slice(0, 160); }
+  }
+  if (!img) return { error: "draw_failed", _err: "flux: " + errs };
+  const n = Math.max(1, lines.length);
+  return { via, img, fx, mood: String(plan.mood || "").slice(0, 40), scenes: [{ from: 0, to: n - 1, img }], _err: "" };
 }
-
 
 // Auto effects: an AI "editor" reads the caption lines and picks animated effects for some words
 // (big animated emoji, number counter, ring, underline, arrow, zoom punch, shake, tick, cross, topic tag).
@@ -633,7 +647,7 @@ const LABELS = [
   ["mood_gem", "  ↳ نجح عبر Gemini"],
   ["mood_fail", "  ↳ فشل (التطبيق اختار وحده)"],
   ["auto", "فيديو تلقائي من أغنية"],
-  ["ai_story", "قصص AI (صور من الكلمات)"],
+  ["ai_story", "Dark Auto (خلفية مظلمة من الأغنية)"],
   ["ai_wall", "خلفيات حية AI"],
   ["pro_new", "اشتراكات Pro جديدة"],
 ];
