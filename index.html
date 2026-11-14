@@ -2077,7 +2077,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v85';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v86';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -3284,7 +3284,7 @@ function edBuild(){if($('edx'))return;const d=document.createElement('div');d.id
  '<div id="eds"></div><div class="exp"><button id="edpl" aria-label="Play">▶</button><div id="edtl"><div id="edph"></div></div></div><div id="edmsg"></div><div id="edpn" hidden></div>'+
  '<div id="edbar"><button data-p="mu">'+EDI.mu+'<span>Music</span></button><button data-p="tx"><b>A</b><span>Text</span></button><button data-p="fr">'+EDI.fr+'<span>Frame</span></button></div>';
  document.body.appendChild(d);
- $('edb').onclick=()=>edExit();$('edd').onclick=()=>{au.pause();$('rec').click()};
+ $('edb').onclick=()=>{/* in the Android app ‹ goes back to the start screen (shown first, so the Music page never flashes) */if(NAT&&BRN){try{BRN.showHome()}catch(_){}setTimeout(edExit,350)}else edExit()};$('edd').onclick=()=>{au.pause();$('rec').click()};
  $('edpl').onclick=()=>{if(!au.src){$('f').click();return}setup();ac.resume();if(au.paused){if(au.currentTime<CS||au.currentTime>=CE-.05)au.currentTime=CS;au.play().catch(()=>{})}else au.pause()};
  d.querySelectorAll('#edbar [data-p]').forEach(b=>b.onclick=()=>edShow(b.getAttribute('data-p')));
  edTouch();edLoop();
