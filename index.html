@@ -1001,7 +1001,7 @@ function frameBody(){
  if(SJ==10&&SCV&&bv.src)scanDraw();
  else if(bv.src&&bv.videoWidth&&(VFC||bv.readyState>=2&&!(vHeld&&bv.seeking))){const R=vidRect();
   if(SJ==4){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,VR.r);vBorder()}
-  else if(SJ==10){if(!(EDSN>0&&edDrawX(R))){vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,.01);tplPost(bv);try{trFx(R,vCT())}catch(_){}}try{edOvl()}catch(_){}}
+  else if(SJ==10){if(!(EDSN>0&&edDrawX(R))){vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,0,.01);tplPost(bv);try{trFx(R,vCT())}catch(_){}}try{trClip(R)}catch(_){}try{edOvl()}catch(_){}}
   else vidDraw(c,bv,R.rx,R.ry,R.rw,R.rh,.28)}
  else if(vHeld&&bv.src&&!bv.error){const S=vidShadow();c.drawImage(S,VR.x-S.P,VR.y-S.P);c.drawImage(VHOLD,VR.x,VR.y);vBorder()}
  if(PLON()){if(PLS)plBlur();SFT.card()}else if(!curVid&&SJ<5)drawRhythm();
@@ -2077,7 +2077,7 @@ const hit=e=>{if(!LIVE)return;try{fetch(API_URL+'/hit',{method:'POST',body:e,kee
 /* ===== AI coins + Pro (server keeps the count; Stripe handles payment) =====
    PAY_LIVE=false: the Subscribe button only shows for testers who opened the site once with ?paytest=1 */
 const PAY_LIVE=true,PRICE_TXT='€4.99/month';
-const APPV='v89';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
+const APPV='v90';let AIMAX=600,CAPLONG=false,CAPR=null,CLIPS=null,AIJOB='',COINS=null,COINMAX=3,CRESET=0,CPRO=false,CCODE='';
 const PAYON=(()=>{try{if(/[?&]paytest=1/.test(location.search))localStorage.setItem('br_paytest','1');if(/[?&]paytest=0/.test(location.search))localStorage.removeItem('br_paytest');return PAY_LIVE||localStorage.getItem('br_paytest')==='1'}catch(_){return PAY_LIVE}})();
 const DID=(()=>{let d='';try{d=localStorage.getItem('br_did')||''}catch(_){}if(!/^[A-Za-z0-9-]{16,64}$/.test(d)){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));try{localStorage.setItem('br_did',d)}catch(_){}}return d})();
 async function acct(path,body,ms){const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),ms||15000);
@@ -3370,7 +3370,7 @@ function edUI(soft){if(!EDON)return;const q=edCur();
  const bg=$('edbg');if(bg)bg.querySelectorAll('[data-b]').forEach(b=>b.style.outline=+b.getAttribute('data-b')===OBG?'3px solid #5ab4f0':'none');
  if($('edw0')){$('edw0').classList.toggle('on',$('obw').value==='0');$('edw1').classList.toggle('on',$('obw').value==='1')}
  if($('edct'))edBar();
- const et=$('edtr');if(et){const v=(SH[ETRK]&&SH[ETRK].tx)||'none';et.querySelectorAll('[data-x]').forEach(b=>b.classList.toggle('on',b.getAttribute('data-x')===v))}}
+ const et=$('edtr');if(et){const v=(trQ()&&trQ().tx)||'none';et.querySelectorAll('[data-x]').forEach(b=>b.classList.toggle('on',b.getAttribute('data-x')===v))}}
 /* ===== Edit timeline (CapCut style). The video is a list of clips {a,b,sp,src} played in order:
    a..b = seconds inside the source, sp = speed, src 0 = the main video (bgv), src>0 = SRCS[src] (extra video or photo).
    Rows: video clips, music (the song CS..CE), images on top (OVL). Red playhead fixed in the middle, the strip scrolls under it. ===== */
@@ -3397,13 +3397,13 @@ function edPos(){const m=edEnd();if(!m)return 0;return Math.max(0,Math.min(m,edT
 function edGo(o){const n=edEnd();o=Math.max(0,Math.min(Math.max(0,n-.02),o));if(au.src){let t=(CS||0)+o;if(t>=CE-.03)t=Math.max(CS||0,CE-.05);au.currentTime=t}else EDPOS=o}
 function edVV(){return EDVV==null?(curVid?1:0):EDVV}
 function edSnap(){EDUNDO.push(JSON.stringify({cl:clList(),cs:CS,ce:CE,au:au.src}));if(EDUNDO.length>40)EDUNDO.shift()}
-function edSet(L){CL=L.map(q=>({a:q.a,b:q.b,sp:q.sp||1,src:q.src||0}));OBC.clear();edTL();edClock()}
+function edSet(L){CL=L.map(q=>({a:q.a,b:q.b,sp:q.sp||1,src:q.src||0,tx:q.tx}));OBC.clear();edTL();edClock()}
 function edFmt(x){x=Math.max(0,x);return Math.floor(x/60)+':'+(x%60).toFixed(1).padStart(4,'0')}
-function edCopyL(){return clList().map(q=>({a:q.a,b:q.b,sp:q.sp||1,src:q.src||0}))}
+function edCopyL(){return clList().map(q=>({a:q.a,b:q.b,sp:q.sp||1,src:q.src||0,tx:q.tx}))}
 /* ---- clip tools ---- */
 function edSplit(){const L=edCopyL();if(!L.length)return;au.pause();const A=clAt(edOut()),q=L[A.k];
  if((A.s-q.a)/(q.sp||1)<.25||(q.b-A.s)/(q.sp||1)<.25){msg.textContent='Move the red line inside a clip to split it.';return}
- edSnap();L.splice(A.k,1,{a:q.a,b:A.s,sp:q.sp,src:q.src},{a:A.s,b:q.b,sp:q.sp,src:q.src});CLSEL=A.k+1;EDMSEL=false;EDOSEL=-1;edSet(L);msg.textContent='Split ✓ Clip '+(A.k+1)+' and clip '+(A.k+2)+'.';try{hit('ed_split')}catch(_){}}
+ edSnap();L.splice(A.k,1,{a:q.a,b:A.s,sp:q.sp,src:q.src,tx:q.tx},{a:A.s,b:q.b,sp:q.sp,src:q.src});CLSEL=A.k+1;EDMSEL=false;EDOSEL=-1;edSet(L);msg.textContent='Split ✓ Clip '+(A.k+1)+' and clip '+(A.k+2)+'.';try{hit('ed_split')}catch(_){}}
 function edDel(){const L=edCopyL();if(CLSEL<0||CLSEL>=L.length){msg.textContent='Tap a clip first, then Delete.';return}
  if(L.length<2){msg.textContent='This is the only clip. Drag its white edges to make it shorter.';return}
  au.pause();edSnap();const k=CLSEL;L.splice(k,1);CLSEL=-1;edSet(L);edGo(clStart(Math.min(k,L.length-1)));msg.textContent='Clip deleted ✓ (Undo to bring it back)';try{hit('ed_del')}catch(_){}}
@@ -3516,7 +3516,9 @@ function edTL(){const tl=$('edtl');if(!tl)return;const ph=$('edph');tl.innerHTML
   el.onclick=e=>{if(e.target.classList.contains('eh'))return;EDOSEL=EDOSEL===i?-1:i;CLSEL=-1;EDMSEL=false;EDSUB='';edTL()};tk.appendChild(el)});
  const se=document.createElement('div');se.id='edse';tk.appendChild(se);
  for(let k=1;k<SH.length;k++){const s=SH[k].s,ck=clKOf(s,0);if(ck<0||s-L[ck].a<.05)continue;const b=document.createElement('button');b.type='button';const on=SH[k].tx&&SH[k].tx!=='none';
-  b.className='trb'+(on?' on':'');b.textContent=on?'◆':'+';b.setAttribute('aria-label','Transition '+k);b.dataset.s=s;b.onclick=e=>{e.stopPropagation();ETRK=k;au.pause();edShow('tr',1)};tk.appendChild(b)}
+  b.className='trb'+(on?' on':'');b.textContent=on?'◆':'+';b.setAttribute('aria-label','Transition '+k);b.dataset.s=s;b.onclick=e=>{e.stopPropagation();ETRK=k;ETRC=0;au.pause();edShow('tr',1)};tk.appendChild(b)}
+ for(let k=1;k<L.length;k++){const b=document.createElement('button');b.type='button';const on=L[k].tx&&L[k].tx!=='none';
+  b.className='trb'+(on?' on':'');b.textContent=on?'◆':'+';b.setAttribute('aria-label','Transition between clip '+k+' and '+(k+1));b.dataset.o=clStart(k);b.onclick=e=>{e.stopPropagation();ETRC=k;au.pause();edShow('tr',1)};tk.appendChild(b)}
  sc.addEventListener('scroll',()=>{if(EDTRIM||EDPINCH||EDDRAG)return;if(Math.abs(sc.scrollLeft-EDPROG)<1.5)return;EDPROG=sc.scrollLeft;if(!au.paused)au.pause();edGo(sc.scrollLeft/edPPS())},{passive:true});
  sc.addEventListener('touchstart',e=>{if(!au.paused)au.pause();if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];EDPINCH={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)||1,p:edPPS(),o:edPos()}}},{passive:true});
  sc.addEventListener('touchmove',e=>{if(!EDPINCH||e.touches.length<2)return;e.preventDefault();const a=e.touches[0],b=e.touches[1];EPPS=Math.max(6,Math.min(260,EDPINCH.p*Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)/EDPINCH.d));edLay(0,EDPINCH.o)},{passive:false});
@@ -3529,7 +3531,7 @@ function edLay(draw,o){const tl=$('edtl'),sc=$('edsc'),tk=$('edtk');if(!tl||!sc|
  const ad=tk.querySelector('.eadd');if(ad)ad.style.left=(pad+n*pps+8)+'px';
  const mu=tk.querySelector('.emu');if(mu){mu.style.left=pad+'px';if(ml){mu.style.width=Math.max(3,ml*pps-2)+'px';if(draw&&mu.firstChild&&mu.firstChild.tagName==='CANVAS')edWave(mu.firstChild,ml*pps)}else mu.style.width=''}
  tk.querySelectorAll('.eov').forEach(el=>{const v=OVL[+el.dataset.i];if(!v)return;el.style.left=(pad+v.o0*pps)+'px';el.style.width=Math.max(24,(v.o1-v.o0)*pps-2)+'px'});
- tk.querySelectorAll('.trb').forEach(b=>{const oo=clOut(+b.dataset.s,0);b.style.left=(pad+oo*pps-12)+'px'});
+ tk.querySelectorAll('.trb').forEach(b=>{const oo=b.dataset.o!=null?+b.dataset.o:clOut(+b.dataset.s,0);b.style.left=(pad+oo*pps-12)+'px'});
  const se=$('edse');if(se){if(ml&&ml<n-.05){se.style.display='';se.style.left=(pad+ml*pps)+'px';se.style.width=((n-ml)*pps)+'px'}else se.style.display='none'}
  const oo=o!=null?o:edPos();EDPROG=Math.round(oo*pps);sc.scrollLeft=EDPROG;EDPROG=sc.scrollLeft}
 /* white handles: c = video clip (trim), m = music (start/end of the song part), o = image on top (when it shows) */
@@ -3617,12 +3619,15 @@ function edLoop(){requestAnimationFrame(edLoop);if(!EDON)return;const bv=$('bgv'
 /* ===== Edit: transitions between shots. None by default; chosen per cut with the + buttons on the timeline.
    Drawn on the phone from the live picture + a copy of the last picture before the cut (never two videos at once). ===== */
 const TRS=[['none','None'],['auto','Auto'],['fade','Fade'],['blur','Blur'],['zoom','Zoom'],['whip','Whip'],['flash','Flash'],['shake','Shake'],['spin','Spin'],['glitch','Glitch'],['leak','Light leak']];
-var TRA=null,TRAK=-1,TRT=null,TRS2=null,ETRK=1;
+var TRA=null,TRAK=-1,TRT=null,TRS2=null,ETRK=1,ETRC=0;
 function trKind(k){const q=SH[k];if(!q||!q.tx||q.tx==='none')return '';if(q.tx!=='auto')return q.tx;let calm=false;try{calm=/calm/.test(songMood().name)}catch(_){}
  const L=calm?['fade','blur','leak']:['zoom','whip','flash','shake','spin','glitch'];return L[(k-1)%L.length]}
 function trFx(R,vt){if(SH.length<2||!(vt>=0))return;let k=-1,dt=0;
  for(let i=1;i<SH.length;i++){const d=vt-SH[i].s;if(d>-.4&&d<.4){k=i;dt=d;break}}if(k<0)return;
- const ty=trKind(k);if(!ty)return;if(clEdited()){const ka=clKOf(SH[k].s);if(ka<0||ka!==clKOf(vt)&&ka!==clKOf(vt+.45))return;if(SH[k].s-clList()[ka].a<.05)return}const D=ty==='fade'||ty==='blur'||ty==='leak'?.32:.24;if(dt<-D||dt>=D)return;
+ const ty=trKind(k);if(!ty)return;if(clEdited()){const ka=clKOf(SH[k].s);if(ka<0||ka!==clKOf(vt)&&ka!==clKOf(vt+.45))return;if(SH[k].s-clList()[ka].a<.05)return}const D=trDur(ty);if(dt<-D||dt>=D)return;trDraw(R,ty,dt,D,'s'+k,vt)}
+function trDur(ty){return ty==='fade'||ty==='blur'||ty==='leak'?.32:.24}
+/* draws one transition: the frame before the cut is kept (TRA) and mixed with the frames after it */
+function trDraw(R,ty,dt,D,k,vt){
  const w=Math.round(R.rw),h=Math.round(R.rh),KK=c.canvas.width/W,mk_=(a,b)=>{const o=document.createElement('canvas');o.width=a;o.height=b;return o};
  if(!TRT||TRT.width!==w||TRT.height!==h){TRT=mk_(w,h);TRA=mk_(w,h);TRS2=mk_(Math.max(2,w>>2),Math.max(2,h>>2));TRAK=-1}
  const tx=TRT.getContext('2d');tx.clearRect(0,0,w,h);tx.drawImage(c.canvas,R.rx*KK,R.ry*KK,R.rw*KK,R.rh*KK,0,0,w,h);
@@ -3643,14 +3648,21 @@ function trFx(R,vt){if(SH.length<2||!(vt>=0))return;let k=-1,dt=0;
  else if(ty==='glitch'){const a=bell,f=Math.floor(vt*30);for(let s=0;s<10;s++){const y=((s*97+f*31)%h),hh=8+(s*13)%28,dx=((s*47+f*17)%80-40)*a;c.drawImage(TRT,0,y,w,hh,R.rx+dx,R.ry+y,w,hh)}
   c.globalCompositeOperation='screen';c.globalAlpha=.35*a;c.fillStyle='#ff2d55';c.fillRect(R.rx,R.ry,w,h);c.globalAlpha=.5*a;c.drawImage(TRT,R.rx+8*a,R.ry);c.globalCompositeOperation='source-over';c.globalAlpha=1}
  c.restore()}
+/* transitions between the user's clips on the timeline (videos and photos): CL[k].tx = transition INTO clip k */
+function trKindC(k){const q=clList()[k];if(!q||!q.tx||q.tx==='none')return '';if(q.tx!=='auto')return q.tx;let calm=false;try{calm=/calm/.test(songMood().name)}catch(_){}
+ const L=calm?['fade','blur','leak']:['zoom','whip','flash','shake','spin','glitch'];return L[(k-1)%L.length]}
+function trClip(R){const L=clList();if(L.length<2)return;const ot=OFFX?(XT-(CS||0)):edOut();
+ for(let k=1;k<L.length;k++){const dt=ot-clStart(k);if(dt<=-.4||dt>=.4)continue;const ty=trKindC(k);if(!ty)return;const D=trDur(ty);if(dt<-D||dt>=D)return;trDraw(R,ty,dt,D,'c'+k,ot);return}}
+function trQ(){return ETRC>0?clList()[ETRC]:SH[ETRK]}
 /* panel shown by the + button between two shots */
-function trPanel(H_){const k=ETRK;H_('<div class="lb">TRANSITION · SHOT '+k+' → '+(k+1)+'</div><div class="r" id="edtr"></div><div class="r"><button id="edtra">Same for all cuts</button><button id="edtrn">None for all</button></div>');
+function trPanel(H_){const k=ETRC>0?ETRC:ETRK;H_('<div class="lb">TRANSITION · '+(ETRC>0?'CLIP ':'SHOT ')+k+' → '+(k+1)+'</div><div class="r" id="edtr"></div><div class="r"><button id="edtra">Same for all cuts</button><button id="edtrn">None for all</button></div>');
  $('edtr').innerHTML=TRS.map(x=>'<button type="button" data-x="'+x[0]+'">'+x[1]+'</button>').join('');
- $('edtr').onclick=e=>{const b=e.target.closest('[data-x]'),q=SH[ETRK];if(!b||!q)return;q.tx=b.getAttribute('data-x');edTL();edUI();if(q.tx!=='none')trPreview(ETRK);try{hit('tr_'+q.tx)}catch(_){}};
- $('edtra').onclick=()=>{const v=(SH[ETRK]&&SH[ETRK].tx)||'none';SH.forEach((q,i)=>{if(i)q.tx=v});edTL();edUI();msg.textContent=v==='none'?'No transitions.':'Same transition on all '+(SH.length-1)+' cuts ✓'};
- $('edtrn').onclick=()=>{SH.forEach(q=>q.tx='none');edTL();edUI();msg.textContent='No transitions.'}}
+ $('edtr').onclick=e=>{const b=e.target.closest('[data-x]'),q=trQ();if(!b||!q)return;q.tx=b.getAttribute('data-x');edTL();edUI();if(q.tx!=='none'){if(ETRC>0)trPreviewC(ETRC);else trPreview(ETRK)}try{hit('tr_'+q.tx)}catch(_){}};
+ $('edtra').onclick=()=>{const v=(trQ()&&trQ().tx)||'none';SH.forEach((q,i)=>{if(i)q.tx=v});clList().forEach((q,i)=>{if(i)q.tx=v});edTL();edUI();msg.textContent=v==='none'?'No transitions.':'Same transition on all '+(SH.length-1+clList().length-1)+' cuts ✓'};
+ $('edtrn').onclick=()=>{SH.forEach(q=>q.tx='none');clList().forEach(q=>q.tx='none');edTL();edUI();msg.textContent='No transitions.'}}
 /* play the second around the cut once, so the user sees the transition */
 var TRPV=0;
+function trPreviewC(k){const t=(CS||0)+clStart(k)-.9;if(t<(CS||0)||t>=CE)return;au.pause();au.currentTime=t;const id=++TRPV;setTimeout(()=>{if(id!==TRPV)return;au.play().catch(()=>{});setTimeout(()=>{if(id===TRPV)au.pause()},1900)},250)}
 function trPreview(k){const q=SH[k];if(!q)return;const oo=clOut(q.s);if(oo<0)return;const t=(CS||0)+oo-.9;if(TPL==2||t<(CS||0)||t>=CE)return;au.pause();au.currentTime=t;const id=++TRPV;setTimeout(()=>{if(id!==TRPV)return;au.play().catch(()=>{});setTimeout(()=>{if(id===TRPV)au.pause()},1900)},250)}
 /* the + / ◆ buttons on the timeline, placed on each cut */
 function trButtons(){return;const tl=$('edtl');if(!tl||SH.length<2)return;tl.querySelectorAll('.trb').forEach(b=>b.remove());const cs=tl.querySelectorAll('canvas');
