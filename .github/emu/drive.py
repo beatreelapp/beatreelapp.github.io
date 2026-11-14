@@ -34,7 +34,7 @@ import threading, re as _re
 def _allow():
     while True:
         try:
-            x = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
+            x = sh("adb shell uiautomator dump /sdcard/u2.xml >/dev/null 2>&1; adb shell cat /sdcard/u2.xml")
             m = _re.search(r'text="(ALLOW|Allow|Allow all|ALLOW ALL|AUTORISER)"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
             if m:
                 a, b, c, d2 = map(int, m.groups()[1:])
@@ -46,13 +46,15 @@ log("APP", ev("APPV+' NAT='+(typeof NAT!=='undefined'&&NAT)"))
 # native start screen: welcome on first launch, then home; nothing may play or open by itself
 time.sleep(2); shot("0b_welcome")
 log("STILL", ev("JSON.stringify({auPaused:au.paused,bgv:!!$('bgv').src,curFile:!!curFile,home:getComputedStyle(document.getElementById('home')).display,mcs:getComputedStyle(document.querySelector('.mcs')).display})"))
-def tap_text(words):
-    x = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
+def tap_text(words, tries=3):
     import re as _r
-    for w in words:
-        m = _r.search(r'text="' + w + r'"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
-        if m:
-            a1, b1, c1, d1 = map(int, m.groups()); sh(f"adb shell input tap {(a1+c1)//2} {(b1+d1)//2}"); return w
+    for _t in range(tries):
+        x = sh("adb shell uiautomator dump /sdcard/u.xml >/dev/null 2>&1; adb shell cat /sdcard/u.xml")
+        for w in words:
+            m = _r.search(r'text="' + w + r'"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
+            if m:
+                a1, b1, c1, d1 = map(int, m.groups()); sh(f"adb shell input tap {(a1+c1)//2} {(b1+d1)//2}"); return w
+        time.sleep(1.5)
     return None
 log("WELCOME NEXT", tap_text(["Next"])); time.sleep(1); shot("0c_welcome2")
 log("WELCOME SKIP", tap_text(["Skip"])); time.sleep(2); shot("0d_home")
