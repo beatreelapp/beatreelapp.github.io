@@ -129,6 +129,7 @@
       <div class="row">
         <button id="sSolid">🧱 صلب</button>
         <button id="sHide">👁️ إخفاء</button>
+        <button id="sColors">🎨 الألوان</button>
         <button id="sFocus">🎯 ركّز الكاميرا</button>
         <button id="sNone">✖ إلغاء الاختيار</button>
       </div>
@@ -527,11 +528,30 @@ async function buildObject(rec) {
     const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; holder.add(m);
   } else {
     const t = await getTemplate(rec.src.fileId);
-    const inner = SkeletonUtils.clone(t.scene);
-    inner.scale.multiplyScalar(t.fit.k); inner.position.set(...t.fit.off);
+    const model = SkeletonUtils.clone(t.scene);
+    const inner = new THREE.Group(); inner.add(model);   // wrapper keeps the model's own position/scale intact
+    inner.scale.setScalar(t.fit.k); inner.position.set(...t.fit.off);
     inner.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.isSkinnedMesh) o.frustumCulled = false; } });
+    // own copy of each material so colours can change per object
+    const seen = new Map(), list = [];
+    inner.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      const arr = Array.isArray(o.material) ? o.material : [o.material];
+      arr.forEach((m, slot) => {
+        if (!seen.has(m.uuid)) { const c = m.clone(); const e = { m: c, t: null, meshes: [], name: m.name || ('جزء ' + (list.length + 1)), color0: c.color ? c.color.clone() : new THREE.Color(1, 1, 1), map0: c.map || null }; seen.set(m.uuid, e); list.push(e); }
+        seen.get(m.uuid).meshes.push([o, Array.isArray(o.material) ? slot : -1]);
+      });
+    });
+    list.forEach(e => {
+      e.vc0 = !!e.m.vertexColors;
+      if (!e.vc0) return;
+      let r = 0, g = 0, b = 0, n = 0;
+      e.meshes.forEach(([o]) => { const ca = o.geometry && o.geometry.attributes.color; if (!ca) return; const step = Math.max(1, Math.floor(ca.count / 3000)); for (let i = 0; i < ca.count; i += step) { r += ca.getX(i); g += ca.getY(i); b += ca.getZ(i); n++; } });
+      if (n) e.vcAvg = new THREE.Color(r / n, g / n, b / n);
+    });
+    holder.userData.mats = list;
     holder.add(inner);
-    if (t.animations && t.animations.length) { mixer = new THREE.AnimationMixer(inner); mixer.clipAction(t.animations[0]).play(); }
+    if (t.animations && t.animations.length) { mixer = new THREE.AnimationMixer(model); mixer.clipAction(t.animations[0]).play(); }
   }
   applyRec(holder, rec);
   return { rec, holder, mixer };
@@ -539,6 +559,119 @@ async function buildObject(rec) {
 function applyRec(holder, rec) {
   holder.position.fromArray(rec.p); holder.quaternion.fromArray(rec.q); holder.scale.fromArray(rec.s);
   holder.visible = !rec.hidden; holder.name = rec.name;
+  if (holder.userData.mats) applyMats(holder, rec);
+}
+// ---- colours of imported models ----
+const avgCache = new WeakMap();
+function mapAverage(tex) {
+  if (!tex || !tex.image) return null;
+  if (avgCache.has(tex)) return avgCache.get(tex);
+  const img = tex.image; if (!(img.width > 0)) return null;
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 16; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 16, 16);
+    const d = x.getImageData(0, 0, 16, 16).data; let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 100) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+    const col = n ? new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace) : null;
+    avgCache.set(tex, col); return col;
+  } catch (e) { return null; }
+}
+function baseAvg(e) { return e.map0 ? mapAverage(e.map0) : (e.vcAvg || null); }
+function matLook(e) { const a = baseAvg(e); return a ? a.clone().multiply(e.color0) : e.color0.clone(); }
+function applyMats(holder, rec) {
+  const L = holder.userData.mats; let retry = false;
+  L.forEach((e, i) => {
+    const ov = rec.mats && rec.mats[i];
+    const m = e.m;
+    if (m.color) {
+      const hasBase = !!(e.map0 || e.vcAvg);
+      m.vertexColors = e.vc0 && !(ov && ov.flat);
+      if (!ov) { m.color.copy(e.color0); m.map = e.map0; }
+      else if (ov.flat || !hasBase) { m.color.set(ov.c); m.map = ov.flat ? null : e.map0; }
+      else { const a = baseAvg(e); if (!a) { retry = true; m.color.set(ov.c); m.map = null; } else { const t = new THREE.Color(ov.c); m.color.setRGB(Math.min(4, t.r / Math.max(a.r, 0.02)), Math.min(4, t.g / Math.max(a.g, 0.02)), Math.min(4, t.b / Math.max(a.b, 0.02))); m.map = e.map0; } }
+      m.needsUpdate = true;
+    }
+    let use = m;
+    if (rec.toon) {
+      if (!e.t) e.t = new THREE.MeshToonMaterial({ gradientMap: gradTex || (gradTex = makeGradient()) });
+      Object.assign(e.t, { map: m.map, vertexColors: m.vertexColors, flatShading: !!m.flatShading, transparent: m.transparent, alphaTest: m.alphaTest, side: m.side, opacity: m.opacity });
+      if (m.color) e.t.color.copy(m.color); e.t.needsUpdate = true; use = e.t;
+    }
+    e.meshes.forEach(([o, slot]) => { if (slot < 0) o.material = use; else o.material[slot] = use; });
+  });
+  if (retry) setTimeout(() => { if (holder.userData.mats) applyMats(holder, rec); }, 800);
+}
+function paletteFromImage(img) {
+  // group pixels by hue family and lightness, so small areas (pink flowers, brown trunk) still get a colour
+  const c = document.createElement('canvas'); const W = 120, H = Math.max(8, Math.round(120 * img.height / img.width)); c.width = W; c.height = H;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, W, H); const d = x.getImageData(0, 0, W, H).data;
+  const groups = new Map(); let total = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue;
+    const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, ch = mx - mn;
+    if (mn > 0.93) continue;                      // white background
+    let key;
+    if (ch < 0.06) { if (l > 0.6) continue; key = 'n' + Math.min(2, l * 3 | 0); }   // greys (skip light grey background)
+    else {
+      let h = mx === r ? ((g - b) / ch) % 6 : mx === g ? (b - r) / ch + 2 : (r - g) / ch + 4; h = (h * 60 + 360) % 360;
+      key = 'h' + Math.round(h / 30) % 12 + '_' + (l < 0.33 ? 0 : l < 0.62 ? 1 : 2);
+    }
+    const e = groups.get(key) || [0, 0, 0, 0]; e[0] += d[i]; e[1] += d[i + 1]; e[2] += d[i + 2]; e[3]++; groups.set(key, e); total++;
+  }
+  const out = [...groups.values()].filter(e => e[3] > total * 0.004).sort((a, b) => b[3] - a[3]).slice(0, 12);
+  return out.map(e => '#' + [e[0], e[1], e[2]].map(v => Math.round(v / e[3]).toString(16).padStart(2, '0')).join(''));
+}
+function bestMatch(col, palette) {
+  const h0 = {}; col.getHSL(h0, THREE.SRGBColorSpace);
+  let best = palette[0], bd = 1e9;
+  for (const p of palette) {
+    const h = {}; new THREE.Color(p).getHSL(h, THREE.SRGBColorSpace);
+    let dh = Math.abs(h.h - h0.h); dh = Math.min(dh, 1 - dh);
+    const sat = Math.min(h.s, h0.s);
+    const d = dh * 3 * sat + Math.abs(h.l - h0.l) + Math.abs(h.s - h0.s) * 0.4;
+    if (d < bd) { bd = d; best = p; }
+  }
+  return best;
+}
+function hexOf(c) { return '#' + c.getHexString(THREE.SRGBColorSpace); }
+function openColors() {
+  const e = selEntry(); if (!e || !e.holder.userData.mats) return;
+  const L = e.holder.userData.mats, rec = e.rec, snap = captureLayout(); let changed = false, active = 0;
+  rec.mats = rec.mats || {};
+  const s = openSheet(`
+    <h3>🎨 ألوان: ${esc(rec.name)}</h3>
+    <div class="row"><button id="cPic">🖼️ ألوان من صورة</button><button id="cAuto" class="primary" ${P.palette && P.palette.length ? '' : 'disabled'}>🪄 لوّن مثل الصورة</button></div>
+    <div class="row" id="cPal"></div>
+    <div class="row"><button id="cToon" class="${rec.toon ? 'on' : ''}">✨ ستايل أنمي</button><button id="cReset">رجّع الألوان الأصلية</button></div>
+    <div class="muted" style="margin-bottom:6px">اختر جزءًا ثم اضغط لونًا من الصورة، أو استعمل مربع اللون.</div>
+    <div class="list" id="cList"></div>
+    <div class="row" style="margin-top:12px"><button id="cDone" class="primary">تم</button></div>`);
+  const apply = () => { applyMats(e.holder, rec); changed = true; markDirty(); };
+  function renderPal() {
+    const el = s.querySelector('#cPal'); el.innerHTML = '';
+    (P.palette || []).forEach(c => { const b = document.createElement('button'); b.style.cssText = `background:${c};width:38px;min-height:38px;padding:0`; b.title = c; b.onclick = () => { rec.mats[active] = Object.assign({}, rec.mats[active], { c }); apply(); renderList(); }; el.appendChild(b); });
+    s.querySelector('#cAuto').disabled = !(P.palette && P.palette.length);
+  }
+  function renderList() {
+    const el = s.querySelector('#cList'); el.innerHTML = '';
+    L.forEach((m, i) => {
+      const ov = rec.mats[i]; const cur = ov ? ov.c : hexOf(matLook(m));
+      const d = document.createElement('div'); d.className = 'item' + (i === active ? ' on' : '');
+      d.innerHTML = `<input type="color" value="${cur}"><span class="nm">${esc(m.name)}</span>${(m.map0 || m.vcAvg) ? `<button data-a="flat" class="${ov && ov.flat ? 'on' : ''}">لون صافي</button>` : ''}`;
+      d.onclick = ev => { if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'BUTTON') return; active = i; renderList(); };
+      d.querySelector('input').oninput = ev => { active = i; rec.mats[i] = Object.assign({}, rec.mats[i], { c: ev.target.value }); apply(); };
+      d.querySelector('input').onchange = () => renderList();
+      const fb = d.querySelector('[data-a=flat]'); if (fb) fb.onclick = () => { const o = rec.mats[i] || { c: cur }; o.flat = !o.flat; rec.mats[i] = o; apply(); renderList(); };
+      el.appendChild(d);
+    });
+  }
+  fileBtn(s.querySelector('#cPic'), 'image/*', false, fs => {
+    const img = new Image(); img.onload = () => { P.palette = paletteFromImage(img); markDirty(); renderPal(); toast('الآن اضغط 🪄 لوّن مثل الصورة'); }; img.src = URL.createObjectURL(fs[0]);
+  });
+  s.querySelector('#cAuto').onclick = () => { L.forEach((m, i) => { rec.mats[i] = Object.assign({}, rec.mats[i], { c: bestMatch(matLook(m), P.palette) }); }); apply(); renderList(); toast('تم التلوين ✓ غيّر أي جزء لا يعجبك'); };
+  s.querySelector('#cToon').onclick = ev => { rec.toon = !rec.toon; ev.target.classList.toggle('on', rec.toon); apply(); };
+  s.querySelector('#cReset').onclick = () => { rec.mats = {}; rec.toon = false; s.querySelector('#cToon').classList.remove('on'); apply(); renderList(); };
+  s.querySelector('#cDone').onclick = () => { closeSheet(); if (changed) pushUndo(snap); };
+  renderPal(); renderList();
 }
 function readRec(entry) {
   const r = entry.rec, h = entry.holder;
@@ -585,6 +718,7 @@ function renderSelBox() {
   $('#selName').value = e.rec.name; $('#selName').disabled = !!e.rec.robin;
   const prim = e.rec.src && e.rec.src.kind === 'prim';
   $('#selColor').style.display = prim ? '' : 'none'; if (prim) $('#selColor').value = e.rec.src.color || '#c8a27a';
+  $('#sColors').style.display = e.holder.userData.mats ? '' : 'none';
   $('#sDup').disabled = $('#sDel').disabled = $('#sSolid').disabled = $('#sHide').disabled = !!e.rec.robin;
   $('#sSolid').classList.toggle('on', !!e.rec.solid);
   $('#sHide').textContent = e.rec.hidden ? '👁️ إظهار' : '👁️ إخفاء';
@@ -620,7 +754,7 @@ $('#sDup').onclick = async () => {
   pushUndo(snap); boxesDirty = true; select(rec.id); markDirty(); toast('تم النسخ');
 };
 $('#sDel').onclick = () => { const e = selEntry(); if (!e || e.rec.robin) return; const snap = captureLayout(); userRoot.remove(e.holder); pushUndo(snap); boxesDirty = true; select(null); markDirty(); toast('تم الحذف — تقدر ترجعه بزر ↶'); };
-$('#sGround').onclick = () => selChange(e => { e.holder.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(e.holder); e.holder.position.y -= b.min.y; });
+$('#sGround').onclick = () => selChange(e => { e.holder.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(e.holder, true); e.holder.position.y -= b.min.y; });
 $('#sBig').onclick = () => selChange(e => e.holder.scale.multiplyScalar(2));
 $('#sSmall').onclick = () => selChange(e => e.holder.scale.multiplyScalar(0.5));
 $('#sRotL').onclick = () => selChange(e => e.holder.rotateOnWorldAxis(UP, Math.PI / 4));
@@ -631,6 +765,7 @@ $('#sHide').onclick = () => selChange(e => { e.rec.hidden = !e.rec.hidden; e.hol
 $('#sTap').onclick = () => { tapPlace = !tapPlace; $('#sTap').classList.toggle('on', tapPlace); if (tapPlace) toast('اضغط على الأرض أو فوق شكل لتضع الشيء هناك'); };
 $('#sNone').onclick = () => select(null);
 $('#sFocus').onclick = () => focusOn(selEntry());
+$('#sColors').onclick = openColors;
 function focusOn(e) {
   if (!e) return; const b = new THREE.Box3().setFromObject(e.holder), c = b.getCenter(new V3()), s = b.getSize(new V3()).length();
   const dir = new V3().subVectors(cam.position, controls.target).normalize();
@@ -654,7 +789,7 @@ renderer.domElement.addEventListener('pointerup', e => {
     const hits = ray.intersectObjects([ground, ...cands.filter(h => h !== sel)], true).filter(h => h.object.visible !== false && !h.object.userData.outline);
     if (hits.length) {
       const snap = captureLayout(); const pt = hits[0].point;
-      sel.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(sel); const lift = sel.position.y - b.min.y;
+      sel.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(sel, true); const lift = sel.position.y - b.min.y;
       sel.position.set(pt.x, pt.y + lift, pt.z); pushUndo(snap); boxesDirty = true; updateSelHelper(); refreshSelInfo(); markDirty();
     }
     return;
@@ -680,7 +815,7 @@ async function restoreLayout(snap) {
   for (const r of snap.objects) {
     let e = objs.get(r.id);
     if (!e) { e = await buildObject(JSON.parse(JSON.stringify(r))); objs.set(r.id, e); }
-    Object.assign(e.rec, JSON.parse(JSON.stringify(r)));
+    delete e.rec.mats; delete e.rec.toon; Object.assign(e.rec, JSON.parse(JSON.stringify(r)));
     applyRec(e.holder, e.rec);
     if (e.rec.src.kind === 'prim') e.holder.traverse(o => { if (o.isMesh) o.material.color.set(e.rec.src.color || '#c8a27a'); });
     if (e.holder.parent !== userRoot) userRoot.add(e.holder);
