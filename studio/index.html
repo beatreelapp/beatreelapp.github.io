@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>استوديو روبن</title>
+<style>
+  :root { --bg:#14161c; --panel:#1d2029; --panel2:#232733; --line:#2f3442; --text:#eceef3; --muted:#9aa0ae; --accent:#5ad1a6; --warn:#e8a54b; --bad:#e86a6a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif; overflow:hidden; }
+  body { display:flex; flex-direction:column; }
+  #view { position:relative; flex:1 1 58%; min-height:260px; overflow:hidden; }
+  #view canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #status { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:15px; pointer-events:none; text-align:center; padding:20px; }
+  button, .btn { font:inherit; font-size:14px; color:var(--text); background:#262a35; border:1px solid var(--line); border-radius:10px; padding:8px 11px; min-height:40px; cursor:pointer; }
+  button.on { border-color:var(--accent); color:var(--accent); background:#1f3a31; }
+  button.primary { background:var(--accent); color:#0e1a15; border-color:var(--accent); font-weight:600; }
+  button.danger { color:var(--bad); border-color:#5a2f33; }
+  button:active { transform:scale(.97); }
+  button:disabled { opacity:.4; }
+  label.btn { position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; }
+  .menu label.btn { flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; min-height:64px; text-align:right; }
+  .menu label.btn small { color:var(--muted); font-size:11px; }
+  input.fileOver { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; font-size:100px; z-index:2; }
+  /* top bar over the 3D view */
+  #topbar { position:absolute; top:8px; left:8px; right:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; pointer-events:none; }
+  #topbar > * { pointer-events:auto; }
+  #topbar button { background:rgba(29,32,41,.88); backdrop-filter:blur(4px); min-height:38px; padding:6px 10px; }
+  .seg { display:flex; border-radius:10px; overflow:hidden; border:1px solid var(--line); }
+  .seg button { border:0; border-radius:0; }
+  .spacer { flex:1; }
+  #saveState { font-size:11px; color:var(--muted); background:rgba(20,22,28,.7); padding:3px 7px; border-radius:6px; pointer-events:none !important; }
+  #fab { position:absolute; bottom:14px; left:14px; width:58px; height:58px; border-radius:50%; font-size:32px; line-height:1; padding:0; background:var(--accent); color:#0e1a15; border:0; box-shadow:0 4px 14px rgba(0,0,0,.45); font-weight:700; }
+  /* play controls */
+  #joy { position:absolute; bottom:18px; right:18px; width:130px; height:130px; border-radius:50%; background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.22); touch-action:none; display:none; }
+  #knob { position:absolute; left:50%; top:50%; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%; background:rgba(90,209,166,.75); pointer-events:none; }
+  #playBtns { position:absolute; bottom:22px; left:18px; display:none; flex-direction:column; gap:10px; }
+  #playBtns button { width:74px; height:60px; border-radius:16px; background:rgba(29,32,41,.85); font-size:15px; }
+  #hint { position:absolute; bottom:6px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted); pointer-events:none; text-shadow:0 1px 2px #000; }
+  #toast { position:absolute; top:56px; left:50%; transform:translateX(-50%); background:#2a2f3c; border:1px solid var(--line); padding:8px 14px; border-radius:10px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90%; text-align:center; z-index:5; }
+  #toast.show { opacity:1; }
+  /* bottom panel */
+  #panel { flex:0 0 auto; height:42%; display:flex; flex-direction:column; background:var(--panel); border-top:1px solid var(--line); }
+  #tabs { display:flex; border-bottom:1px solid var(--line); flex:0 0 auto; }
+  #tabs button { flex:1; border:0; border-radius:0; background:transparent; color:var(--muted); min-height:42px; border-bottom:2px solid transparent; }
+  #tabs button.on { color:var(--accent); border-bottom-color:var(--accent); background:transparent; }
+  .page { display:none; overflow-y:auto; padding:10px 12px 24px; flex:1; }
+  .page.on { display:block; }
+  .row { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:9px; align-items:center; }
+  .lbl { font-size:12px; color:var(--muted); margin:10px 0 6px; }
+  .lbl:first-child { margin-top:2px; }
+  .card { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px; margin-bottom:10px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-bottom:10px; }
+  .grid3 button { padding:7px 3px; font-size:13px; }
+  .sl { display:flex; align-items:center; gap:10px; margin:7px 0; }
+  .sl span { width:64px; font-size:13px; color:var(--muted); flex:0 0 auto; }
+  .sl input[type=range] { flex:1; accent-color:var(--accent); }
+  .sl b { width:44px; text-align:left; font-weight:500; font-size:13px; direction:ltr; flex:0 0 auto; }
+  input[type=text] { font:inherit; font-size:14px; background:#141720; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; flex:1; min-width:0; }
+  input[type=color] { width:44px; height:38px; border:1px solid var(--line); border-radius:8px; background:#141720; padding:2px; }
+  select { font:inherit; font-size:14px; background:#141720; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px; flex:1; min-width:0; }
+  .list { display:flex; flex-direction:column; gap:5px; }
+  .item { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#20242e; font-size:14px; }
+  .item.on { border-color:var(--accent); }
+  .item .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item small { color:var(--muted); }
+  .muted { color:var(--muted); font-size:12px; line-height:1.6; }
+  a { color:var(--accent); }
+  #sel { color:var(--accent); font-weight:500; }
+  .chip { display:inline-flex; align-items:center; gap:4px; }
+  /* modal */
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+  #modal.on { display:flex; }
+  #sheet { background:var(--panel); width:100%; max-width:560px; max-height:86%; overflow-y:auto; border-radius:18px 18px 0 0; border:1px solid var(--line); padding:14px 14px 22px; }
+  #sheet h3 { margin:2px 0 10px; font-size:17px; }
+  .menu { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .menu button { min-height:64px; text-align:right; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; }
+  .menu button small { color:var(--muted); font-size:11px; }
+  .prims { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+  #feWrap { display:flex; justify-content:center; background:repeating-conic-gradient(#2a2e38 0% 25%, #1f222a 0% 50%) 50%/16px 16px; border-radius:10px; padding:6px; margin-bottom:8px; }
+  #feCanvas { max-width:100%; max-height:200px; image-rendering:auto; }
+</style>
+</head>
+<body>
+<div id="view">
+  <div id="status">جاري التحميل…</div>
+  <div id="charPick" style="display:none;position:absolute;inset:0;z-index:4;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:24px;text-align:center;background:rgba(20,22,28,.82)">
+    <div style="font-size:16px">اختر ملف الشخصية من هاتفك</div>
+    <div class="muted">robin.glb — أو ملف robin.zip كاملًا<br>(إذا اخترت معه robin_faces.js تظهر التعابير)</div>
+    <button id="charBtn" class="primary" style="font-size:16px;padding:12px 18px">📂 اختر الملف</button>
+    <button id="charSkip">ابدأ بدون شخصية</button>
+  </div>
+  <div id="topbar">
+    <div class="seg"><button id="mEdit" class="on">✏️ تعديل</button><button id="mPlay">🎮 لعب</button></div>
+    <div class="seg" id="gizmoSeg"><button data-g="translate" class="on">↔️</button><button data-g="rotate">🔄</button><button data-g="scale">⤢</button></div>
+    <button id="undo" title="تراجع">↶</button><button id="redo" title="إعادة">↷</button>
+    <div class="spacer"></div>
+    <span id="saveState">…</span>
+  </div>
+  <button id="fab" title="إضافة">＋</button>
+  <div id="joy"><div id="knob"></div></div>
+  <div id="playBtns"><button id="bJump">⤒ قفز</button><button id="bRun">🏃 ركض</button></div>
+  <div id="hint">اضغط على أي شكل لتختاره · اسحب الأسهم لتحريكه</div>
+  <div id="toast"></div>
+</div>
+<div id="panel">
+  <div id="tabs">
+    <button data-t="scene" class="on">المشهد</button>
+    <button data-t="robin">روبن</button>
+    <button data-t="world">العالم</button>
+    <button data-t="proj">المشروع</button>
+  </div>
+
+  <!-- SCENE -->
+  <div class="page on" id="p-scene">
+    <div id="selBox" class="card" style="display:none">
+      <div class="row"><input type="text" id="selName" placeholder="الاسم"><input type="color" id="selColor"></div>
+      <div class="row">
+        <button id="sDup">📄 نسخ</button>
+        <button id="sGround">⬇️ على الأرض</button>
+        <button id="sTap">📍 ضع بالنقر</button>
+        <button id="sDel" class="danger">🗑️ حذف</button>
+      </div>
+      <div class="row">
+        <button id="sBig">×2</button><button id="sSmall">÷2</button>
+        <button id="sRotL">↺ 45°</button><button id="sRotR">↻ 45°</button>
+        <button id="sReset">رجّع الدوران</button>
+      </div>
+      <div class="row">
+        <button id="sSolid">🧱 صلب</button>
+        <button id="sHide">👁️ إخفاء</button>
+        <button id="sFocus">🎯 ركّز الكاميرا</button>
+        <button id="sNone">✖ إلغاء الاختيار</button>
+      </div>
+      <div class="muted" id="selInfo"></div>
+    </div>
+    <div class="lbl">كل الأشياء في المشهد</div>
+    <div class="list" id="objList"></div>
+    <div class="muted" style="margin-top:10px">اضغط زر <b>＋</b> لإضافة بيت أو شجرة (ملف GLB أو FBX أو OBJ أو ZIP) أو شكل جاهز.</div>
+  </div>
+
+  <!-- ROBIN -->
+  <div class="page" id="p-robin">
+    <div class="lbl">الحركات (اضغط لتشغيلها)</div>
+    <div class="row" id="anims"></div>
+    <div class="row">
+      <button id="pose">⏸ وقفة حرة</button>
+      <button id="resetSel">رجّع العظمة</button>
+      <button id="resetAll">رجّع الكل</button>
+    </div>
+    <div class="lbl">تعابير الوجه</div>
+    <div class="row" id="faces"></div>
+    <div class="row"><button id="autoblink">رمش تلقائي</button><button id="toon" class="on">ستايل أنمي</button><button id="charChange">🔁 غيّر الشخصية</button></div>
+    <div class="lbl">اختر جزء من الجسم: <span id="sel">—</span></div>
+    <div class="grid3" id="bones"></div>
+    <div class="sl"><span>لقدام/لورا</span><input id="rx" type="range" min="-180" max="180" step="1" value="0"><b id="vx">0°</b></div>
+    <div class="sl"><span>يلف</span><input id="ry" type="range" min="-180" max="180" step="1" value="0"><b id="vy">0°</b></div>
+    <div class="sl"><span>يمين/يسار</span><input id="rz" type="range" min="-180" max="180" step="1" value="0"><b id="vz">0°</b></div>
+    <div class="lbl">الوضعيات المحفوظة</div>
+    <div class="row"><button id="savePose" class="primary">💾 احفظ هذه الوضعية</button><button id="makeClip">🎞️ اصنع حركة من الوضعيات</button></div>
+    <div class="list" id="poseList"></div>
+    <div class="lbl">حركات اللعب (أي حركة تستعمل في وضع 🎮)</div>
+    <div class="card">
+      <div class="row"><span style="width:56px">وقوف</span><select id="plIdle"></select></div>
+      <div class="row"><span style="width:56px">مشي</span><select id="plWalk"></select></div>
+      <div class="row"><span style="width:56px">ركض</span><select id="plRun"></select></div>
+      <div class="row"><span style="width:56px">قفز</span><select id="plJump"></select></div>
+    </div>
+    <div class="lbl">الحركات والوجوه التي أضفتها</div>
+    <div class="list" id="addedList"></div>
+  </div>
+
+  <!-- WORLD -->
+  <div class="page" id="p-world">
+    <div class="lbl">السماء والخلفية</div>
+    <div class="row">
+      <input type="color" id="skyColor" value="#9cc4e4">
+      <button id="bg360">🌐 صورة 360</button>
+      <button id="bgFlat">🖼️ صورة عادية</button>
+      <button id="bgNone">لون فقط</button>
+    </div>
+    <div class="lbl">الأرضية</div>
+    <div class="row">
+      <button id="groundOn" class="on">أرضية</button>
+      <input type="color" id="groundColor" value="#6f7a55">
+      <button id="groundTex">🖼️ صورة للأرض</button>
+      <button id="groundGrass">🌱 العشب</button>
+      <button id="groundPlain">لون فقط</button>
+    </div>
+    <div class="sl"><span>تكرار الصورة</span><input id="groundRep" type="range" min="10" max="400" step="5" value="160"><b id="vRep">160</b></div>
+    <div class="lbl">الشمس</div>
+    <div class="sl"><span>الاتجاه</span><input id="sunAng" type="range" min="0" max="360" step="1" value="40"><b id="vSunA">40°</b></div>
+    <div class="sl"><span>الارتفاع</span><input id="sunH" type="range" min="5" max="90" step="1" value="55"><b id="vSunH">55°</b></div>
+    <div class="sl"><span>القوة</span><input id="sunP" type="range" min="0" max="4" step="0.1" value="1.7"><b id="vSunP">1.7</b></div>
+    <div class="row"><button id="shadows" class="on">ظلال</button><button id="fog" class="on">ضباب</button></div>
+    <div class="lbl">سرعة اللعب</div>
+    <div class="sl"><span>المشي</span><input id="spWalk" type="range" min="0.5" max="4" step="0.1" value="1.4"><b id="vWalk">1.4</b></div>
+    <div class="sl"><span>الركض</span><input id="spRun" type="range" min="1" max="10" step="0.1" value="3.6"><b id="vRun">3.6</b></div>
+    <div class="sl"><span>القفز</span><input id="spJump" type="range" min="2" max="14" step="0.5" value="6.5"><b id="vJump">6.5</b></div>
+  </div>
+
+  <!-- PROJECT -->
+  <div class="page" id="p-proj">
+    <div class="card">
+      <div class="muted" id="storeInfo">…</div>
+      <div class="muted">كل شيء يُحفظ تلقائيًا في هذا المتصفح. خذ نسخة احتياطية من حين لآخر.</div>
+    </div>
+    <div class="row"><button id="exportProj" class="primary">📦 تصدير المشروع (نسخة احتياطية)</button></div>
+    <div class="row"><button id="importProj">📂 استيراد مشروع</button></div>
+    <div class="row"><button id="exportBlend">🧊 تصدير المشهد للـ Blender (GLB)</button></div>
+    <div class="row"><button id="newScene" class="danger">🧹 مشهد جديد (امسح الأشياء)</button></div>
+    <div class="lbl">من أين تحمّل أشكال مجانية؟</div>
+    <div class="muted">
+      • <a href="https://poly.pizza" target="_blank" rel="noopener">poly.pizza</a> — أشجار وبيوت خفيفة، زر Download ثم GLB.<br>
+      • <a href="https://kenney.nl/assets" target="_blank" rel="noopener">kenney.nl/assets</a> — حزم كاملة (ZIP) فيها GLB.<br>
+      • <a href="https://sketchfab.com/search?features=downloadable&type=models" target="_blank" rel="noopener">sketchfab.com</a> — اختر Downloadable ثم نزّل GLB أو glTF (ZIP).<br>
+      • حركات لروبن: <a href="https://www.mixamo.com" target="_blank" rel="noopener">mixamo.com</a> — Format: FBX، Skin: Without Skin، 30 fps.<br>
+      نصيحة: اختر نماذج <b>Low Poly</b> وأقل من 20 ميغا حتى يبقى الهاتف سريعًا.
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div id="sheet"></div></div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const V3 = THREE.Vector3, Q = THREE.Quaternion;
+const UP = new V3(0, 1, 0);
+
+// ---------------- toast & modal ----------------
+let toastT = 0;
+function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms); }
+function openSheet(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('on'); return $('#sheet'); }
+function closeSheet() { $('#modal').classList.remove('on'); $('#sheet').innerHTML = ''; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeSheet(); });
+function askConfirm(text, okText = 'نعم') {
+  return new Promise(res => {
+    const s = openSheet(`<h3>${text}</h3><div class="row"><button class="danger" id="cOk">${okText}</button><button id="cNo">لا</button></div>`);
+    s.querySelector('#cOk').onclick = () => { closeSheet(); res(true); };
+    s.querySelector('#cNo').onclick = () => { closeSheet(); res(false); };
+  });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---------------- storage (IndexedDB) ----------------
+const store = { db: null, ok: false };
+function idbOpen() {
+  return new Promise(res => {
+    try {
+      const r = indexedDB.open('robin_studio', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => { store.db = r.result; store.ok = true; res(true); };
+      r.onerror = () => res(false); r.onblocked = () => res(false);
+    } catch (e) { res(false); }
+  });
+}
+const memKV = new Map();
+function kvPut(k, v) {
+  memKV.set(k, v);
+  if (!store.db) return Promise.resolve(false);
+  return new Promise(res => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => res(false); t.onabort = () => res(false); } catch (e) { res(false); } });
+}
+function kvGet(k) {
+  if (memKV.has(k)) return Promise.resolve(memKV.get(k));
+  if (!store.db) return Promise.resolve(undefined);
+  return new Promise(res => { try { const r = store.db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(undefined); } catch (e) { res(undefined); } });
+}
+function kvDel(k) {
+  memKV.delete(k);
+  if (!store.db) return Promise.resolve();
+  return new Promise(res => { try { const t = store.db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = () => res(); t.onerror = () => res(); } catch (e) { res(); } });
+}
+
+// ---------------- project state ----------------
+function defaultProject() {
+  return {
+    v: 1, files: [], objects: [], faces: [], anims: [], poses: [],
+    robin: { p: [0, 0, 0], q: [0, 0, 0, 1], s: [1, 1, 1] },
+    world: { sky: '#9cc4e4', bg: null, groundOn: true, groundColor: '#6f7a55', groundTex: 'grass', groundRep: 160, sunA: 40, sunH: 55, sunP: 1.7, shadows: true, fog: true },
+    play: { idle: 'وقوف', walk: 'Walking', run: 'Running', jump: '', walkSp: 1.4, runSp: 3.6, jumpV: 6.5 },
+    settings: { toon: true, blink: true },
+  };
+}
+let P = defaultProject();
+let saveTimer = 0, saving = false;
+function setSaveState(t) { $('#saveState').textContent = t; }
+function markDirty() { setSaveState('… يحفظ'); clearTimeout(saveTimer); saveTimer = setTimeout(saveProject, 600); }
+async function saveProject() {
+  syncLayoutToP();
+  const ok = await kvPut('project', JSON.parse(JSON.stringify(P)));
+  setSaveState(ok ? '✓ محفوظ' : '⚠ غير محفوظ');
+}
+
+// ---------------- renderer / scene ----------------
+const view = $('#view'), status = $('#status');
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9cc4e4);
+const cam = new THREE.PerspectiveCamera(40, 1, 0.05, 800);
+cam.position.set(0, 2.4, 6.5);
+const controls = new OrbitControls(cam, renderer.domElement);
+controls.target.set(0, 1, 0); controls.enableDamping = true; controls.minDistance = 0.8; controls.maxDistance = 120; controls.maxPolarAngle = Math.PI * 0.495;
+const hemi = new THREE.HemisphereLight(0xfff4e8, 0x5a4a40, 1.5); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0dc, 1.7); scene.add(sun); scene.add(sun.target);
+sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 0.5, far: 80 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
+const back = new THREE.DirectionalLight(0xffd9b8, 0.45); back.position.set(-3, 2, -3); scene.add(back);
+const grid = new THREE.GridHelper(20, 40, 0x3a3f4c, 0x262a33); scene.add(grid);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshLambertMaterial({ color: 0x6f7a55 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; ground.name = '__ground'; scene.add(ground);
+let grassTex = null, customGroundTex = null, bgTex = null;
+(() => {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  x.fillStyle = '#6d8a4a'; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2600; i++) { const g = 110 + Math.random() * 70 | 0; x.fillStyle = `rgba(${g * 0.55 | 0},${g},${g * 0.35 | 0},${0.25 + Math.random() * 0.4})`; const px = Math.random() * 256, py = Math.random() * 256; x.fillRect(px, py, 1.5, 3 + Math.random() * 4); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); grassTex = t;
+})();
+
+function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+addEventListener('resize', resize); new ResizeObserver(resize).observe(view); resize();
+
+const userRoot = new THREE.Group(); userRoot.name = 'objects'; scene.add(userRoot);
+const robinGroup = new THREE.Group(); robinGroup.name = 'Robin'; robinGroup.userData.sid = 'robin'; scene.add(robinGroup);
+
+// gizmo
+const tc = new TransformControls(cam, renderer.domElement);
+tc.setSize(1.5); scene.add(tc);
+let gizmoMode = 'translate', gizmoUsed = false, dragSnap = null;
+tc.addEventListener('dragging-changed', e => {
+  controls.enabled = !e.value;
+  if (e.value) { gizmoUsed = true; dragSnap = captureLayout(); }
+  else { if (dragSnap) { pushUndo(dragSnap); dragSnap = null; } boxesDirty = true; markDirty(); refreshSelInfo(); }
+});
+tc.addEventListener('mouseDown', () => { gizmoUsed = true; });
+tc.addEventListener('objectChange', () => { boxesDirty = true; updateSelHelper(); });
+$$('#gizmoSeg button').forEach(b => b.onclick = () => { gizmoMode = b.dataset.g; tc.setMode(gizmoMode); $$('#gizmoSeg button').forEach(x => x.classList.toggle('on', x === b)); });
+const selHelper = new THREE.BoxHelper(undefined, 0xffd25a); selHelper.visible = false; selHelper.material.depthTest = false; selHelper.renderOrder = 9; scene.add(selHelper);
+
+// ---------------- world ----------------
+function applyWorld() {
+  const W = P.world;
+  ground.visible = W.groundOn; grid.visible = !W.groundOn;
+  const m = ground.material;
+  let tex = null;
+  if (W.groundTex === 'grass') tex = grassTex; else if (W.groundTex && W.groundTex !== 'none') tex = customGroundTex;
+  if (tex) { tex.repeat.set(W.groundRep, W.groundRep); m.map = tex; m.color.set(0xffffff); }
+  else { m.map = null; m.color.set(W.groundColor); }
+  m.needsUpdate = true;
+  if (bgTex && W.bg) { scene.background = bgTex; }
+  else { if (!(scene.background && scene.background.isColor)) scene.background = new THREE.Color(); scene.background.set(W.groundOn ? W.sky : '#14161c'); }
+  scene.fog = (W.fog && !(bgTex && W.bg) && W.groundOn) ? new THREE.Fog(W.sky, 40, 160) : null;
+  sun.intensity = W.sunP;
+  renderer.shadowMap.enabled = W.shadows; sun.castShadow = W.shadows;
+  scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(mm => mm.needsUpdate = true); } });
+  // UI sync
+  $('#skyColor').value = W.sky; $('#groundColor').value = W.groundColor; $('#groundOn').classList.toggle('on', W.groundOn);
+  $('#groundRep').value = W.groundRep; $('#vRep').textContent = W.groundRep;
+  $('#sunAng').value = W.sunA; $('#vSunA').textContent = W.sunA + '°';
+  $('#sunH').value = W.sunH; $('#vSunH').textContent = W.sunH + '°';
+  $('#sunP').value = W.sunP; $('#vSunP').textContent = W.sunP;
+  $('#shadows').classList.toggle('on', W.shadows); $('#fog').classList.toggle('on', W.fog);
+}
+const sunOffset = new V3();
+function updateSunOffset() { const a = P.world.sunA * Math.PI / 180, h = P.world.sunH * Math.PI / 180; sunOffset.set(Math.sin(a) * Math.cos(h), Math.sin(h), Math.cos(a) * Math.cos(h)).multiplyScalar(30); }
+async function loadBgTexture() {
+  bgTex = null; const W = P.world;
+  if (!W.bg) return applyWorld();
+  const b = await kvGet('file:' + W.bg.fileId); if (!b) { W.bg = null; return applyWorld(); }
+  const url = URL.createObjectURL(new Blob([b.files[0].data]));
+  new THREE.TextureLoader().load(url, t => { t.colorSpace = THREE.SRGBColorSpace; if (W.bg.mode === '360') t.mapping = THREE.EquirectangularReflectionMapping; bgTex = t; applyWorld(); });
+}
+async function loadGroundTexture() {
+  customGroundTex = null; const W = P.world;
+  if (!W.groundTex || W.groundTex === 'grass' || W.groundTex === 'none') return applyWorld();
+  const b = await kvGet('file:' + W.groundTex); if (!b) { W.groundTex = 'grass'; return applyWorld(); }
+  const url = URL.createObjectURL(new Blob([b.files[0].data]));
+  new THREE.TextureLoader().load(url, t => { t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); customGroundTex = t; applyWorld(); });
+}
+
+// world UI
+$('#skyColor').oninput = e => { P.world.sky = e.target.value; applyWorld(); markDirty(); };
+$('#groundColor').oninput = e => { P.world.groundColor = e.target.value; if (P.world.groundTex === 'grass') P.world.groundTex = 'none'; applyWorld(); markDirty(); };
+$('#groundOn').onclick = () => { P.world.groundOn = !P.world.groundOn; applyWorld(); markDirty(); };
+$('#groundGrass').onclick = () => { P.world.groundTex = 'grass'; applyWorld(); markDirty(); };
+$('#groundPlain').onclick = () => { P.world.groundTex = 'none'; applyWorld(); markDirty(); };
+$('#groundRep').oninput = e => { P.world.groundRep = +e.target.value; applyWorld(); markDirty(); };
+$('#sunAng').oninput = e => { P.world.sunA = +e.target.value; updateSunOffset(); applyWorld(); markDirty(); };
+$('#sunH').oninput = e => { P.world.sunH = +e.target.value; updateSunOffset(); applyWorld(); markDirty(); };
+$('#sunP').oninput = e => { P.world.sunP = +e.target.value; applyWorld(); markDirty(); };
+$('#shadows').onclick = () => { P.world.shadows = !P.world.shadows; applyWorld(); markDirty(); };
+$('#fog').onclick = () => { P.world.fog = !P.world.fog; applyWorld(); markDirty(); };
+$('#bgNone').onclick = () => { P.world.bg = null; bgTex = null; applyWorld(); markDirty(); };
+const addBg360 = async f => { const id = await saveFileBundle(f.name, [f]); P.world.bg = { fileId: id, mode: '360' }; await loadBgTexture(); markDirty(); toast('تمت إضافة الخلفية 360'); };
+fileBtn($('#bg360'), 'image/*', false, fs => addBg360(fs[0]));
+fileBtn($('#bgFlat'), 'image/*', false, async fs => { const f = fs[0]; const id = await saveFileBundle(f.name, [f]); P.world.bg = { fileId: id, mode: 'flat' }; await loadBgTexture(); markDirty(); toast('تمت إضافة الخلفية'); });
+fileBtn($('#groundTex'), 'image/*', false, async fs => { const f = fs[0]; const id = await saveFileBundle(f.name, [f]); P.world.groundTex = id; P.world.groundOn = true; await loadGroundTexture(); markDirty(); toast('تمت إضافة صورة الأرض'); });
+function bindSpeed(id, key, lab) { const el = $(id); el.oninput = () => { P.play[key] = +el.value; $(lab).textContent = el.value; markDirty(); }; }
+bindSpeed('#spWalk', 'walkSp', '#vWalk'); bindSpeed('#spRun', 'runSp', '#vRun'); bindSpeed('#spJump', 'jumpV', '#vJump');
+function syncPlayUI() { $('#spWalk').value = P.play.walkSp; $('#vWalk').textContent = P.play.walkSp; $('#spRun').value = P.play.runSp; $('#vRun').textContent = P.play.runSp; $('#spJump').value = P.play.jumpV; $('#vJump').textContent = P.play.jumpV; }
+
+// ---------------- file helpers ----------------
+// a real <input type=file> laid over the button: the tap lands on it directly (works in phone apps)
+function fileBtn(el, accept, multiple, onFiles) {
+  const lab = document.createElement('label'); lab.className = 'btn ' + el.className; lab.id = el.id; lab.innerHTML = el.innerHTML; el.replaceWith(lab);
+  const inp = document.createElement('input'); inp.type = 'file'; inp.className = 'fileOver'; if (accept) inp.accept = accept; inp.multiple = !!multiple;
+  inp.addEventListener('click', e => e.stopPropagation());
+  inp.onchange = () => { const fs = Array.from(inp.files || []); try { inp.value = ''; } catch (e) { } if (fs.length) onFiles(fs); };
+  lab.appendChild(inp); return lab;
+}
+async function readFiles(fileList) { const out = []; for (const f of fileList) out.push({ name: f.name, data: await f.arrayBuffer() }); return out; }
+async function saveFileBundle(name, fileList, kind = 'file') {
+  const files = (fileList[0] && fileList[0].data) ? fileList : await readFiles(fileList);
+  const id = uid(); const size = files.reduce((a, f) => a + f.data.byteLength, 0);
+  await kvPut('file:' + id, { name, files });
+  P.files.push({ id, name, size, kind });
+  return id;
+}
+const baseName = n => String(n).split(/[\\/]/).pop();
+async function unzip(data) {
+  if (!window.JSZip) throw new Error('zip');
+  const z = await JSZip.loadAsync(data); const out = [];
+  for (const [path, e] of Object.entries(z.files)) { if (e.dir || /__MACOSX|\/\./.test(path)) continue; out.push({ name: path, data: await e.async('arraybuffer') }); }
+  return out;
+}
+const MODEL_RE = /\.(glb|gltf|fbx|obj)$/i;
+async function expandFiles(files) {
+  let all = [];
+  for (const f of files) { if (/\.zip$/i.test(f.name)) all = all.concat(await unzip(f.data)); else all.push(f); }
+  return all;
+}
+// parse a bundle of files into { scene, animations }
+async function parseBundle(bundle) {
+  const files = await expandFiles(bundle.files);
+  const urls = new Map(), made = [];
+  files.forEach(f => { const u = URL.createObjectURL(new Blob([f.data])); made.push(u); urls.set(baseName(f.name).toLowerCase(), u); try { urls.set(decodeURIComponent(baseName(f.name)).toLowerCase(), u); } catch (e) { } });
+  const mgr = new THREE.LoadingManager();
+  mgr.setURLModifier(u => { if (/^(data|blob):/.test(u)) return u; let b = baseName(u.split('?')[0]); try { b = decodeURIComponent(b); } catch (e) { } return urls.get(b.toLowerCase()) || u; });
+  const pick = re => files.filter(f => re.test(f.name)).sort((a, b) => b.data.byteLength - a.data.byteLength)[0];
+  const done = new Promise(r => { mgr.onLoad = r; setTimeout(r, 8000); });
+  let res = null, f;
+  if ((f = pick(/\.glb$/i)) || (f = pick(/\.gltf$/i))) {
+    const loader = new GLTFLoader(mgr); loader.setMeshoptDecoder(MeshoptDecoder);
+    const data = /\.gltf$/i.test(f.name) ? new TextDecoder().decode(f.data) : f.data;
+    const g = await new Promise((ok, bad) => loader.parse(data, '', ok, bad));
+    res = { scene: g.scene, animations: g.animations || [] };
+  } else if ((f = pick(/\.fbx$/i))) {
+    const g = new FBXLoader(mgr).parse(f.data, '');
+    res = { scene: g, animations: g.animations || [] };
+  } else if ((f = pick(/\.obj$/i))) {
+    const l = new OBJLoader(mgr); const m = pick(/\.mtl$/i);
+    if (m) { const mats = new MTLLoader(mgr).parse(new TextDecoder().decode(m.data), ''); mats.preload(); l.setMaterials(mats); }
+    res = { scene: l.parse(new TextDecoder().decode(f.data)), animations: [] };
+  } else throw new Error('format');
+  await Promise.race([done, new Promise(r => setTimeout(r, 300))]);
+  return res;
+}
+
+// ---------------- user objects ----------------
+const objs = new Map();        // id -> { rec, holder, mixer }
+const templates = new Map();   // fileId -> Promise<{scene, animations, fit}>
+let gradTex = null;
+function makeGradient() {
+  const d = new Uint8Array([90, 90, 90, 255, 200, 200, 200, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(d, 3, 1); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t;
+}
+function getTemplate(fileId) {
+  if (!templates.has(fileId)) templates.set(fileId, (async () => {
+    const b = await kvGet('file:' + fileId); if (!b) throw new Error('missing');
+    const t = await parseBundle(b);
+    t.scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(t.scene, true);
+    const size = box.getSize(new V3()), c = box.getCenter(new V3());
+    const maxD = Math.max(size.x, size.y, size.z) || 1;
+    const k = (maxD > 60 || maxD < 0.05) ? 3 / maxD : 1;
+    t.fit = { k, off: [-c.x * k, -box.min.y * k, -c.z * k] };
+    return t;
+  })());
+  return templates.get(fileId);
+}
+const PRIMS = {
+  box: ['مكعب', () => new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0)],
+  sphere: ['كرة', () => new THREE.SphereGeometry(0.5, 32, 20).translate(0, 0.5, 0)],
+  cyl: ['أسطوانة', () => new THREE.CylinderGeometry(0.5, 0.5, 1, 32).translate(0, 0.5, 0)],
+  cone: ['مخروط', () => new THREE.ConeGeometry(0.5, 1, 32).translate(0, 0.5, 0)],
+  plane: ['لوح', () => new THREE.BoxGeometry(2, 0.05, 2).translate(0, 0.025, 0)],
+  ramp: ['منحدر', () => { const s = new THREE.Shape(); s.moveTo(-0.5, 0); s.lineTo(0.5, 0); s.lineTo(0.5, 1); s.closePath(); return new THREE.ExtrudeGeometry(s, { depth: 1, bevelEnabled: false }).translate(0, 0, -0.5); }],
+  torus: ['حلقة', () => new THREE.TorusGeometry(0.4, 0.12, 16, 40).translate(0, 0.52, 0)],
+  stairs: ['درج', () => { const gs = []; for (let i = 0; i < 5; i++) gs.push(new THREE.BoxGeometry(1, 0.2 * (i + 1), 0.3).translate(0, 0.1 * (i + 1), -0.6 + i * 0.3)); return mergeBoxes(gs); }],
+};
+function mergeBoxes(gs) {
+  // tiny merge (non-indexed) to avoid extra imports
+  const pos = [], nor = [], uv = [];
+  gs.forEach(g => { const n = g.toNonIndexed(); pos.push(...n.attributes.position.array); nor.push(...n.attributes.normal.array); uv.push(...n.attributes.uv.array); });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); return g;
+}
+async function buildObject(rec) {
+  const holder = new THREE.Group(); holder.userData.sid = rec.id;
+  let mixer = null;
+  if (rec.src.kind === 'prim') {
+    const geo = (PRIMS[rec.src.shape] || PRIMS.box)[1]();
+    const mat = new THREE.MeshToonMaterial({ color: rec.src.color || '#c8a27a', gradientMap: gradTex || (gradTex = makeGradient()) });
+    const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; holder.add(m);
+  } else {
+    const t = await getTemplate(rec.src.fileId);
+    const inner = SkeletonUtils.clone(t.scene);
+    inner.scale.multiplyScalar(t.fit.k); inner.position.set(...t.fit.off);
+    inner.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = true; if (o.isSkinnedMesh) o.frustumCulled = false; } });
+    holder.add(inner);
+    if (t.animations && t.animations.length) { mixer = new THREE.AnimationMixer(inner); mixer.clipAction(t.animations[0]).play(); }
+  }
+  applyRec(holder, rec);
+  return { rec, holder, mixer };
+}
+function applyRec(holder, rec) {
+  holder.position.fromArray(rec.p); holder.quaternion.fromArray(rec.q); holder.scale.fromArray(rec.s);
+  holder.visible = !rec.hidden; holder.name = rec.name;
+}
+function readRec(entry) {
+  const r = entry.rec, h = entry.holder;
+  r.p = h.position.toArray().map(n => +n.toFixed(4)); r.q = h.quaternion.toArray().map(n => +n.toFixed(5)); r.s = h.scale.toArray().map(n => +n.toFixed(4));
+  return r;
+}
+function syncLayoutToP() {
+  P.objects = [];
+  for (const e of objs.values()) if (e.holder.parent === userRoot) P.objects.push(JSON.parse(JSON.stringify(readRec(e))));
+  P.robin = { p: robinGroup.position.toArray(), q: robinGroup.quaternion.toArray(), s: robinGroup.scale.toArray() };
+}
+function spawnPoint() {
+  // in front of the camera target, on the ground
+  const d = new V3().subVectors(controls.target, cam.position); d.y = 0; if (d.lengthSq() < 1e-4) d.set(0, 0, -1); d.normalize();
+  return new V3(controls.target.x + d.x * 1.5, 0, controls.target.z + d.z * 1.5);
+}
+async function addObject(src, name) {
+  const snap = captureLayout();
+  const p = spawnPoint();
+  const rec = { id: uid(), name, src, p: [p.x, 0, p.z], q: [0, 0, 0, 1], s: [1, 1, 1], solid: src.kind !== 'prim' || src.shape !== 'plane', hidden: false };
+  const e = await buildObject(rec);
+  objs.set(rec.id, e); userRoot.add(e.holder);
+  pushUndo(snap); boxesDirty = true; renderObjList(); select(rec.id); markDirty();
+  return e;
+}
+
+// ---------------- selection ----------------
+let selId = null, tapPlace = false;
+function selEntry() { return selId === 'robin' ? { holder: robinGroup, rec: { name: 'روبن', robin: true } } : objs.get(selId); }
+function select(id) {
+  selId = id; const e = id ? selEntry() : null;
+  if (!e || mode === 'play') { tc.detach(); selId = e ? selId : null; }
+  else tc.attach(e.holder);
+  updateSelHelper(); renderSelBox(); renderObjList();
+}
+function updateSelHelper() {
+  const e = selId && selEntry();
+  if (e && mode === 'edit') { selHelper.setFromObject(e.holder); selHelper.visible = true; } else selHelper.visible = false;
+}
+function renderSelBox() {
+  const e = selId && selEntry(); const box = $('#selBox');
+  if (!e) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  $('#selName').value = e.rec.name; $('#selName').disabled = !!e.rec.robin;
+  const prim = e.rec.src && e.rec.src.kind === 'prim';
+  $('#selColor').style.display = prim ? '' : 'none'; if (prim) $('#selColor').value = e.rec.src.color || '#c8a27a';
+  $('#sDup').disabled = $('#sDel').disabled = $('#sSolid').disabled = $('#sHide').disabled = !!e.rec.robin;
+  $('#sSolid').classList.toggle('on', !!e.rec.solid);
+  $('#sHide').textContent = e.rec.hidden ? '👁️ إظهار' : '👁️ إخفاء';
+  $('#sTap').classList.toggle('on', tapPlace);
+  refreshSelInfo();
+}
+function refreshSelInfo() {
+  const e = selId && selEntry(); if (!e) return;
+  const h = e.holder, b = new THREE.Box3().setFromObject(h), s = b.getSize(new V3());
+  $('#selInfo').textContent = `المكان: ${h.position.x.toFixed(1)}، ${h.position.y.toFixed(1)}، ${h.position.z.toFixed(1)} · الحجم: ${s.x.toFixed(1)} × ${s.y.toFixed(1)} × ${s.z.toFixed(1)}`;
+}
+function renderObjList() {
+  const L = $('#objList'); L.innerHTML = '';
+  const mk = (id, name, sub, hidden) => {
+    const d = document.createElement('div'); d.className = 'item' + (id === selId ? ' on' : '');
+    d.innerHTML = `<span class="nm">${esc(name)}</span><small>${sub}${hidden ? ' · مخفي' : ''}</small>`;
+    d.onclick = () => select(id === selId ? null : id); L.appendChild(d);
+  };
+  mk('robin', '🧍‍♀️ روبن', 'الشخصية');
+  for (const e of objs.values()) if (e.holder.parent === userRoot) mk(e.rec.id, (e.rec.src.kind === 'prim' ? '🔷 ' : '🏠 ') + e.rec.name, e.rec.solid ? 'صلب' : '', e.rec.hidden);
+}
+function selChange(fn) {
+  const e = selId && selEntry(); if (!e) return;
+  const snap = captureLayout(); fn(e); pushUndo(snap); boxesDirty = true; updateSelHelper(); renderSelBox(); renderObjList(); markDirty();
+}
+$('#selName').onchange = e => selChange(x => { x.rec.name = e.target.value || 'شكل'; x.holder.name = x.rec.name; });
+$('#selColor').oninput = e => { const x = selEntry(); if (!x || !x.rec.src || x.rec.src.kind !== 'prim') return; x.rec.src.color = e.target.value; x.holder.traverse(o => { if (o.isMesh) o.material.color.set(e.target.value); }); markDirty(); };
+$('#sDup').onclick = async () => {
+  const e = selEntry(); if (!e || e.rec.robin) return;
+  const snap = captureLayout();
+  const rec = JSON.parse(JSON.stringify(readRec(e))); rec.id = uid(); rec.name = e.rec.name; rec.p[0] += 1;
+  const n = await buildObject(rec); objs.set(rec.id, n); userRoot.add(n.holder);
+  pushUndo(snap); boxesDirty = true; select(rec.id); markDirty(); toast('تم النسخ');
+};
+$('#sDel').onclick = () => { const e = selEntry(); if (!e || e.rec.robin) return; const snap = captureLayout(); userRoot.remove(e.holder); pushUndo(snap); boxesDirty = true; select(null); markDirty(); toast('تم الحذف — تقدر ترجعه بزر ↶'); };
+$('#sGround').onclick = () => selChange(e => { e.holder.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(e.holder); e.holder.position.y -= b.min.y; });
+$('#sBig').onclick = () => selChange(e => e.holder.scale.multiplyScalar(2));
+$('#sSmall').onclick = () => selChange(e => e.holder.scale.multiplyScalar(0.5));
+$('#sRotL').onclick = () => selChange(e => e.holder.rotateOnWorldAxis(UP, Math.PI / 4));
+$('#sRotR').onclick = () => selChange(e => e.holder.rotateOnWorldAxis(UP, -Math.PI / 4));
+$('#sReset').onclick = () => selChange(e => e.holder.quaternion.identity());
+$('#sSolid').onclick = () => selChange(e => { e.rec.solid = !e.rec.solid; });
+$('#sHide').onclick = () => selChange(e => { e.rec.hidden = !e.rec.hidden; e.holder.visible = !e.rec.hidden; });
+$('#sTap').onclick = () => { tapPlace = !tapPlace; $('#sTap').classList.toggle('on', tapPlace); if (tapPlace) toast('اضغط على الأرض أو فوق شكل لتضع الشيء هناك'); };
+$('#sNone').onclick = () => select(null);
+$('#sFocus').onclick = () => focusOn(selEntry());
+function focusOn(e) {
+  if (!e) return; const b = new THREE.Box3().setFromObject(e.holder), c = b.getCenter(new V3()), s = b.getSize(new V3()).length();
+  const dir = new V3().subVectors(cam.position, controls.target).normalize();
+  controls.target.copy(c); cam.position.copy(c).addScaledVector(dir, Math.max(2, s * 1.6));
+}
+
+// tap to select / place
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let downXY = null;
+renderer.domElement.addEventListener('pointerdown', e => { downXY = [e.clientX, e.clientY]; gizmoUsed = !!tc.dragging; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downXY || mode !== 'edit') return;
+  const moved = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]); downXY = null;
+  if (moved > 8 || gizmoUsed || tc.dragging) { gizmoUsed = false; return; }
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, cam);
+  const cands = [robinGroup, ...userRoot.children.filter(h => h.visible)];
+  if (tapPlace && selId) {
+    const sel = selEntry().holder;
+    const hits = ray.intersectObjects([ground, ...cands.filter(h => h !== sel)], true).filter(h => h.object.visible !== false && !h.object.userData.outline);
+    if (hits.length) {
+      const snap = captureLayout(); const pt = hits[0].point;
+      sel.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(sel); const lift = sel.position.y - b.min.y;
+      sel.position.set(pt.x, pt.y + lift, pt.z); pushUndo(snap); boxesDirty = true; updateSelHelper(); refreshSelInfo(); markDirty();
+    }
+    return;
+  }
+  const hits = ray.intersectObjects(cands, true).filter(h => !h.object.userData.outline);
+  if (!hits.length) { select(null); return; }
+  let o = hits[0].object; while (o && !o.userData.sid) o = o.parent;
+  select(o ? o.userData.sid : null);
+});
+
+// ---------------- undo / redo ----------------
+const undoStack = [], redoStack = [];
+function captureLayout() {
+  const list = [];
+  for (const e of objs.values()) if (e.holder.parent === userRoot) list.push(JSON.parse(JSON.stringify(readRec(e))));
+  return { objects: list, robin: { p: robinGroup.position.toArray(), q: robinGroup.quaternion.toArray(), s: robinGroup.scale.toArray() } };
+}
+function pushUndo(snap) { undoStack.push(snap); if (undoStack.length > 60) undoStack.shift(); redoStack.length = 0; updUndoBtns(); }
+function updUndoBtns() { $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length; }
+async function restoreLayout(snap) {
+  const keep = new Set(snap.objects.map(r => r.id));
+  for (const e of objs.values()) if (!keep.has(e.rec.id) && e.holder.parent) userRoot.remove(e.holder);
+  for (const r of snap.objects) {
+    let e = objs.get(r.id);
+    if (!e) { e = await buildObject(JSON.parse(JSON.stringify(r))); objs.set(r.id, e); }
+    Object.assign(e.rec, JSON.parse(JSON.stringify(r)));
+    applyRec(e.holder, e.rec);
+    if (e.rec.src.kind === 'prim') e.holder.traverse(o => { if (o.isMesh) o.material.color.set(e.rec.src.color || '#c8a27a'); });
+    if (e.holder.parent !== userRoot) userRoot.add(e.holder);
+  }
+  robinGroup.position.fromArray(snap.robin.p); robinGroup.quaternion.fromArray(snap.robin.q); robinGroup.scale.fromArray(snap.robin.s);
+  if (selId && selId !== 'robin' && !keep.has(selId)) select(null); else select(selId);
+  boxesDirty = true; renderObjList(); markDirty();
+}
+$('#undo').onclick = async () => { if (!undoStack.length) return; redoStack.push(captureLayout()); await restoreLayout(undoStack.pop()); updUndoBtns(); };
+$('#redo').onclick = async () => { if (!redoStack.length) return; undoStack.push(captureLayout()); await restoreLayout(redoStack.pop()); updUndoBtns(); };
+updUndoBtns();
+
+// ---------------- the + menu ----------------
+$('#fab').onclick = () => {
+  const s = openSheet(`
+    <h3>ماذا تريد أن تضيف؟</h3>
+    <div class="menu">
+      <button id="aModel">🏠 شكل 3D من ملف<small>GLB · glTF · FBX · OBJ · ZIP</small></button>
+      <button id="aAnim">💃 حركة لروبن<small>FBX من Mixamo أو GLB</small></button>
+      <button id="aFace">😊 وجه جديد<small>صورة تعبير من Gemini</small></button>
+      <button id="aBg">🌐 خلفية 360<small>صورة بانوراما</small></button>
+    </div>
+    <div class="lbl">أشكال جاهزة (للبناء بسرعة)</div>
+    <div class="row"><span class="muted">اللون:</span><input type="color" id="primColor" value="#c8a27a"></div>
+    <div class="prims">${Object.entries(PRIMS).map(([k, v]) => `<button data-p="${k}">${v[0]}</button>`).join('')}</div>
+    <div class="row" style="margin-top:12px"><button id="aClose">إغلاق</button></div>`);
+  s.querySelector('#aClose').onclick = closeSheet;
+  fileBtn(s.querySelector('#aModel'), '', true, fs => { closeSheet(); handleModel(fs); });
+  fileBtn(s.querySelector('#aAnim'), '', true, fs => { closeSheet(); handleAnim(fs); });
+  fileBtn(s.querySelector('#aFace'), 'image/*', false, fs => { closeSheet(); openFaceEditor(fs[0]); });
+  fileBtn(s.querySelector('#aBg'), 'image/*', false, fs => { closeSheet(); addBg360(fs[0]); });
+  s.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+    const color = s.querySelector('#primColor').value; closeSheet();
+    await addObject({ kind: 'prim', shape: b.dataset.p, color }, PRIMS[b.dataset.p][0]);
+  });
+};
+async function handleModel(list) {
+  {
+    const total = list.reduce((a, f) => a + f.size, 0);
+    if (total > 60e6) toast('الملف كبير جدًا (' + (total / 1e6).toFixed(0) + ' ميغا) — قد يبطئ الهاتف', 4000);
+    toast('جاري التحميل…', 20000);
+    try {
+      const files = await readFiles(list);
+      const exp = await expandFiles(files);
+      const main = exp.find(f => MODEL_RE.test(f.name));
+      if (!main) { toast('ما وجدت ملف 3D (GLB أو FBX أو OBJ) داخل ما اخترته', 4500); return; }
+      const name = baseName(main.name).replace(MODEL_RE, '').replace(/[_-]+/g, ' ').slice(0, 30) || 'شكل';
+      const id = await saveFileBundle(name, files);
+      try { await getTemplate(id); }
+      catch (err) { console.error(err); templates.delete(id); P.files = P.files.filter(f => f.id !== id); kvDel('file:' + id); toast(errText(err), 6000); return; }
+      await addObject({ kind: 'file', fileId: id }, name);
+      toast('تمت الإضافة ✓ اسحب الأسهم لتحريكه');
+    } catch (err) { console.error(err); toast(errText(err), 6000); }
+  }
+}
+function errText(err) {
+  const m = String(err && (err.message || err));
+  if (/draco/i.test(m)) return 'هذا الملف مضغوط بطريقة Draco ولا أستطيع فتحه هنا — جرّب تنزيله بصيغة أخرى (glTF أو FBX)';
+  if (/format/.test(m)) return 'صيغة غير مدعومة — استعمل GLB أو glTF أو FBX أو OBJ أو ZIP';
+  if (/zip/.test(m)) return 'ما قدرت أفتح ملف ZIP';
+  return 'ما قدرت أفتح الملف: ' + m.slice(0, 80);
+}
+
+// ---------------- Robin ----------------
+const PARTS = [
+  ['الراس', 'Head'], ['الرقبة', 'Neck'], ['الصدر', 'Spine2'],
+  ['الظهر', 'Spine1'], ['الخصر', 'Spine'], ['الحوض', 'Hips'],
+  ['كتف يمين', 'RightArm'], ['كوع يمين', 'RightForeArm'], ['يد يمين', 'RightHand'],
+  ['كتف يسار', 'LeftArm'], ['كوع يسار', 'LeftForeArm'], ['يد يسار', 'LeftHand'],
+  ['فخذ يمين', 'RightUpLeg'], ['ركبة يمين', 'RightLeg'], ['قدم يمين', 'RightFoot'],
+  ['فخذ يسار', 'LeftUpLeg'], ['ركبة يسار', 'LeftLeg'], ['قدم يسار', 'LeftFoot'],
+];
+const normBone = n => String(n).replace(/^.*mixamorig[:_]?/i, '').replace(/^.*[:|]/, '');
+let robinRoot = null, mixer = null, bones = {}, rest = {}, bind = {}, offs = {}, boneOrder = [], parentKey = {}, selected = null;
+const robinClips = new Map(); // name -> clip
+const ANAMES = { Walking: 'مشي', Running: 'ركض' };
+let curAction = null, curClipName = null, robinReady = false;
+const clock = new THREE.Clock();
+
+// faces
+let faceMat = null, faceCanvas = null, faceCtx = null, baseImg = null, faceTex = null, faceImgs = {}, curFace = 'neutral', blinkUntil = 0, nextBlink = 0;
+const FNAMES = { neutral: 'عادي', blink: 'مغمضة', wink: 'تغمز', smile: 'تبتسم', laugh: 'تضحك', surprise: 'مندهشة', angry: 'معصبة' };
+const faceNames = {};
+function setupFaces() {
+  const F = window.ROBIN_FACES; if (!F || !faceMat || !faceMat.map) return;
+  baseImg = faceMat.map.image;
+  faceCanvas = document.createElement('canvas'); faceCanvas.width = F.tex[0]; faceCanvas.height = F.tex[1];
+  faceCtx = faceCanvas.getContext('2d'); faceCtx.drawImage(baseImg, 0, 0, F.tex[0], F.tex[1]);
+  faceTex = new THREE.CanvasTexture(faceCanvas);
+  faceTex.flipY = false; faceTex.colorSpace = THREE.SRGBColorSpace; faceTex.wrapS = faceMat.map.wrapS; faceTex.wrapT = faceMat.map.wrapT; faceTex.anisotropy = 4;
+  let pending = 0;
+  for (const k in F.faces) {
+    const im = new Image(); pending++;
+    im.onload = () => { if (--pending === 0) { applyToon(); showFace(curFace); } };
+    im.src = F.faces[k]; faceImgs[k] = im; faceNames[k] = FNAMES[k] || k;
+  }
+  P.faces.forEach(f => addFaceImage(f));
+  renderFaceButtons();
+}
+function addFaceImage(f) { const im = new Image(); im.onload = () => { if (curFace === f.id) showFace(f.id); }; im.src = f.data; faceImgs[f.id] = im; faceNames[f.id] = f.name; }
+function renderFaceButtons() {
+  const fb = $('#faces'); fb.innerHTML = '';
+  for (const k in faceImgs) {
+    const b = document.createElement('button'); b.textContent = faceNames[k] || k; b.dataset.f = k; b.classList.toggle('on', k === curFace);
+    b.onclick = () => { curFace = k; showFace(k); }; fb.appendChild(b);
+  }
+  if (!faceCtx) fb.innerHTML = '<span class="muted">الوجوه غير متوفرة</span>';
+}
+function showFace(k, overrideCanvas) {
+  const F = window.ROBIN_FACES; if (!faceCtx) return;
+  const img = overrideCanvas || faceImgs[k]; if (!img) return;
+  faceCtx.clearRect(F.x, F.y, F.w, F.h);
+  faceCtx.drawImage(baseImg, F.x, F.y, F.w, F.h, F.x, F.y, F.w, F.h);
+  if (img !== 'none') faceCtx.drawImage(img, F.x, F.y);
+  faceTex.needsUpdate = true;
+  if (!overrideCanvas) $$('#faces button').forEach(x => x.classList.toggle('on', x.dataset.f === curFace));
+}
+// face editor
+function openFaceEditor(file) {
+  const F = window.ROBIN_FACES;
+  if (!faceCtx) { toast('روبن لم يتحمّل بعد'); return; }
+  const img = new Image();
+  img.onload = () => {
+    const st = { ox: 0, oy: 0, sc: Math.min(F.w / img.width, F.h / img.height), rot: 0, flip: false, white: true };
+    const s0 = st.sc;
+    const s = openSheet(`
+      <h3>وجه جديد</h3>
+      <div id="feWrap"><canvas id="feCanvas" width="${F.w}" height="${F.h}"></canvas></div>
+      <div class="muted" style="margin-bottom:6px">شاهد وجه روبن فوق وحرّك الصورة حتى تركب العينان والفم في مكانهما.</div>
+      <div class="sl"><span>يمين/يسار</span><input id="fx" type="range" min="${-F.w}" max="${F.w}" step="1" value="0"></div>
+      <div class="sl"><span>فوق/تحت</span><input id="fy" type="range" min="${-F.h}" max="${F.h}" step="1" value="0"></div>
+      <div class="sl"><span>الحجم</span><input id="fs" type="range" min="${(s0 * 0.2).toFixed(4)}" max="${(s0 * 3).toFixed(4)}" step="${(s0 / 200).toFixed(5)}" value="${s0}"></div>
+      <div class="sl"><span>الدوران</span><input id="fr" type="range" min="-180" max="180" step="1" value="0"></div>
+      <div class="row"><button id="fFlip">↔ اقلب</button><button id="fWhite" class="on">امسح الأبيض</button><button id="fR90">↻ 90°</button></div>
+      <div class="row"><input type="text" id="fName" placeholder="اسم التعبير (مثلاً: حزينة)"></div>
+      <div class="row"><button class="primary" id="fSave">💾 احفظ الوجه</button><button id="fCancel">إلغاء</button></div>`);
+    const cv = s.querySelector('#feCanvas'), cx = cv.getContext('2d');
+    const layer = document.createElement('canvas'); layer.width = F.w; layer.height = F.h; const lx = layer.getContext('2d');
+    function render() {
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, F.w, F.h);
+      lx.translate(F.w / 2 + st.ox, F.h / 2 + st.oy); lx.rotate(st.rot * Math.PI / 180); lx.scale(st.flip ? -st.sc : st.sc, st.sc);
+      lx.drawImage(img, -img.width / 2, -img.height / 2);
+      lx.setTransform(1, 0, 0, 1, 0, 0);
+      if (st.white) {
+        const d = lx.getImageData(0, 0, F.w, F.h), a = d.data;
+        for (let i = 0; i < a.length; i += 4) { const m = Math.min(a[i], a[i + 1], a[i + 2]); if (m > 225) a[i + 3] = Math.round(a[i + 3] * Math.max(0, (250 - m) / 25)); }
+        lx.putImageData(d, 0, 0);
+      }
+      cx.clearRect(0, 0, F.w, F.h); cx.drawImage(baseImg, F.x, F.y, F.w, F.h, 0, 0, F.w, F.h); cx.drawImage(layer, 0, 0);
+      showFace(null, layer);
+    }
+    const bind_ = (id, key) => { const el = s.querySelector(id); el.oninput = () => { st[key] = +el.value; render(); }; };
+    bind_('#fx', 'ox'); bind_('#fy', 'oy'); bind_('#fs', 'sc'); bind_('#fr', 'rot');
+    s.querySelector('#fFlip').onclick = e => { st.flip = !st.flip; e.target.classList.toggle('on', st.flip); render(); };
+    s.querySelector('#fWhite').onclick = e => { st.white = !st.white; e.target.classList.toggle('on', st.white); render(); };
+    s.querySelector('#fR90').onclick = () => { st.rot = ((st.rot + 90 + 180) % 360) - 180; s.querySelector('#fr').value = st.rot; render(); };
+    s.querySelector('#fCancel').onclick = () => { closeSheet(); showFace(curFace); };
+    s.querySelector('#fSave').onclick = () => {
+      const f = { id: 'f_' + uid(), name: (s.querySelector('#fName').value || 'وجه ' + (P.faces.length + 1)).slice(0, 20), data: layer.toDataURL('image/png') };
+      P.faces.push(f); addFaceImage(f); curFace = f.id; closeSheet(); renderFaceButtons(); renderAddedList(); showFace(f.id); markDirty(); toast('تم حفظ الوجه ✓');
+    };
+    render();
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+// toon
+let toonOn = true, stdMats = [], toonMats = [], outlines = [];
+function setupToon(root) {
+  const grad = gradTex || (gradTex = makeGradient());
+  const meshes = []; root.traverse(o => { if (o.isSkinnedMesh || o.isMesh) meshes.push(o); });
+  meshes.forEach(o => {
+    o.castShadow = true; o.receiveShadow = true;
+    const sm = o.material;
+    const tm = new THREE.MeshToonMaterial({ map: sm.map, gradientMap: grad, side: THREE.DoubleSide });
+    stdMats.push([o, sm]); toonMats.push([o, tm]);
+    const om = new THREE.MeshBasicMaterial({ color: 0x1a1214, side: THREE.BackSide });
+    om.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normalize(objectNormal) * 0.0035;'); };
+    let ol;
+    if (o.isSkinnedMesh) { ol = new THREE.SkinnedMesh(o.geometry, om); ol.bind(o.skeleton, o.bindMatrix); } else ol = new THREE.Mesh(o.geometry, om);
+    ol.frustumCulled = false; ol.userData.outline = true; ol.raycast = () => { }; o.add(ol); outlines.push(ol);
+  });
+  applyToon();
+}
+function applyToon() {
+  (toonOn ? toonMats : stdMats).forEach(([o, m]) => { o.material = m; });
+  outlines.forEach(o => o.visible = toonOn);
+  if (faceTex) { toonMats.concat(stdMats).forEach(([o, m]) => { if (m.map) { m.map = faceTex; m.needsUpdate = true; } }); }
+}
+$('#toon').onclick = e => { toonOn = !toonOn; P.settings.toon = toonOn; e.target.classList.toggle('on', toonOn); applyToon(); markDirty(); };
+$('#autoblink').onclick = e => { P.settings.blink = !P.settings.blink; e.target.classList.toggle('on', P.settings.blink); nextBlink = performance.now() + 800; markDirty(); };
+
+const sx = $('#rx'), sy = $('#ry'), sz = $('#rz');
+function b64buf(b) { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; }
+const onRobinLoad = async g => {
+  const root = g.scene; robinRoot = root;
+  robinGroup.add(root); root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(root, true), size = box.getSize(new V3()), c = box.getCenter(new V3());
+  const s = 2 / size.y; root.scale.multiplyScalar(s); root.position.set(-c.x * s, -box.min.y * s, -c.z * s);
+  root.traverse(o => {
+    if (o.isMesh) o.frustumCulled = false;
+    if (o.isBone) {
+      const k = normBone(o.name); bones[k] = o; rest[k] = o.quaternion.clone(); bind[k] = o.quaternion.clone(); o.userData.p0 = o.position.clone(); offs[k] = [0, 0, 0];
+      boneOrder.push(k); parentKey[k] = o.parent && o.parent.isBone ? normBone(o.parent.name) : null;
+    }
+  });
+  mixer = new THREE.AnimationMixer(root);
+  g.animations.forEach(clip => robinClips.set(clip.name, clip));
+  robinClips.set('وقوف', makeIdleClip());
+  const bb = $('#bones');
+  PARTS.forEach(([ar, key]) => { if (!bones[key]) return; const b = document.createElement('button'); b.textContent = ar; b.dataset.k = key; b.onclick = () => selectBone(key, ar); bb.appendChild(b); });
+  root.traverse(o => { if (o.isMesh && o.material && o.material.map && !faceMat) faceMat = o.material; });
+  setupFaces();
+  setupToon(root);
+  toonOn = P.settings.toon !== false; $('#toon').classList.toggle('on', toonOn); applyToon();
+  status.remove();
+  selectBone('RightArm', 'كتف يمين');
+  robinReady = true;
+  // rebuild added animations
+  for (const a of P.anims) { try { await buildAnim(a); } catch (e) { console.warn('anim', a.name, e); } }
+  renderAnimButtons(); renderAddedList();
+};
+const onErr = e => { console.error(e); kvDel('character'); status.textContent = ''; showCharPick('ما قدرت أفتح هذا الملف — اختر ملف GLB للشخصية'); };
+function showCharPick(msg) { const c = $('#charPick'); c.style.display = 'flex'; if (msg) toast(msg, 5000); }
+async function loadCharacter(files) {
+  // files: [{name, data}] — may contain a zip, a glb and robin_faces.js
+  const all = await expandFiles(files);
+  const glb = all.filter(f => /\.(glb|gltf)$/i.test(f.name)).sort((a, b) => b.data.byteLength - a.data.byteLength)[0];
+  if (!glb) throw new Error('noglb');
+  const fj = all.find(f => /faces.*\.js$/i.test(baseName(f.name)));
+  if (fj) { try { const t = new TextDecoder().decode(fj.data); window.ROBIN_FACES = JSON.parse(t.slice(t.indexOf('=') + 1).trim().replace(/;\s*$/, '')); } catch (e) { console.warn('faces', e); } }
+  const g = await new Promise((ok, bad) => new GLTFLoader().parse(glb.data, '', ok, bad));
+  await onRobinLoad(g);
+}
+async function pickCharacterFiles(fs) {
+  $('#charPick').style.display = 'none'; status.textContent = 'جاري تحميل الشخصية…'; if (!status.parentNode) view.appendChild(status);
+  try {
+    const files = await readFiles(fs);
+    const all = await expandFiles(files);
+    const keep = all.filter(f => /\.(glb|gltf)$/i.test(f.name) || /faces.*\.js$/i.test(baseName(f.name)));
+    if (!keep.find(f => /\.(glb|gltf)$/i.test(f.name))) { status.textContent = ''; showCharPick('ما وجدت ملف GLB'); return; }
+    if (robinReady) { await kvPut('character', { files: keep }); location.reload(); return; }
+    await loadCharacter(keep);
+    await kvPut('character', { files: keep });
+    toast('تم تحميل الشخصية ✓ ستبقى محفوظة');
+  } catch (e) { onErr(e); }
+}
+
+function makeIdleClip() {
+  // gentle breathing on the bind pose
+  const times = [0, 1.6, 3.2], tracks = [];
+  for (const k of boneOrder) {
+    const b = bones[k], q0 = bind[k];
+    let q1 = q0;
+    if (k === 'Spine1' || k === 'Spine2') q1 = q0.clone().multiply(new Q().setFromEuler(new THREE.Euler(0.025, 0, 0)));
+    if (k === 'Head') q1 = q0.clone().multiply(new Q().setFromEuler(new THREE.Euler(-0.03, 0.02, 0)));
+    tracks.push(new THREE.QuaternionKeyframeTrack(b.name + '.quaternion', times, [...q0.toArray(), ...q1.toArray(), ...q0.toArray()]));
+  }
+  if (bones.Hips) tracks.push(new THREE.VectorKeyframeTrack(bones.Hips.name + '.position', [0], bones.Hips.userData.p0.toArray()));
+  return new THREE.AnimationClip('وقوف', 3.2, tracks);
+}
+
+function playClip(name, fade = 0.25) {
+  if (!mixer) return;
+  const clip = name && robinClips.get(name);
+  if (!clip) { if (curAction) { curAction.fadeOut(fade); } curAction = null; curClipName = null; return; }
+  const a = mixer.clipAction(clip);
+  if (a === curAction && a.isRunning() && a.loop === THREE.LoopRepeat) return;
+  if (a === curAction) { a.reset(); a.setLoop(THREE.LoopRepeat, Infinity); a.play(); return; }
+  a.reset(); a.enabled = true; a.setEffectiveWeight(1); a.setLoop(THREE.LoopRepeat, Infinity);
+  if (curAction && fade > 0) { a.play(); curAction.crossFadeTo(a, fade, false); } else { mixer.stopAllAction(); a.play(); }
+  curAction = a; curClipName = name;
+}
+function playOnce(name, fade = 0.12) {
+  const clip = robinClips.get(name); if (!clip || !mixer) return false;
+  const a = mixer.clipAction(clip); a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.setEffectiveWeight(1); a.play();
+  if (curAction && curAction !== a) curAction.crossFadeTo(a, fade, false);
+  curAction = a; curClipName = name; return true;
+}
+function renderAnimButtons() {
+  const ab = $('#anims'); ab.innerHTML = '';
+  for (const [name] of robinClips) {
+    const b = document.createElement('button'); b.textContent = ANAMES[name] || animLabel(name); b.dataset.n = name;
+    b.classList.toggle('on', curClipName === name && mode === 'edit');
+    b.onclick = () => { if (mode !== 'edit') return; playClip(name, 0); renderAnimButtons(); };
+    ab.appendChild(b);
+  }
+  // play selects
+  const opts = ['', ...robinClips.keys()];
+  [['#plIdle', 'idle'], ['#plWalk', 'walk'], ['#plRun', 'run'], ['#plJump', 'jump']].forEach(([id, key]) => {
+    const sel = $(id); sel.innerHTML = opts.map(n => `<option value="${esc(n)}">${n ? esc(ANAMES[n] || animLabel(n)) : '— بدون —'}</option>`).join('');
+    sel.value = robinClips.has(P.play[key]) ? P.play[key] : '';
+    sel.onchange = () => { P.play[key] = sel.value; markDirty(); };
+  });
+}
+function animLabel(n) { const a = P.anims.find(x => x.clip === n); return a ? a.name : n; }
+
+function freeze() {
+  if (!mixer) return;
+  mixer.update(0); mixer.stopAllAction(); curAction = null; curClipName = null;
+  for (const k in bones) { rest[k] = bones[k].quaternion.clone(); offs[k] = [0, 0, 0]; }
+  renderAnimButtons(); syncSliders();
+}
+function selectBone(key, ar) { selected = key; $('#sel').textContent = ar; $$('#bones button').forEach(x => x.classList.toggle('on', x.dataset.k === key)); syncSliders(); }
+function syncSliders() { if (!selected || !offs[selected]) return; const o = offs[selected]; [sx, sy, sz].forEach((el, i) => { el.value = o[i]; }); label(); }
+function label() { $('#vx').textContent = sx.value + '°'; $('#vy').textContent = sy.value + '°'; $('#vz').textContent = sz.value + '°'; }
+function applyBone(key) { const o = offs[key], e = new THREE.Euler(o[0] * Math.PI / 180, o[1] * Math.PI / 180, o[2] * Math.PI / 180, 'XYZ'); bones[key].quaternion.copy(rest[key]).multiply(new Q().setFromEuler(e)); }
+function onSlide() { if (!selected || !bones[selected] || mode !== 'edit') return; if (curAction) freeze(); offs[selected] = [+sx.value, +sy.value, +sz.value]; applyBone(selected); label(); }
+[sx, sy, sz].forEach(el => el.addEventListener('input', onSlide));
+$('#pose').onclick = freeze;
+$('#resetSel').onclick = () => { if (!selected) return; offs[selected] = [0, 0, 0]; applyBone(selected); syncSliders(); };
+function resetRobinPose() {
+  if (mixer) mixer.stopAllAction(); curAction = null; curClipName = null;
+  for (const k in bones) { offs[k] = [0, 0, 0]; rest[k] = bind[k].clone(); bones[k].quaternion.copy(bind[k]); bones[k].position.copy(bones[k].userData.p0); }
+  syncSliders(); renderAnimButtons();
+}
+$('#resetAll').onclick = resetRobinPose;
+
+// poses
+$('#savePose').onclick = () => {
+  if (!robinReady) return;
+  const q = {}; for (const k in bones) q[k] = bones[k].quaternion.toArray().map(n => +n.toFixed(5));
+  const p = { id: 'p_' + uid(), name: 'وضعية ' + (P.poses.length + 1), q };
+  P.poses.push(p); renderPoses(); markDirty(); toast('تم حفظ ' + p.name);
+};
+function applyPose(p) {
+  if (mixer) mixer.stopAllAction(); curAction = null; curClipName = null;
+  for (const k in bones) { const a = p.q[k]; bones[k].quaternion.copy(a ? new Q().fromArray(a) : bind[k]); rest[k] = bones[k].quaternion.clone(); offs[k] = [0, 0, 0]; bones[k].position.copy(bones[k].userData.p0); }
+  syncSliders(); renderAnimButtons();
+}
+function renderPoses() {
+  const L = $('#poseList'); L.innerHTML = '';
+  if (!P.poses.length) { L.innerHTML = '<div class="muted">حرّك العظام بالمنزلقات ثم اضغط "احفظ هذه الوضعية".</div>'; return; }
+  P.poses.forEach(p => {
+    const d = document.createElement('div'); d.className = 'item';
+    d.innerHTML = `<span class="nm">🧍 ${esc(p.name)}</span><button data-a="use">طبّق</button><button data-a="ren">✏️</button><button data-a="del" class="danger">🗑️</button>`;
+    d.querySelector('[data-a=use]').onclick = () => { if (mode === 'edit') applyPose(p); };
+    d.querySelector('[data-a=ren]').onclick = () => renameSheet(p.name, n => { p.name = n; renderPoses(); markDirty(); });
+    d.querySelector('[data-a=del]').onclick = async () => { if (await askConfirm('أحذف ' + esc(p.name) + '؟')) { P.poses = P.poses.filter(x => x !== p); renderPoses(); markDirty(); } };
+    L.appendChild(d);
+  });
+}
+function renameSheet(cur, cb) {
+  const s = openSheet(`<h3>الاسم الجديد</h3><div class="row"><input type="text" id="rn" value="${esc(cur)}"></div><div class="row"><button class="primary" id="rOk">حفظ</button><button id="rNo">إلغاء</button></div>`);
+  s.querySelector('#rOk').onclick = () => { const v = s.querySelector('#rn').value.trim(); closeSheet(); if (v) cb(v.slice(0, 30)); };
+  s.querySelector('#rNo').onclick = closeSheet;
+}
+// clip from poses
+$('#makeClip').onclick = () => {
+  if (P.poses.length < 2) { toast('احفظ وضعيتين على الأقل أولاً'); return; }
+  const seq = [];
+  const s = openSheet(`
+    <h3>اصنع حركة من الوضعيات</h3>
+    <div class="muted">اضغط الوضعيات بالترتيب الذي تريده (تقدر تكرر نفس الوضعية).</div>
+    <div class="row" id="mcPoses" style="margin-top:8px">${P.poses.map((p, i) => `<button data-i="${i}">${esc(p.name)}</button>`).join('')}</div>
+    <div class="card" id="mcSeq">—</div>
+    <div class="sl"><span>وقت كل خطوة</span><input id="mcStep" type="range" min="0.1" max="3" step="0.05" value="0.6"><b id="mcV">0.6</b></div>
+    <div class="row"><button id="mcLoop" class="on">🔁 ترجع للبداية</button><button id="mcClear">امسح الترتيب</button></div>
+    <div class="row"><input type="text" id="mcName" placeholder="اسم الحركة (مثلاً: تلوّح)"></div>
+    <div class="row"><button class="primary" id="mcOk">🎞️ اصنع الحركة</button><button id="mcNo">إلغاء</button></div>`);
+  let loop = true;
+  const upd = () => { s.querySelector('#mcSeq').textContent = seq.length ? seq.map(i => P.poses[i].name).join(' ← ') : '—'; };
+  s.querySelectorAll('#mcPoses button').forEach(b => b.onclick = () => { seq.push(+b.dataset.i); upd(); });
+  s.querySelector('#mcClear').onclick = () => { seq.length = 0; upd(); };
+  s.querySelector('#mcStep').oninput = e => s.querySelector('#mcV').textContent = e.target.value;
+  s.querySelector('#mcLoop').onclick = e => { loop = !loop; e.target.classList.toggle('on', loop); };
+  s.querySelector('#mcNo').onclick = closeSheet;
+  s.querySelector('#mcOk').onclick = async () => {
+    if (seq.length < 2) { toast('اختر وضعيتين على الأقل'); return; }
+    const a = { id: 'a_' + uid(), kind: 'poses', name: (s.querySelector('#mcName').value || 'حركة ' + (P.anims.length + 1)).slice(0, 24), poses: seq.map(i => P.poses[i].id), step: +s.querySelector('#mcStep').value, loop };
+    closeSheet();
+    try { await buildAnim(a); P.anims.push(a); renderAnimButtons(); renderAddedList(); markDirty(); playClip(a.clip, 0); renderAnimButtons(); toast('تم صنع الحركة ✓'); }
+    catch (e) { console.error(e); toast('ما قدرت أصنع الحركة'); }
+  };
+};
+function clipFromPoses(a) {
+  const ps = a.poses.map(id => P.poses.find(p => p.id === id)).filter(Boolean);
+  if (ps.length < 2) throw new Error('poses');
+  if (a.loop) ps.push(ps[0]);
+  const times = ps.map((_, i) => i * a.step), tracks = [];
+  for (const k of boneOrder) {
+    const vals = []; let prev = null;
+    ps.forEach(p => { const q = p.q[k] ? new Q().fromArray(p.q[k]) : bind[k].clone(); if (prev && prev.dot(q) < 0) q.set(-q.x, -q.y, -q.z, -q.w); vals.push(...q.toArray()); prev = q; });
+    tracks.push(new THREE.QuaternionKeyframeTrack(bones[k].name + '.quaternion', times, vals));
+  }
+  if (bones.Hips) tracks.push(new THREE.VectorKeyframeTrack(bones.Hips.name + '.position', [0], bones.Hips.userData.p0.toArray()));
+  return new THREE.AnimationClip(a.id, times[times.length - 1], tracks);
+}
+
+// ---- retarget Mixamo / other skeleton animations onto Robin ----
+function pickChildKey(k, has) {
+  const kids = boneOrder.filter(c => parentKey[c] === k && has(c));
+  if (!kids.length) return null;
+  return kids.find(c => /^(Spine\d?|Neck|Head)$/.test(c)) || kids.find(c => /Middle1$/.test(c)) || kids[0];
+}
+async function retarget(bundle, clipName, inPlace) {
+  const t = await parseBundle(bundle);
+  if (!t.animations.length) throw new Error('noanim');
+  const clip = t.animations.slice().sort((a, b) => b.duration - a.duration)[0];
+  const src = t.scene, sb = {};
+  src.traverse(o => { const k = normBone(o.name); if (bones[k] && !sb[k]) sb[k] = o; });
+  const keys = boneOrder.filter(k => sb[k]);
+  if (keys.length < 8 || !sb.Hips) throw new Error('names');
+  // source rest
+  src.updateMatrixWorld(true);
+  const Sr = {}, SrP = {};
+  keys.forEach(k => { Sr[k] = sb[k].getWorldQuaternion(new Q()); SrP[k] = sb[k].getWorldPosition(new V3()); });
+  // target rest (bind pose, group at identity)
+  const saved = {}; for (const k in bones) saved[k] = [bones[k].quaternion.clone(), bones[k].position.clone()];
+  const gq = robinGroup.quaternion.clone(), gp = robinGroup.position.clone(), gsc = robinGroup.scale.clone();
+  robinGroup.quaternion.identity(); robinGroup.position.set(0, 0, 0); robinGroup.scale.set(1, 1, 1);
+  for (const k in bones) { bones[k].quaternion.copy(bind[k]); bones[k].position.copy(bones[k].userData.p0); }
+  robinGroup.updateMatrixWorld(true);
+  const Tr = {}, TrP = {}, rootQ = {};
+  for (const k of boneOrder) { Tr[k] = bones[k].getWorldQuaternion(new Q()); TrP[k] = bones[k].getWorldPosition(new V3()); if (!parentKey[k]) rootQ[k] = bones[k].parent.getWorldQuaternion(new Q()); }
+  const A = {};
+  for (const k of boneOrder) {
+    const pk = parentKey[k];
+    A[k] = pk && A[pk] ? A[pk].clone() : new Q();
+    if (!sb[k]) continue;
+    const c = pickChildKey(k, x => !!sb[x]);
+    if (c) {
+      const td = new V3().subVectors(TrP[c], TrP[k]), sd = new V3().subVectors(SrP[c], SrP[k]);
+      if (td.lengthSq() > 1e-10 && sd.lengthSq() > 1e-10) A[k] = new Q().setFromUnitVectors(td.normalize(), sd.normalize());
+    }
+  }
+  const foot = keys.includes('LeftFoot') ? 'LeftFoot' : keys.includes('RightFoot') ? 'RightFoot' : null;
+  const sH = foot ? SrP.Hips.y - SrP[foot].y : SrP.Hips.y, tH = foot ? TrP.Hips.y - TrP[foot].y : TrP.Hips.y;
+  const ratio = Math.abs(sH) > 1e-6 ? tH / sH : 1;
+  const hipsParent = bones.Hips.parent;
+  // sample
+  const sm = new THREE.AnimationMixer(src); const act = sm.clipAction(clip); act.play();
+  const fps = 30, n = Math.max(2, Math.ceil(clip.duration * fps) + 1);
+  const times = new Float32Array(n), qv = {}, prev = {}; keys.forEach(k => qv[k] = new Float32Array(n * 4));
+  const pv = new Float32Array(n * 3);
+  const tmpQ = new Q(), tmpP = new V3(), invP = new Q();
+  for (let i = 0; i < n; i++) {
+    const tt = Math.min(i / fps, clip.duration); times[i] = tt;
+    sm.setTime(tt); src.updateMatrixWorld(true);
+    const D = {};
+    for (const k of boneOrder) {
+      const pk = parentKey[k]; const Dp = pk ? D[pk] : rootQ[k];
+      if (sb[k]) {
+        sb[k].getWorldQuaternion(tmpQ);
+        const d = tmpQ.clone().multiply(Sr[k].clone().invert()).multiply(A[k]).multiply(Tr[k]);
+        D[k] = d;
+        const local = invP.copy(Dp).invert().multiply(d);
+        if (prev[k] && prev[k].dot(local) < 0) local.set(-local.x, -local.y, -local.z, -local.w);
+        prev[k] = local.clone(); qv[k].set(local.toArray(), i * 4);
+      } else D[k] = Dp.clone().multiply(bind[k]);
+    }
+    sb.Hips.getWorldPosition(tmpP);
+    const dlt = tmpP.sub(SrP.Hips).multiplyScalar(ratio); if (inPlace) { dlt.x = 0; dlt.z = 0; }
+    const wp = TrP.Hips.clone().add(dlt); hipsParent.worldToLocal(wp); pv.set(wp.toArray(), i * 3);
+  }
+  // restore
+  for (const k in bones) { bones[k].quaternion.copy(saved[k][0]); bones[k].position.copy(saved[k][1]); }
+  robinGroup.quaternion.copy(gq); robinGroup.position.copy(gp); robinGroup.scale.copy(gsc); robinGroup.updateMatrixWorld(true);
+  const tracks = keys.map(k => new THREE.QuaternionKeyframeTrack(bones[k].name + '.quaternion', times, qv[k]));
+  tracks.push(new THREE.VectorKeyframeTrack(bones.Hips.name + '.position', times, pv));
+  return new THREE.AnimationClip(clipName, clip.duration, tracks);
+}
+async function buildAnim(a) {
+  let clip;
+  if (a.kind === 'poses') clip = clipFromPoses(a);
+  else { const b = await kvGet('file:' + a.fileId); if (!b) throw new Error('missing'); clip = await retarget(b, a.id, a.inPlace !== false); }
+  clip.name = a.id; a.clip = a.id; robinClips.set(a.id, clip);
+  if (mixer) mixer.uncacheClip(clip);
+  return clip;
+}
+async function handleAnim(list) {
+  if (!robinReady) { toast('انتظر حتى يتحمّل روبن ثم أعد المحاولة'); return; }
+  {
+    toast('جاري تركيب الحركة على روبن…', 20000);
+    let id = null;
+    try {
+      const files = await readFiles(list);
+      const main = (await expandFiles(files)).find(f => MODEL_RE.test(f.name));
+      if (!main) { toast('ما وجدت ملف FBX أو GLB', 4000); return; }
+      const name = baseName(main.name).replace(MODEL_RE, '').replace(/[_-]+/g, ' ').slice(0, 24) || 'حركة';
+      id = await saveFileBundle(name, files, 'anim');
+      const a = { id: 'a_' + uid(), kind: 'file', name, fileId: id, inPlace: true };
+      await buildAnim(a);
+      P.anims.push(a); renderAnimButtons(); renderAddedList(); markDirty();
+      if (mode === 'edit') { playClip(a.clip, 0); renderAnimButtons(); }
+      const low = name.toLowerCase();
+      if (/idle|breath/.test(low)) P.play.idle = a.clip; else if (/run/.test(low)) P.play.run = a.clip; else if (/walk/.test(low)) P.play.walk = a.clip; else if (/jump/.test(low)) P.play.jump = a.clip;
+      renderAnimButtons();
+      toast('تمت إضافة الحركة ✓ ' + name);
+    } catch (e) {
+      console.error(e);
+      if (id) { P.files = P.files.filter(f => f.id !== id); kvDel('file:' + id); }
+      const m = String(e && e.message);
+      toast(m === 'noanim' ? 'هذا الملف ليس فيه حركة' : m === 'names' ? 'أسماء العظام لا تشبه Mixamo — نزّل الحركة من mixamo.com' : errText(e), 6000);
+    }
+  }
+}
+function renderAddedList() {
+  const L = $('#addedList'); L.innerHTML = '';
+  P.anims.forEach(a => {
+    const d = document.createElement('div'); d.className = 'item';
+    d.innerHTML = `<span class="nm">${a.kind === 'poses' ? '🎞️' : '💃'} ${esc(a.name)}</span>${a.kind === 'file' ? `<button data-a="ip" class="${a.inPlace !== false ? 'on' : ''}">في مكانه</button>` : ''}<button data-a="ren">✏️</button><button data-a="del" class="danger">🗑️</button>`;
+    const ip = d.querySelector('[data-a=ip]');
+    if (ip) ip.onclick = async () => { a.inPlace = a.inPlace === false; try { await buildAnim(a); } catch (e) { } renderAddedList(); markDirty(); if (curClipName === a.clip) { curAction = null; playClip(a.clip, 0); } toast(a.inPlace ? 'الحركة في مكانها' : 'الحركة تتقدم للأمام'); };
+    d.querySelector('[data-a=ren]').onclick = () => renameSheet(a.name, n => { a.name = n; renderAddedList(); renderAnimButtons(); markDirty(); });
+    d.querySelector('[data-a=del]').onclick = async () => {
+      if (!await askConfirm('أحذف الحركة ' + esc(a.name) + '؟')) return;
+      if (curClipName === a.clip) resetRobinPose();
+      const c = robinClips.get(a.clip); if (c && mixer) { mixer.uncacheAction(c); mixer.uncacheClip(c); }
+      robinClips.delete(a.clip); P.anims = P.anims.filter(x => x !== a);
+      if (a.fileId) { P.files = P.files.filter(f => f.id !== a.fileId); kvDel('file:' + a.fileId); }
+      renderAnimButtons(); renderAddedList(); markDirty();
+    };
+    L.appendChild(d);
+  });
+  P.faces.forEach(f => {
+    const d = document.createElement('div'); d.className = 'item';
+    d.innerHTML = `<span class="nm">😊 ${esc(f.name)}</span><button data-a="ren">✏️</button><button data-a="del" class="danger">🗑️</button>`;
+    d.querySelector('[data-a=ren]').onclick = () => renameSheet(f.name, n => { f.name = n; faceNames[f.id] = n; renderAddedList(); renderFaceButtons(); markDirty(); });
+    d.querySelector('[data-a=del]').onclick = async () => {
+      if (!await askConfirm('أحذف الوجه ' + esc(f.name) + '؟')) return;
+      P.faces = P.faces.filter(x => x !== f); delete faceImgs[f.id]; if (curFace === f.id) { curFace = 'neutral'; showFace('neutral'); }
+      renderFaceButtons(); renderAddedList(); markDirty();
+    };
+    L.appendChild(d);
+  });
+  if (!P.anims.length && !P.faces.length) L.innerHTML = '<div class="muted">لا شيء بعد — استعمل زر ＋</div>';
+}
+
+// ---------------- modes: edit / play ----------------
+let mode = 'edit';
+function setMode(m) {
+  mode = m;
+  $('#mEdit').classList.toggle('on', m === 'edit'); $('#mPlay').classList.toggle('on', m === 'play');
+  const play = m === 'play';
+  $('#joy').style.display = play ? 'block' : 'none'; $('#playBtns').style.display = play ? 'flex' : 'none';
+  $('#fab').style.display = play ? 'none' : ''; $('#gizmoSeg').style.display = play ? 'none' : '';
+  $('#undo').style.display = $('#redo').style.display = play ? 'none' : '';
+  $('#hint').textContent = play ? 'حرّك الدائرة للمشي · اسحب الشاشة لتدوير الكاميرا · لوحة المفاتيح: WASD و Shift و Space' : 'اضغط على أي شكل لتختاره · اسحب الأسهم لتحريكه';
+  if (play) {
+    tc.detach(); selHelper.visible = false; tapPlace = false;
+    editSnap = captureLayout();
+    const e = new THREE.Euler().setFromQuaternion(robinGroup.quaternion, 'YXZ'); robinGroup.rotation.set(0, e.y, 0);
+    for (const k in bones) { offs[k] = [0, 0, 0]; }
+    vy = 0; boxesDirty = true; playState = ''; curAction = null; if (mixer) mixer.stopAllAction();
+    controls.target.set(robinGroup.position.x, robinGroup.position.y + 1, robinGroup.position.z);
+    cam.position.set(controls.target.x - Math.sin(e.y) * 5.5, controls.target.y + 1.4, controls.target.z - Math.cos(e.y) * 5.5);
+    toast('🎮 وضع اللعب');
+  } else {
+    if (editSnap) { robinGroup.position.fromArray(editSnap.robin.p); robinGroup.quaternion.fromArray(editSnap.robin.q); }
+    resetRobinPose();
+    if (selId) select(selId);
+    toast('✏️ وضع التعديل — رجع روبن لمكانه');
+  }
+  renderAnimButtons();
+}
+let editSnap = null;
+$('#mEdit').onclick = () => { if (mode !== 'edit') setMode('edit'); };
+$('#mPlay').onclick = () => { if (mode !== 'play' && robinReady) setMode('play'); };
+
+// joystick + keys
+const joy = $('#joy'), knob = $('#knob'); let joyId = null, jx = 0, jy = 0;
+function joyMove(e) { const r = joy.getBoundingClientRect(); let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2), dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2); const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } jx = dx; jy = dy; knob.style.transform = `translate(${dx * 40}px,${dy * 40}px)`; }
+joy.addEventListener('pointerdown', e => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joyMove(e); e.preventDefault(); });
+joy.addEventListener('pointermove', e => { if (e.pointerId === joyId) joyMove(e); });
+const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; jx = jy = 0; knob.style.transform = ''; };
+joy.addEventListener('pointerup', joyEnd); joy.addEventListener('pointercancel', joyEnd);
+let runToggle = false, jumpReq = false;
+$('#bRun').onclick = () => { runToggle = !runToggle; $('#bRun').classList.toggle('on', runToggle); };
+$('#bJump').addEventListener('pointerdown', e => { jumpReq = true; e.preventDefault(); });
+const keys = new Set();
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return; keys.add(e.code); if (e.code === 'Space' && mode === 'play') { jumpReq = true; e.preventDefault(); } });
+addEventListener('keyup', e => keys.delete(e.code));
+addEventListener('blur', () => keys.clear());
+
+// collisions
+let boxesDirty = true, solidBoxes = [];
+function rebuildBoxes() {
+  solidBoxes = [];
+  for (const e of objs.values()) if (e.holder.parent === userRoot && e.rec.solid && !e.rec.hidden) { e.holder.updateMatrixWorld(true); solidBoxes.push(new THREE.Box3().setFromObject(e.holder)); }
+  boxesDirty = false;
+}
+const R = 0.28, STEP = 0.45, HEIGHT = 1.8;
+function blockedAt(x, z, y) {
+  for (const b of solidBoxes) {
+    if (x > b.min.x - R && x < b.max.x + R && z > b.min.z - R && z < b.max.z + R) {
+      if (b.max.y > y + STEP && b.min.y < y + HEIGHT) return true;
+    }
+  }
+  return false;
+}
+function floorAt(x, z, y) {
+  let f = 0;
+  for (const b of solidBoxes) if (x > b.min.x - R * 0.6 && x < b.max.x + R * 0.6 && z > b.min.z - R * 0.6 && z < b.max.z + R * 0.6 && b.max.y <= y + STEP && b.max.y > f) f = b.max.y;
+  return f;
+}
+let vy = 0, onGround = true, playState = '';
+function updatePlay(dt) {
+  if (boxesDirty) rebuildBoxes();
+  let ix = jx, iy = jy;
+  const kx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  const ky = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
+  if (kx || ky) { const m = Math.hypot(kx, ky); ix = kx / m; iy = ky / m; }
+  const mag = Math.min(1, Math.hypot(ix, iy));
+  const running = runToggle || keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const pos = robinGroup.position;
+  const before = pos.clone();
+  if (mag > 0.12) {
+    const fwd = new V3().subVectors(controls.target, cam.position); fwd.y = 0; fwd.normalize();
+    const right = new V3().crossVectors(fwd, UP);
+    const dir = fwd.multiplyScalar(-iy).add(right.multiplyScalar(ix)); dir.y = 0; dir.normalize();
+    const sp = (running ? P.play.runSp : P.play.walkSp) * (kx || ky ? 1 : Math.min(1, mag * 1.25)) * robinGroup.scale.y;
+    const nx = pos.x + dir.x * sp * dt, nz = pos.z + dir.z * sp * dt;
+    if (blockedAt(pos.x, pos.z, pos.y) || !blockedAt(nx, nz, pos.y)) { pos.x = nx; pos.z = nz; }
+    else if (!blockedAt(nx, pos.z, pos.y)) pos.x = nx;
+    else if (!blockedAt(pos.x, nz, pos.y)) pos.z = nz;
+    const yaw = Math.atan2(dir.x, dir.z);
+    const cur = robinGroup.rotation.y; let d = yaw - cur; d = Math.atan2(Math.sin(d), Math.cos(d));
+    robinGroup.rotation.y = cur + d * Math.min(1, dt * 12);
+  }
+  // vertical
+  const fl = floorAt(pos.x, pos.z, pos.y);
+  if (jumpReq && onGround) { vy = P.play.jumpV * Math.sqrt(robinGroup.scale.y); onGround = false; if (P.play.jump) playOnce(P.play.jump); playState = 'jump'; }
+  jumpReq = false;
+  vy -= 20 * dt; pos.y += vy * dt;
+  if (pos.y <= fl) { if (!onGround) playState = ''; pos.y = fl; vy = 0; onGround = true; }
+  else if (pos.y > fl + 0.05) onGround = false;
+  // animation state
+  let want;
+  if (!onGround && P.play.jump && playState === 'jump') want = 'jump';
+  else want = mag > 0.12 ? (running ? 'run' : 'walk') : 'idle';
+  if (want !== playState) {
+    playState = want;
+    if (want !== 'jump') { const name = P.play[want] || (want === 'run' ? P.play.walk : '') || P.play.idle; playClip(name, 0.22); }
+  }
+  // camera follow
+  const moved = new V3().subVectors(pos, before);
+  cam.position.add(moved); controls.target.add(moved);
+}
+
+// ---------------- render loop ----------------
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (mode === 'play' && robinReady) updatePlay(dt);
+  if (mixer && curAction) mixer.update(dt);
+  for (const e of objs.values()) if (e.mixer && e.holder.parent && e.holder.visible) e.mixer.update(dt);
+  if (P.settings.blink && faceCtx && !$('#modal').classList.contains('on')) {
+    const now = performance.now();
+    if (!blinkUntil && now > nextBlink && curFace !== 'blink' && curFace !== 'laugh' && faceImgs.blink) { showFace('blink'); blinkUntil = now + 140; }
+    else if (blinkUntil && now > blinkUntil) { blinkUntil = 0; showFace(curFace); nextBlink = now + 2200 + Math.random() * 2500; }
+  }
+  // sun follows the camera target so shadows stay sharp near you
+  sun.target.position.copy(controls.target); sun.position.copy(controls.target).add(sunOffset);
+  if (selHelper.visible && selId) { const e = selEntry(); if (e && (e.mixer || selId === 'robin')) selHelper.setFromObject(e.holder); }
+  controls.update(); renderer.render(scene, cam);
+});
+
+// ---------------- tabs ----------------
+$$('#tabs button').forEach(b => b.onclick = () => { $$('#tabs button').forEach(x => x.classList.toggle('on', x === b)); $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + b.dataset.t)); if (b.dataset.t === 'proj') updateStoreInfo(); });
+
+// ---------------- project: export / import ----------------
+let downloads = null;
+
+async function updateStoreInfo() {
+  const n = [...objs.values()].filter(e => e.holder.parent === userRoot).length;
+  let txt = `في المشهد: ${n} شكل · ${P.anims.length} حركة · ${P.faces.length} وجه · ${P.poses.length} وضعية.`;
+  try { const est = await navigator.storage.estimate(); txt += ` المساحة المستعملة: ${(est.usage / 1e6).toFixed(1)} ميغا.`; } catch (e) { }
+  if (!store.ok) txt += ' ⚠ هذا المتصفح لا يسمح بالحفظ — صدّر المشروع قبل أن تغلق الصفحة.';
+  $('#storeInfo').textContent = txt;
+}
+function usedFileIds() {
+  syncLayoutToP();
+  const s = new Set();
+  P.objects.forEach(o => o.src.kind === 'file' && s.add(o.src.fileId));
+  P.anims.forEach(a => a.fileId && s.add(a.fileId));
+  if (P.world.bg) s.add(P.world.bg.fileId);
+  if (P.world.groundTex && P.world.groundTex !== 'grass' && P.world.groundTex !== 'none') s.add(P.world.groundTex);
+  return s;
+}
+async function saveFile(filename, blob) {
+  if (!downloads) { try { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); toast('تم ✓ انظر في التنزيلات'); return true; } catch (e) { toast('ما قدرت أحفظ الملف', 4000); return false; } }
+  try { await downloads.save({ filename, data: blob }); toast('تم ✓'); return true; }
+  catch (e) { const c = e && e.code; toast(c === 'declined' ? 'تم الإلغاء' : c === 'too_large' ? 'الملف كبير جدًا' : 'ما قدرت أحفظ الملف', 4000); return false; }
+}
+$('#exportProj').onclick = async () => {
+  if (!window.JSZip) { toast('ZIP غير متاح'); return; }
+  toast('جاري تجهيز النسخة…', 20000);
+  const used = usedFileIds();
+  P.files = P.files.filter(f => used.has(f.id));
+  const z = new JSZip();
+  z.file('project.json', JSON.stringify(P));
+  for (const f of P.files) { const b = await kvGet('file:' + f.id); if (!b) continue; b.files.forEach((x, i) => z.file(`files/${f.id}/${i}__${baseName(x.name)}`, x.data)); }
+  const blob = await z.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 3 } });
+  const d = new Date(); await saveFile(`robin-studio-${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}.zip`, blob);
+};
+fileBtn($('#importProj'), '', false, async fs => {
+  {
+    const f = fs[0];
+    if (!await askConfirm('الاستيراد سيستبدل المشروع الحالي. أكمل؟', 'استورد')) return;
+    toast('جاري الاستيراد…', 20000);
+    try {
+      const z = await JSZip.loadAsync(await f.arrayBuffer());
+      const pj = z.file('project.json'); if (!pj) throw new Error('not a project');
+      const np = Object.assign(defaultProject(), JSON.parse(await pj.async('string')));
+      for (const fi of np.files) {
+        const entries = Object.keys(z.files).filter(p => p.startsWith(`files/${fi.id}/`) && !z.files[p].dir).sort((a, b) => parseInt(a.split('/').pop()) - parseInt(b.split('/').pop()));
+        const files = []; for (const p of entries) files.push({ name: p.split('/').pop().replace(/^\d+__/, ''), data: await z.files[p].async('arraybuffer') });
+        await kvPut('file:' + fi.id, { name: fi.name, files });
+      }
+      await loadProjectIntoScene(np, true);
+      toast('تم الاستيراد ✓');
+    } catch (e) { console.error(e); toast('هذا ليس ملف مشروع صالح', 4000); }
+  }
+});
+$('#exportBlend').onclick = async () => {
+  toast('جاري تجهيز GLB…', 20000);
+  const wasToon = toonOn; if (toonOn) { toonOn = false; applyToon(); }
+  tc.detach(); selHelper.visible = false;
+  const list = [robinGroup, ...userRoot.children.filter(h => h.visible)];
+  const clips = [...robinClips.values()];
+  try {
+    const glb = await new Promise((ok, bad) => new GLTFExporter().parse(list, ok, bad, { binary: true, onlyVisible: true, animations: clips }));
+    const z = new JSZip(); z.file('robin_scene.glb', glb);
+    z.file('اقرأني.txt', 'افتح Blender ثم File > Import > glTF 2.0 واختر robin_scene.glb\n');
+    const blob = await z.generateAsync({ type: 'blob' });
+    await saveFile('robin-scene-blender.zip', blob);
+  } catch (e) { console.error(e); toast('ما قدرت أصدّر المشهد', 4000); }
+  if (wasToon) { toonOn = true; applyToon(); }
+  if (selId) select(selId);
+};
+$('#newScene').onclick = async () => {
+  if (!await askConfirm('أمسح كل الأشكال من المشهد؟ (روبن والحركات والوجوه تبقى)', 'امسح')) return;
+  const snap = captureLayout();
+  for (const e of objs.values()) if (e.holder.parent) userRoot.remove(e.holder);
+  pushUndo(snap); select(null); renderObjList(); boxesDirty = true; markDirty(); toast('المشهد فارغ — تقدر ترجعه بزر ↶');
+};
+
+// ---------------- load project ----------------
+async function loadProjectIntoScene(np, rebuildRobin) {
+  // clear runtime
+  tc.detach(); select(null);
+  for (const e of objs.values()) if (e.holder.parent) userRoot.remove(e.holder);
+  objs.clear(); templates.clear(); undoStack.length = redoStack.length = 0; updUndoBtns();
+  if (rebuildRobin && robinReady) {
+    for (const a of P.anims) { const c = robinClips.get(a.clip); if (c && mixer) { mixer.uncacheAction(c); mixer.uncacheClip(c); } robinClips.delete(a.clip); }
+    P.faces.forEach(f => delete faceImgs[f.id]);
+  }
+  P = np;
+  P.world = Object.assign(defaultProject().world, P.world || {});
+  P.play = Object.assign(defaultProject().play, P.play || {});
+  P.settings = Object.assign(defaultProject().settings, P.settings || {});
+  robinGroup.position.fromArray(P.robin.p); robinGroup.quaternion.fromArray(P.robin.q); robinGroup.scale.fromArray(P.robin.s);
+  updateSunOffset(); applyWorld(); syncPlayUI(); loadBgTexture(); loadGroundTexture();
+  $('#autoblink').classList.toggle('on', !!P.settings.blink);
+  let failed = 0;
+  for (const r of P.objects) {
+    try { const e = await buildObject(r); objs.set(r.id, e); userRoot.add(e.holder); }
+    catch (err) { console.warn('obj', r.name, err); failed++; }
+  }
+  if (failed) toast(`${failed} شكل ما قدرت أفتحه`, 4000);
+  boxesDirty = true; renderObjList(); renderPoses();
+  if (rebuildRobin && robinReady) {
+    P.faces.forEach(f => addFaceImage(f)); renderFaceButtons(); curFace = 'neutral'; showFace('neutral');
+    for (const a of P.anims) { try { await buildAnim(a); } catch (e) { console.warn(e); } }
+    resetRobinPose();
+  }
+  renderAnimButtons(); renderAddedList();
+  markDirty();
+}
+
+// ---------------- boot ----------------
+(async () => {
+  setSaveState('…');
+  await idbOpen();
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { }
+  const saved = await kvGet('project');
+  const np = saved ? Object.assign(defaultProject(), saved) : defaultProject();
+  await loadProjectIntoScene(np, false);
+  setSaveState(store.ok ? '✓ محفوظ' : '⚠ الحفظ غير متاح');
+
+  // character: saved in this browser, or picked from the phone
+  fileBtn($('#charBtn'), '', true, pickCharacterFiles);
+  fileBtn($('#charChange'), '', true, pickCharacterFiles);
+  $('#charSkip').onclick = () => { $('#charPick').style.display = 'none'; status.remove(); };
+  const ch = await kvGet('character');
+  if (ch && ch.files) { status.textContent = 'جاري تحميل الشخصية…'; try { await loadCharacter(ch.files); } catch (e) { onErr(e); } }
+  else { status.textContent = ''; showCharPick(); }
+})();
+</script>
+</body>
+</html>
