@@ -133,6 +133,7 @@
         <button id="sFocus">🎯 ركّز الكاميرا</button>
         <button id="sNone">✖ إلغاء الاختيار</button>
       </div>
+      <div class="row" id="selActor" style="display:none"><span class="muted">حركته:</span><select id="selActorClip"></select></div>
       <div class="muted" id="selInfo"></div>
     </div>
     <div class="lbl">كل الأشياء في المشهد</div>
@@ -526,6 +527,23 @@ async function buildObject(rec) {
     const geo = (PRIMS[rec.src.shape] || PRIMS.box)[1]();
     const mat = new THREE.MeshToonMaterial({ color: rec.src.color || '#c8a27a', gradientMap: gradTex || (gradTex = makeGradient()) });
     const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; holder.add(m);
+  } else if (rec.src.kind === 'actor') {
+    // extra person: a clone of the loaded character playing one of its clips
+    if (!robinReady || !robinRoot) throw new Error('robin');
+    const model = SkeletonUtils.clone(robinRoot);
+    const dels = [];
+    model.traverse(o => {
+      if (o.userData.outline) { dels.push(o); return; }
+      if (o.isMesh) {
+        o.frustumCulled = false; o.castShadow = o.receiveShadow = true;
+        o.material = Array.isArray(o.material) ? o.material.map(mm => mm.clone()) : o.material.clone();
+      }
+    });
+    dels.forEach(o => o.parent && o.parent.remove(o));
+    holder.add(model);
+    mixer = new THREE.AnimationMixer(model);
+    const clip = robinClips.get(rec.src.clip) || robinClips.get(P.play.idle) || [...robinClips.values()][0];
+    if (clip) { rec.src.clip = clip.name; mixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play(); }
   } else {
     const t = await getTemplate(rec.src.fileId);
     const model = SkeletonUtils.clone(t.scene);
@@ -678,9 +696,12 @@ function readRec(entry) {
   r.p = h.position.toArray().map(n => +n.toFixed(4)); r.q = h.quaternion.toArray().map(n => +n.toFixed(5)); r.s = h.scale.toArray().map(n => +n.toFixed(4));
   return r;
 }
+let pendingActors = []; // people waiting for the character to finish loading
 function syncLayoutToP() {
   P.objects = [];
   for (const e of objs.values()) if (e.holder.parent === userRoot) P.objects.push(JSON.parse(JSON.stringify(readRec(e))));
+  const built = new Set(P.objects.map(o => o.id));
+  pendingActors.forEach(r => { if (!built.has(r.id)) P.objects.push(JSON.parse(JSON.stringify(r))); });
   P.robin = { p: robinGroup.position.toArray(), q: robinGroup.quaternion.toArray(), s: robinGroup.scale.toArray() };
 }
 function spawnPoint() {
@@ -691,7 +712,7 @@ function spawnPoint() {
 async function addObject(src, name) {
   const snap = captureLayout();
   const p = spawnPoint();
-  const rec = { id: uid(), name, src, p: [p.x, 0, p.z], q: [0, 0, 0, 1], s: [1, 1, 1], solid: src.kind !== 'prim' || src.shape !== 'plane', hidden: false };
+  const rec = { id: uid(), name, src, p: [p.x, 0, p.z], q: [0, 0, 0, 1], s: [1, 1, 1], solid: src.kind === 'actor' ? false : (src.kind !== 'prim' || src.shape !== 'plane'), hidden: false };
   const e = await buildObject(rec);
   objs.set(rec.id, e); userRoot.add(e.holder);
   pushUndo(snap); boxesDirty = true; renderObjList(); select(rec.id); markDirty();
@@ -711,6 +732,23 @@ function updateSelHelper() {
   const e = selId && selEntry();
   if (e && mode === 'edit') { selHelper.setFromObject(e.holder); selHelper.visible = true; } else selHelper.visible = false;
 }
+function refreshActorSel() {
+  const e = selId && selEntry();
+  const isActor = e && e.rec.src && e.rec.src.kind === 'actor';
+  $('#selActor').style.display = isActor && robinReady ? '' : 'none';
+  if (!isActor || !robinReady) return;
+  const sel = $('#selActorClip');
+  sel.innerHTML = [...robinClips.keys()].map(n => `<option value="${esc(n)}">${esc(ANAMES[n] || animLabel(n))}</option>`).join('');
+  sel.value = robinClips.has(e.rec.src.clip) ? e.rec.src.clip : [...robinClips.keys()][0];
+}
+$('#selActorClip').onchange = ev => {
+  const e = selEntry(); if (!e || !e.rec.src || e.rec.src.kind !== 'actor' || !e.mixer) return;
+  e.rec.src.clip = ev.target.value;
+  e.mixer.stopAllAction();
+  const clip = robinClips.get(e.rec.src.clip);
+  if (clip) e.mixer.clipAction(clip).reset().setLoop(THREE.LoopRepeat, Infinity).play();
+  markDirty();
+};
 function renderSelBox() {
   const e = selId && selEntry(); const box = $('#selBox');
   if (!e) { box.style.display = 'none'; return; }
@@ -723,6 +761,7 @@ function renderSelBox() {
   $('#sSolid').classList.toggle('on', !!e.rec.solid);
   $('#sHide').textContent = e.rec.hidden ? '👁️ إظهار' : '👁️ إخفاء';
   $('#sTap').classList.toggle('on', tapPlace);
+  refreshActorSel();
   refreshSelInfo();
 }
 function refreshSelInfo() {
@@ -738,7 +777,7 @@ function renderObjList() {
     d.onclick = () => select(id === selId ? null : id); L.appendChild(d);
   };
   mk('robin', '🧍‍♀️ روبن', 'الشخصية');
-  for (const e of objs.values()) if (e.holder.parent === userRoot) mk(e.rec.id, (e.rec.src.kind === 'prim' ? '🔷 ' : '🏠 ') + e.rec.name, e.rec.solid ? 'صلب' : '', e.rec.hidden);
+  for (const e of objs.values()) if (e.holder.parent === userRoot) mk(e.rec.id, (e.rec.src.kind === 'prim' ? '🔷 ' : e.rec.src.kind === 'actor' ? '🧍 ' : '🏠 ') + e.rec.name, e.rec.solid ? 'صلب' : '', e.rec.hidden);
 }
 function selChange(fn) {
   const e = selId && selEntry(); if (!e) return;
@@ -805,6 +844,8 @@ const undoStack = [], redoStack = [];
 function captureLayout() {
   const list = [];
   for (const e of objs.values()) if (e.holder.parent === userRoot) list.push(JSON.parse(JSON.stringify(readRec(e))));
+  const built = new Set(list.map(o => o.id));
+  pendingActors.forEach(r => { if (!built.has(r.id)) list.push(JSON.parse(JSON.stringify(r))); });
   return { objects: list, robin: { p: robinGroup.position.toArray(), q: robinGroup.quaternion.toArray(), s: robinGroup.scale.toArray() } };
 }
 function pushUndo(snap) { undoStack.push(snap); if (undoStack.length > 60) undoStack.shift(); redoStack.length = 0; updUndoBtns(); }
@@ -812,7 +853,9 @@ function updUndoBtns() { $('#undo').disabled = !undoStack.length; $('#redo').dis
 async function restoreLayout(snap) {
   const keep = new Set(snap.objects.map(r => r.id));
   for (const e of objs.values()) if (!keep.has(e.rec.id) && e.holder.parent) userRoot.remove(e.holder);
+  pendingActors = pendingActors.filter(r => keep.has(r.id));
   for (const r of snap.objects) {
+    if (r.src && r.src.kind === 'actor' && !robinReady) { if (!pendingActors.some(x => x.id === r.id)) pendingActors.push(JSON.parse(JSON.stringify(r))); continue; }
     let e = objs.get(r.id);
     if (!e) { e = await buildObject(JSON.parse(JSON.stringify(r))); objs.set(r.id, e); }
     delete e.rec.mats; delete e.rec.toon; Object.assign(e.rec, JSON.parse(JSON.stringify(r)));
@@ -833,6 +876,7 @@ $('#fab').onclick = () => {
   const s = openSheet(`
     <h3>ماذا تريد أن تضيف؟</h3>
     <div class="menu">
+      <button id="aActor">🧍 شخص<small>نسخة من شخصيتك — يقف أو يمشي أو يرقص</small></button>
       <button id="aModel">🏠 شكل 3D من ملف<small>GLB · glTF · FBX · OBJ · ZIP</small></button>
       <button id="aAnim">💃 حركة لروبن<small>FBX من Mixamo أو GLB</small></button>
       <button id="aFace">😊 وجه جديد<small>صورة تعبير من Gemini</small></button>
@@ -843,6 +887,16 @@ $('#fab').onclick = () => {
     <div class="prims">${Object.entries(PRIMS).map(([k, v]) => `<button data-p="${k}">${v[0]}</button>`).join('')}</div>
     <div class="row" style="margin-top:12px"><button id="aClose">إغلاق</button></div>`);
   s.querySelector('#aClose').onclick = closeSheet;
+  s.querySelector('#aActor').onclick = async () => {
+    closeSheet();
+    if (!robinReady) { toast('حمّل الشخصية أولاً ثم أضف الأشخاص'); return; }
+    const nActors = [...objs.values()].filter(e => e.rec.src.kind === 'actor' && e.holder.parent === userRoot).length;
+    if (nActors >= 10) { toast('عندك 10 أشخاص — هذا الحد حتى يبقى الهاتف سريعًا', 4000); return; }
+    const e = await addObject({ kind: 'actor', clip: P.play.idle || 'وقوف' }, 'شخص ' + (nActors + 1));
+    e.holder.position.set(robinGroup.position.x + 1.2 + (nActors % 3) * 1.1, 0, robinGroup.position.z + Math.floor(nActors / 3) * 1.1);
+    markDirty();
+    toast('أضفت شخصًا ✓ اختر حركته من قائمة "حركته" في الأسفل', 4000);
+  };
   fileBtn(s.querySelector('#aModel'), '', true, fs => { closeSheet(); handleModel(fs); });
   fileBtn(s.querySelector('#aAnim'), '', true, fs => { closeSheet(); handleAnim(fs); });
   fileBtn(s.querySelector('#aFace'), 'image/*', false, fs => { closeSheet(); openFaceEditor(fs[0]); });
@@ -1036,6 +1090,15 @@ const onRobinLoad = async g => {
   robinReady = true;
   // rebuild added animations
   for (const a of P.anims) { try { await buildAnim(a); } catch (e) { console.warn('anim', a.name, e); } }
+  // rebuild extra people now that the character is ready
+  let rebuilt = 0;
+  for (const r of P.objects) {
+    if (r.src && r.src.kind === 'actor' && !objs.has(r.id)) {
+      try { const e = await buildObject(r); objs.set(r.id, e); userRoot.add(e.holder); rebuilt++; pendingActors = pendingActors.filter(x => x.id !== r.id); }
+      catch (err) { console.warn('actor', r.name, err); }
+    }
+  }
+  if (rebuilt) { boxesDirty = true; renderObjList(); }
   renderAnimButtons(); renderAddedList();
 };
 const onErr = e => { console.error(e); kvDel('character'); status.textContent = ''; showCharPick('ما قدرت أفتح هذا الملف — اختر ملف GLB للشخصية'); };
@@ -1110,6 +1173,7 @@ function renderAnimButtons() {
     sel.value = robinClips.has(P.play[key]) ? P.play[key] : '';
     sel.onchange = () => { P.play[key] = sel.value; markDirty(); };
   });
+  refreshActorSel();
 }
 function animLabel(n) { const a = P.anims.find(x => x.clip === n); return a ? a.name : n; }
 
@@ -1558,7 +1622,7 @@ async function loadProjectIntoScene(np, rebuildRobin) {
   // clear runtime
   tc.detach(); select(null);
   for (const e of objs.values()) if (e.holder.parent) userRoot.remove(e.holder);
-  objs.clear(); templates.clear(); undoStack.length = redoStack.length = 0; updUndoBtns();
+  objs.clear(); templates.clear(); pendingActors = []; undoStack.length = redoStack.length = 0; updUndoBtns();
   if (rebuildRobin && robinReady) {
     for (const a of P.anims) { const c = robinClips.get(a.clip); if (c && mixer) { mixer.uncacheAction(c); mixer.uncacheClip(c); } robinClips.delete(a.clip); }
     P.faces.forEach(f => delete faceImgs[f.id]);
@@ -1572,6 +1636,7 @@ async function loadProjectIntoScene(np, rebuildRobin) {
   $('#autoblink').classList.toggle('on', !!P.settings.blink);
   let failed = 0;
   for (const r of P.objects) {
+    if (r.src && r.src.kind === 'actor' && !robinReady) { pendingActors.push(r); continue; } // people are built once the character loads
     try { const e = await buildObject(r); objs.set(r.id, e); userRoot.add(e.holder); }
     catch (err) { console.warn('obj', r.name, err); failed++; }
   }
