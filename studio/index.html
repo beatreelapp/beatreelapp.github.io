@@ -153,6 +153,10 @@
     <div class="lbl">تعابير الوجه</div>
     <div class="row" id="faces"></div>
     <div class="row"><button id="autoblink">رمش تلقائي</button><button id="toon" class="on">ستايل أنمي</button><button id="charChange">🔁 غيّر الشخصية</button></div>
+    <div id="physWrap" style="display:none">
+      <div class="lbl">حركة الشعر والجسم (فيزياء) — 0 = بدون، 100 = طبيعي، 200 = أقوى</div>
+      <div id="physBox"></div>
+    </div>
     <div class="lbl">اختر جزء من الجسم: <span id="sel">—</span></div>
     <div class="grid3" id="bones"></div>
     <div class="sl"><span>لقدام/لورا</span><input id="rx" type="range" min="-180" max="180" step="1" value="0"><b id="vx">0°</b></div>
@@ -1085,6 +1089,8 @@ const onRobinLoad = async g => {
   setupFaces();
   setupToon(root);
   toonOn = P.settings.toon !== false; $('#toon').classList.toggle('on', toonOn); applyToon();
+  try { springSys = createSpringBones(THREE, root); } catch (e) { console.warn('physics', e); springSys = null; }
+  setupPhysUI();
   status.remove();
   selectBone('RightArm', 'كتف يمين');
   robinReady = true;
@@ -1127,6 +1133,143 @@ async function pickCharacterFiles(fs) {
   } catch (e) { onErr(e); }
 }
 
+// ---- Spring bones: ponytail / chest / butt / skirt follow the motion by themselves ----
+// Reads root.userData.springBones (stored in the GLB scene extras). Works with any clip (Mixamo etc.).
+function createSpringBones(THREE, root) {
+  const cfg = root.userData && root.userData.springBones;
+  if (!cfg) return null;
+  const V = THREE.Vector3, Qt = THREE.Quaternion;
+  const find = n => { let o = root.getObjectByName(n); if (!o) o = root.getObjectByName(String(n).replace(/[:\s]/g, '')); return o; };
+  const tmpA = new V(), tmpB = new V(), tmpC = new V(), q1 = new Qt(), q2 = new Qt();
+  // colliders
+  const cols = {};
+  for (const [k, c] of Object.entries(cfg.colliders || {})) {
+    const bone = find(c.bone); if (!bone) continue;
+    cols[k] = { bone, off: new V().fromArray(c.offset || [0, 0, 0]), tail: c.tail ? new V().fromArray(c.tail) : null, r: c.radius, a: new V(), b: new V(), rw: 0 };
+  }
+  const groups = [];
+  root.updateMatrixWorld(true);
+  const unit = () => { const s = new V(); root.getWorldScale(s); return s.x; };
+  for (const [gk, g] of Object.entries(cfg.groups || {})) {
+    const G = { key: gk, label: g.label || gk, base: g, amount: g.amount ?? 1, chains: [], cols: (g.colliders || []).map(k => cols[k]).filter(Boolean) };
+    for (const names of g.joints) {
+      const chain = [];
+      for (const n of names) {
+        const bone = find(n); if (!bone) continue;
+        const next = names[names.indexOf(n) + 1];
+        let child = next ? find(next) : bone.children.find(c => /_end$/.test(c.name)) || bone.children[0];
+        if (!child) continue;
+        const restQ = bone.quaternion.clone();
+        const localTail = child.position.clone();
+        const len0 = localTail.length();
+        const dir0 = localTail.clone().normalize();
+        const head = bone.getWorldPosition(new V()), tail = child.getWorldPosition(new V());
+        chain.push({ bone, child, restQ, dir0, len0, cur: tail.clone(), prev: tail.clone(), head, effR: null });
+      }
+      if (chain.length) G.chains.push(chain);
+    }
+    groups.push(G);
+  }
+  function updCols() {
+    const u = unit();
+    for (const c of Object.values(cols)) {
+      c.a.copy(c.off).applyMatrix4(c.bone.matrixWorld);
+      if (c.tail) c.b.copy(c.tail).applyMatrix4(c.bone.matrixWorld); else c.b.copy(c.a);
+      c.rw = c.r * u;
+    }
+  }
+  function closestOnSeg(p, a, b, out) {
+    const ab = tmpC.subVectors(b, a), t = ab.lengthSq() > 1e-12 ? Math.min(1, Math.max(0, tmpA.subVectors(p, a).dot(ab) / ab.lengthSq())) : 0;
+    return out.copy(a).addScaledVector(ab, t);
+  }
+  // effective radius per joint & collider so that nothing is pushed in the rest pose
+  updCols();
+  for (const G of groups) for (const ch of G.chains) for (const J of ch) {
+    J.effR = G.cols.map(c => { const d = closestOnSeg(J.cur, c.a, c.b, tmpB).distanceTo(J.cur); const hit = (G.base.hit || 0) * unit(); return Math.max(0, Math.min(c.rw, d - hit - 0.002 * unit())); });
+    J.effRu = J.effR.map(r => r / unit());
+  }
+  const grav = new V(0, -1, 0);
+  function reset() {
+    root.updateMatrixWorld(true);
+    for (const G of groups) for (const ch of G.chains) for (const J of ch) { J.bone.quaternion.copy(J.restQ); }
+    root.updateMatrixWorld(true);
+    for (const G of groups) for (const ch of G.chains) for (const J of ch) { J.child.getWorldPosition(J.cur); J.prev.copy(J.cur); J.hprev = J.bone.getWorldPosition(new V()); }
+  }
+  let lastRootPos = null;
+  function update(dt) {
+    if (!(dt > 0)) return;
+    dt = Math.min(dt, 1 / 30);
+    root.updateMatrixWorld(true);
+    updCols();
+    const u = unit();
+    // large teleports (e.g. respawn) -> reset instead of whipping
+    const rp = root.getWorldPosition(tmpA);
+    if (lastRootPos && lastRootPos.distanceTo(rp) > 0.8 * u * 1.0) { lastRootPos.copy(rp); reset(); return; }
+    lastRootPos = (lastRootPos || new V()).copy(rp);
+    for (const G of groups) {
+      const a = G.amount, B = G.base;
+      for (const ch of G.chains) {
+        for (const J of ch) {
+          const bone = J.bone;
+          bone.quaternion.copy(J.restQ);
+          bone.updateMatrixWorld(true);
+          if (a <= 0.001) { J.child.getWorldPosition(J.cur); J.prev.copy(J.cur); J.hprev = J.bone.getWorldPosition(new V()); continue; }
+          const head = bone.getWorldPosition(J.head);
+          const len = J.len0 * bone.getWorldScale(tmpB).x;
+          // rest direction in world (follows the animated parent)
+          bone.getWorldQuaternion(q1);
+          const restDir = tmpB.copy(J.dir0).applyQuaternion(q1);
+          // damped spring: freq (Hz) gets softer when amount > 1, decay = how fast it calms down (1/s)
+          const w = 2 * Math.PI * B.freq / Math.sqrt(Math.max(a, 0.05)), damp = Math.exp(-B.decay * dt);
+          // velocity relative to the moving head is damped (no fake wind at steady speed),
+          // the lag still appears when the body speeds up, stops, bounces or turns
+          const hv = tmpC.subVectors(head, J.hprev || head);
+          const v = new V().subVectors(J.cur, J.prev).sub(hv).multiplyScalar(damp).add(hv).multiplyScalar(1 - (B.air || 0.4) * dt);
+          (J.hprev || (J.hprev = new V())).copy(head);
+          const next = new V().copy(J.cur).add(v)
+            .addScaledVector(restDir, w * w * dt * dt * len)
+            .addScaledVector(grav, (B.gravity || 0) * a * w * w * dt * dt * len);
+          // keep length
+          next.sub(head).setLength(len).add(head);
+          // collisions
+          G.cols.forEach((c, i) => {
+            const r = J.effRu[i] * u + (B.hit || 0) * u; if (r <= 0) return;
+            const cp = closestOnSeg(next, c.a, c.b, tmpA); const d = next.distanceTo(cp);
+            if (d < r && d > 1e-9) { next.sub(cp).setLength(r).add(cp); next.sub(head).setLength(len).add(head); }
+          });
+          // limit angle
+          const dirN = tmpA.subVectors(next, head).normalize();
+          const ang = dirN.angleTo(restDir), maxA = (B.maxAngle || 60) * Math.PI / 180;
+          if (ang > maxA) { const axis = tmpC.crossVectors(restDir, dirN).normalize(); dirN.copy(restDir).applyAxisAngle(axis, maxA); next.copy(head).addScaledVector(dirN, len); }
+          J.prev.copy(J.cur); J.cur.copy(next);
+          // rotate bone so its tail points at the simulated point
+          const toLocal = q2.copy(q1).invert();
+          const want = tmpA.subVectors(next, head).applyQuaternion(toLocal).normalize();
+          bone.quaternion.copy(J.restQ).multiply(new Qt().setFromUnitVectors(J.dir0, want));
+          bone.updateMatrixWorld(true);
+        }
+      }
+    }
+  }
+  reset();
+  return { groups, update, reset, setAmount(k, v) { const G = groups.find(g => g.key === k); if (G) { G.amount = v; } } };
+}
+let springSys = null;
+function setupPhysUI() {
+  const wrap = $('#physWrap'), box = $('#physBox'); box.innerHTML = '';
+  if (!springSys) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  P.settings.phys = P.settings.phys || {};
+  for (const g of springSys.groups) {
+    const v = P.settings.phys[g.key] ?? 100;
+    springSys.setAmount(g.key, v / 100);
+    const row = document.createElement('div'); row.className = 'sl';
+    row.innerHTML = `<span>${esc(g.label)}</span><input type="range" min="0" max="200" step="5" value="${v}"><b>${v}%</b>`;
+    const inp = row.querySelector('input'), lab = row.querySelector('b');
+    inp.oninput = () => { lab.textContent = inp.value + '%'; springSys.setAmount(g.key, inp.value / 100); P.settings.phys[g.key] = +inp.value; markDirty(); };
+    box.appendChild(row);
+  }
+}
 function makeIdleClip() {
   // gentle breathing on the bind pose
   const times = [0, 1.6, 3.2], tracks = [];
@@ -1526,6 +1669,7 @@ renderer.setAnimationLoop(() => {
   if (mode === 'play' && robinReady) updatePlay(dt);
   if (mixer && curAction) mixer.update(dt);
   for (const e of objs.values()) if (e.mixer && e.holder.parent && e.holder.visible) e.mixer.update(dt);
+  if (springSys) springSys.update(dt);
   if (P.settings.blink && faceCtx && !$('#modal').classList.contains('on')) {
     const now = performance.now();
     if (!blinkUntil && now > nextBlink && curFace !== 'blink' && curFace !== 'laugh' && faceImgs.blink) { showFace('blink'); blinkUntil = now + 140; }
@@ -1634,6 +1778,7 @@ async function loadProjectIntoScene(np, rebuildRobin) {
   robinGroup.position.fromArray(P.robin.p); robinGroup.quaternion.fromArray(P.robin.q); robinGroup.scale.fromArray(P.robin.s);
   updateSunOffset(); applyWorld(); syncPlayUI(); loadBgTexture(); loadGroundTexture();
   $('#autoblink').classList.toggle('on', !!P.settings.blink);
+  if (springSys) setupPhysUI();
   let failed = 0;
   for (const r of P.objects) {
     if (r.src && r.src.kind === 'actor' && !robinReady) { pendingActors.push(r); continue; } // people are built once the character loads
